@@ -38,7 +38,7 @@ Freischaltung ◄── Sterne ◄── Bewertung ◄── Arbeit vor Ort (ode
 | 5 | Du kaufst eine **Klappleiter** oder zwei **Steckleiterteile**. Jetzt klappt die Rettung, aber höchstens mit 3 Sternen, weil niemand die Leiter sichert (FwDV 10). |
 | 6 | Ein zweites Haus, ein Fahrrad, ein Handzugwagen, Tierschutzhandschuhe und eine Transportbox bringen dich auf 5 Sterne. Ab 3 Sternen ist der **Mülltonnenbrand** freigeschaltet. |
 
-Damit es knapp und spannend bleibt, liegen die Bäume für die Katze unterschiedlich weit vom Gerätehaus entfernt. Den nächsten Baum schafft man zu Fuß in 5 Minuten, den am Markt erst mit Fahrrad oder einem Haus, das näher liegt.
+Damit es knapp und spannend bleibt, liegen die Bäume für die Katze unterschiedlich weit vom Gerätehaus entfernt. Den nächsten Baum schafft man zu Fuß in 5 Minuten, den am Markt erst mit einem Fahrzeug. Fahrrad und ein nahes Haus verkürzen den Weg zum Gerätehaus, denn Einsatzkräfte holen Gerät und Fahrzeug immer dort (Entscheidung vom 13.10.2026).
 
 ## Einsatzarten und Freischaltbaum
 
