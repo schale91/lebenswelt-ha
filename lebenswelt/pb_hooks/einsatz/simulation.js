@@ -53,6 +53,11 @@ function ortszeit(ms) {
   return { stunde: l.getUTCHours(), wochentag: l.getUTCDay(), monat: l.getUTCMonth() + 1 }
 }
 
+/** Zahl mit einer Nachkommastelle und deutschem Komma, für Texte im Protokoll. */
+function komma(n) {
+  return n.toFixed(1).replace(".", ",")
+}
+
 function preis(R, roh) {
   if (!roh) return 0
   return Math.max(R.PREIS_MINIMUM || 10, Math.round(roh * R.PREISFAKTOR))
@@ -548,7 +553,7 @@ function bewerte(R, s, e) {
   const anteil = dauerMin / art.ziel_eintreffen_min - 1
   let ab = 0
   for (const stufe of R.STERNE.eintreffen) if (anteil > stufe.ueber && stufe.abzug > ab) ab = stufe.abzug
-  if (ab) ziehe("eintreffen", ab, "Eingetroffen nach " + dauerMin.toFixed(1) + " Minuten, Ziel waren " + art.ziel_eintreffen_min + ".")
+  if (ab) ziehe("eintreffen", ab, "Eingetroffen nach " + komma(dauerMin) + " Minuten, Ziel waren " + art.ziel_eintreffen_min + ".")
   const opt = art.optimal || {}
   if (opt.personen && leute.length < opt.personen)
     ziehe("personen", Math.min(R.STERNE.fehlende_person_max, (opt.personen - leute.length) * R.STERNE.fehlende_person_unter_optimal), leute.length + " von optimal " + opt.personen + " Einsatzkräften.")
@@ -612,7 +617,7 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const ergebnis = plane(R, s, e, t, umwelt)
   if (ergebnis.grund || ergebnis.plan.eintreffen > e.verfall) {
     e.status = "verfallen"
-    e.grund = ergebnis.grund || "Zu spät: Eintreffen nach " + ((ergebnis.plan.eintreffen - t) / MIN).toFixed(1) + " Minuten, verfallen nach " + art.ablauf_min + "."
+    e.grund = ergebnis.grund || "Zu spät: Eintreffen nach " + komma((ergebnis.plan.eintreffen - t) / MIN) + " Minuten, verfallen nach " + art.ablauf_min + "."
     if (ergebnis.plan) {
       // Wer schon unterwegs war, kehrt um
       const pl = ergebnis.plan
