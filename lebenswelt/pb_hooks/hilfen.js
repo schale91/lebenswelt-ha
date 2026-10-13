@@ -147,4 +147,11 @@ function verschmelze(alt, neu) {
 const TYP_MUSTER = /^[a-z_]{1,40}$/
 const KEINE_PERSON = { fehler: "Keine Person bekannt. Über Home Assistant öffnen oder in der App-Konfiguration 'person' setzen." }
 
-module.exports = { optionen, erlaubt, benutzer, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson }
+/** Dokumente des Einsatzspiels schreibt nur die Simulation selbst; über die allgemeinen Routen sind sie nur lesbar. */
+const SPIEL_TYPEN = ["einsatzwelt", "einsatz"]
+function spielDokument(typ) {
+  return SPIEL_TYPEN.indexOf(String(typ)) >= 0
+}
+const NUR_LESEN = { fehler: "Dokumente des Einsatzspiels sind nur lesbar. Kaufen und Ändern geht über /api/lebenswelt/einsatz/." }
+
+module.exports = { optionen, erlaubt, benutzer, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }

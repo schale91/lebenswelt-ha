@@ -44,6 +44,7 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
     for (const d of liste) {
       const typ = String(d.typ || "")
       if (!h.TYP_MUSTER.test(typ)) throw new BadRequestError("Ungültiger Typ: " + typ)
+      if (h.spielDokument(typ)) throw new BadRequestError(h.NUR_LESEN.fehler)
       const schluessel = String(d.schluessel || "").slice(0, 200)
       let r = null
       try {
@@ -52,6 +53,7 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
       } catch (_) {
         r = null
       }
+      if (r && h.spielDokument(r.getString("typ"))) throw new BadRequestError(h.NUR_LESEN.fehler)
       const neu = d.daten && typeof d.daten === "object" ? d.daten : {}
       if (r) {
         const alt = JSON.parse(toString(r.get("daten")) || "{}")
@@ -82,6 +84,7 @@ routerAdd("PATCH", "/api/lebenswelt/dokumente/{id}", (e) => {
   } catch (_) {
     return e.json(404, { fehler: "Dokument nicht gefunden." })
   }
+  if (h.spielDokument(r.getString("typ"))) return e.json(403, h.NUR_LESEN)
   const body = e.requestInfo().body || {}
   if (!body.daten || typeof body.daten !== "object") return e.json(400, { fehler: "daten muss ein Objekt sein." })
   r.set("daten", h.verschmelze(JSON.parse(toString(r.get("daten")) || "{}"), body.daten))
@@ -99,6 +102,7 @@ routerAdd("DELETE", "/api/lebenswelt/dokumente/{id}", (e) => {
   } catch (_) {
     return e.json(404, { fehler: "Dokument nicht gefunden." })
   }
+  if (h.spielDokument(r.getString("typ"))) return e.json(403, h.NUR_LESEN)
   r.set("geloescht", true)
   e.app.save(r)
   return e.json(200, { ok: true })

@@ -20,7 +20,21 @@ function lies(r) {
   return JSON.parse(toString(r.get("daten")) || "{}")
 }
 
+/** Wirft, wenn irgendwo im Stand eine Zahl NaN oder unendlich ist. So wird ein kaputter Stand nie gespeichert. */
+function pruefeZahlen(daten) {
+  JSON.stringify(daten, (k, v) => {
+    if (typeof v === "number" && !isFinite(v)) throw new Error("Ungültige Zahl in " + k)
+    return v
+  })
+}
+
+/** Grobe Formprüfung eines geladenen Stands. */
+function gueltig(stand) {
+  return !!stand && typeof stand === "object" && isFinite(stand.bis) && !!stand.einsatzarten && Array.isArray(stand.laufend) && Array.isArray(stand.personal) && Array.isArray(stand.ausgaben)
+}
+
 function schreibe(app, besitzer, typ, schluessel, daten) {
+  pruefeZahlen(daten)
   let r = finde(app, besitzer, typ, schluessel)
   if (!r) {
     r = new Record(app.findCollectionByNameOrId("dokumente"))
@@ -43,6 +57,12 @@ function wetterVerlauf(app, besitzer) {
 function aktuell(app, besitzer, jetzt) {
   const r = finde(app, besitzer, WELT, "stand")
   let stand = r ? lies(r) : S.neuerStand(R, jetzt)
+  if (!gueltig(stand)) {
+    // Sollte nie vorkommen; damit die Einsatzwelt nicht dauerhaft stehen bleibt, Rest sichern und neu beginnen
+    console.log("Einsatzspiel: ungültiger Stand, wird gesichert und neu angelegt")
+    schreibe(app, besitzer, WELT, "defekt_" + jetzt, { roh: stand })
+    stand = S.neuerStand(R, jetzt)
+  }
   const verlauf = wetterVerlauf(app, besitzer)
   stand = S.fortschreiben(stand, jetzt, (t) => S.wetterBei(verlauf, t), R)
   for (const e of stand.abgeschlossen) schreibe(app, besitzer, "einsatz", e.id, e)

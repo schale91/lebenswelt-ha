@@ -35,4 +35,4 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | POST | `/api/lebenswelt/einsatz/einraeumen` | `{fahrzeug, geraet, anzahl, richtung: "ein"\|"aus"}` |
 | POST | `/api/lebenswelt/einsatz/personal` | `{ziel, name?, anrede?}` |
 
-Das Einsatzspiel rechnet jede Minute im Hintergrund weiter. Es nutzt keine KI und verbraucht kein Guthaben.
+Das Einsatzspiel rechnet jede Minute im Hintergrund weiter. Es nutzt keine KI und verbraucht kein Guthaben. Die Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur lesbar.

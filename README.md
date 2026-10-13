@@ -18,5 +18,5 @@ Prüfen:
 
 ```
 node werkzeuge/pruefe-regelwerk.js --baum
-node --test test/
+node --test test/einsatz.test.js
 ```

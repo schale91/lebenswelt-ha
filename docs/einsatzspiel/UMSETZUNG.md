@@ -229,3 +229,14 @@ Abweichungen und Ergänzungen gegenüber Abschnitt 3 bis 5:
 - Kaufbuch: `einsatzwelt.ausgaben`; der Spielstand merkt sich `einsatzAusgabenBekannt`. Das Frontend muss dieses Feld speichern und nach einem Kauf aus der Antwort übernehmen (E1).
 - Dokumente `einsatzwelt` und `einsatz` kommen nicht mehr über die allgemeine Dokumentliste.
 - Benachrichtigungsoptionen entfallen (Entscheidung 2).
+
+## 11. Stand E1 (13.10.2026)
+
+Frontend in `schale91/Claude`, Verzeichnis `app/src/einsatz/` (Anbindung und Ableitungen) sowie `app/src/ui/EinsatzStore.tsx` und `app/src/ui/Bilanz.tsx`.
+
+- Statt einer Leitstelle (Entscheidung 6): Gekauft wird im Store unter „Feuerwehr & Polizei“ (Einsätze als Freischaltbaum, Häuser mit Wegzeit je Bauplatz, Einsatzkräfte mit Lehrgängen, Ausrüstung und frei wählbarem Namen samt Vorschlag aus erfundenen Namen, Geräte mit Lagerplätzen, Fahrzeuge mit Beladung, Gebäude, Ausbau, Neubaugebiete). Klick auf das Feuerwehrhaus zeigt die Bilanz: laufende Einsätze mit Phase und Countdown, Sterne je Einsatzart (neue leuchten kurz auf), Protokoll mit Abzügen, Statistik. Feuerwehr und Polizei stehen dort in zwei Reitern, weil die Dienststelle auf der Karte der Arbeitsbereich ist.
+- Beladung: Geräte werden per Knopf zwischen Lager und Fahrzeug umgeräumt (kein Ziehen), mit Füllstandsbalken.
+- Abruf alle 5 Sekunden, nur wenn die Seite sichtbar ist. Countdown in Serverzeit.
+- Vor jedem Kauf lädt das Frontend den Spielstand sofort hoch, damit frisch verdiente Münzen zählen. Nach dem Kauf zieht es denselben Betrag lokal ab und übernimmt `einsatzAusgabenBekannt`. Geprüft mit zwei Geräten: das zweite Gerät mit veraltetem Stand bekommt beim Hochladen 409 und übernimmt die berichtigten Münzen.
+- Die alten Shop-Artikel `fw_*` und `pol_*` sind entfernt. Fahrzeughalle und Polizei in der Szene zeigen den Bestand vom Server; Tore öffnen sich, solange ein Fahrzeug im Einsatz ist. Die zufälligen Schein-Einsätze der Szene laufen nicht mehr; die Darstellung am Einsatzort folgt in E2 und E3.
+- Server: Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur noch lesbar (Schreiben gibt 400 bzw. 403). Ein Stand mit ungültigen Zahlen wird nie gespeichert; ein unlesbarer Stand wird als `defekt_<Zeit>` gesichert und neu begonnen, statt die Einsatzwelt anzuhalten. Anlass war ein Test, in dem ein allgemeiner PATCH den Stand zerstörte.
