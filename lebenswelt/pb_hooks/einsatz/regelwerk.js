@@ -40,9 +40,166 @@ const QUELLEN = {
 /** Maßstab der Hauptkarte: Meter je Welteinheit. Vorläufig, das Frontend prüft gegen die echten Abstände. */
 const METER_JE_EINHEIT = 5 // spielwert
 
+// STRASSEN-ANFANG (aus dem Frontend exportiert mit app/skripte/strassennetz.ts, nicht von Hand ändern)
+/** Straßennetz der Hauptkarte: Knoten (Weltkoordinaten) und Kanten mit Länge in Welteinheiten. */
+const STRASSEN = {
+  quelle: "Frontend scene/layout.ts (STRASSE)",
+  breite: 6,
+  knoten: [
+    {
+      id: "s00",
+      x: 0,
+      z: 100
+    },
+    {
+      id: "s01",
+      x: 0,
+      z: -10
+    },
+    {
+      id: "s02",
+      x: -0.15,
+      z: -12.35
+    },
+    {
+      id: "s03",
+      x: -0.61,
+      z: -14.66
+    },
+    {
+      id: "s04",
+      x: -1.37,
+      z: -16.89
+    },
+    {
+      id: "s05",
+      x: -2.41,
+      z: -19
+    },
+    {
+      id: "s06",
+      x: -3.72,
+      z: -20.96
+    },
+    {
+      id: "s07",
+      x: -5.27,
+      z: -22.73
+    },
+    {
+      id: "s08",
+      x: -7.04,
+      z: -24.28
+    },
+    {
+      id: "s09",
+      x: -9,
+      z: -25.59
+    },
+    {
+      id: "s10",
+      x: -11.11,
+      z: -26.63
+    },
+    {
+      id: "s11",
+      x: -13.34,
+      z: -27.39
+    },
+    {
+      id: "s12",
+      x: -15.65,
+      z: -27.85
+    },
+    {
+      id: "s13",
+      x: -18,
+      z: -28
+    },
+    {
+      id: "s14",
+      x: -120,
+      z: -28
+    }
+  ],
+  kanten: [
+    {
+      von: "s00",
+      nach: "s01",
+      laenge: 110
+    },
+    {
+      von: "s01",
+      nach: "s02",
+      laenge: 2.35
+    },
+    {
+      von: "s02",
+      nach: "s03",
+      laenge: 2.36
+    },
+    {
+      von: "s03",
+      nach: "s04",
+      laenge: 2.36
+    },
+    {
+      von: "s04",
+      nach: "s05",
+      laenge: 2.35
+    },
+    {
+      von: "s05",
+      nach: "s06",
+      laenge: 2.36
+    },
+    {
+      von: "s06",
+      nach: "s07",
+      laenge: 2.35
+    },
+    {
+      von: "s07",
+      nach: "s08",
+      laenge: 2.35
+    },
+    {
+      von: "s08",
+      nach: "s09",
+      laenge: 2.36
+    },
+    {
+      von: "s09",
+      nach: "s10",
+      laenge: 2.35
+    },
+    {
+      von: "s10",
+      nach: "s11",
+      laenge: 2.36
+    },
+    {
+      von: "s11",
+      nach: "s12",
+      laenge: 2.36
+    },
+    {
+      von: "s12",
+      nach: "s13",
+      laenge: 2.35
+    },
+    {
+      von: "s13",
+      nach: "s14",
+      laenge: 102
+    }
+  ]
+}
+// STRASSEN-ENDE
+
 /**
  * Feste Orte auf der Hauptkarte (Weltkoordinaten x, z wie im Frontend, `mr` im Bundle).
- * Einsatzstellen ohne festen Bau sind vorläufig gesetzt und werden beim Einbau gegen Straßen und Gebäude geprüft.
+ * Einsatzstellen ohne festen Bau sind gegen die Karte geprüft (app/skripte/strassennetz.ts im Frontend, Stand E0).
  */
 const ORTE = {
   feuerwehrhaus: { name: "Feuerwehrhaus", x: -46, z: -16, fest: true },
@@ -59,35 +216,35 @@ const ORTE = {
   hecke_nachbar: { name: "Hecke beim Nachbarn", x: -26, z: 2 },
   hecke_werkstatt: { name: "Hecke an der Werkstatt", x: 40, z: 6 },
   muelltonnen: { name: "Mülltonnen am Markt", x: 12, z: 58 },
-  nachbarhaus: { name: "Haus der Nachbarn", x: -24, z: 10 },
-  hauptstrasse_ost: { name: "Hauptstraße Ost", x: 30, z: 12 },
-  hauptstrasse_west: { name: "Hauptstraße West", x: -30, z: 34 },
-  kreuzung: { name: "Kreuzung Ortsmitte", x: 0, z: 30 },
+  nachbarhaus: { name: "Haus der Nachbarn", x: -30, z: -2 },
+  hauptstrasse_ost: { name: "Dorfstraße Nord", x: 0, z: 70 },
+  hauptstrasse_west: { name: "Deichstraße West", x: -70, z: -28 },
+  kreuzung: { name: "Dorfstraße Ortsmitte", x: 0, z: 30 },
   wiese_deich: { name: "Wiese am Deichfuß", x: 18, z: -30 },
   elbe_ufer: { name: "Elbufer", x: 0, z: -48 },
   scheune: { name: "Scheune am Ortsrand", x: 62, z: -28 },
   schule: { name: "Grundschule", x: -40, z: 40 },
-  festplatz: { name: "Festplatz", x: 40, z: 44 },
+  festplatz: { name: "Festplatz", x: 40, z: 74 },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
 const BAUPLAETZE = [
   { id: "bp01", x: -56, z: -4, preis: 1800 },
-  { id: "bp02", x: -58, z: -28, preis: 1700 },
-  { id: "bp03", x: -36, z: -30, preis: 1500 },
+  { id: "bp02", x: -58, z: -20, preis: 1700 },
+  { id: "bp03", x: -40, z: -37, preis: 1500 },
   { id: "bp04", x: -60, z: 10, preis: 1300 },
   { id: "bp05", x: -30, z: -40, preis: 1200 },
   { id: "bp06", x: -44, z: 18, preis: 1100 },
-  { id: "bp07", x: -8, z: -20, preis: 900 },
+  { id: "bp07", x: -8, z: 4, preis: 900 },
   { id: "bp08", x: -50, z: 30, preis: 900 },
-  { id: "bp09", x: 8, z: 8, preis: 700 },
+  { id: "bp09", x: 8, z: 30, preis: 700 },
   { id: "bp10", x: -4, z: 46, preis: 650 },
   { id: "bp11", x: 30, z: -14, preis: 600 },
   { id: "bp12", x: 34, z: 76, preis: 500 },
-  { id: "bp13", x: 56, z: 20, preis: 450 },
-  { id: "bp14", x: 60, z: 60, preis: 400 },
+  { id: "bp13", x: 50, z: 20, preis: 450 },
+  { id: "bp14", x: 50, z: 64, preis: 400 },
   { id: "bp15", x: -64, z: 56, preis: 400 },
-  { id: "bp16", x: 70, z: -10, preis: 350 },
+  { id: "bp16", x: 50, z: -14, preis: 350 },
 ]
 
 /**
@@ -955,6 +1112,7 @@ module.exports = {
   PREISFAKTOR,
   QUELLEN,
   METER_JE_EINHEIT,
+  STRASSEN,
   ORTE,
   BAUPLAETZE,
   NEUBAUGEBIETE,
