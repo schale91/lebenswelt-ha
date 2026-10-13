@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.1.0"
+version: "0.2.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha
@@ -14,3 +14,15 @@ ingress_panel: false
 panel_icon: mdi:island
 # SQLite wird nur im gestoppten Zustand gesichert, damit das Backup in sich stimmig ist.
 backup: cold
+# Für den Garmin-Abgleich: liest Zustände aus Home Assistant (nur lesend genutzt).
+homeassistant_api: true
+options:
+  person: ""
+  vertraute_apps:
+    - 81f33d0f-ha-mcp
+  garmin_sensor: sensor.garmin_connect_last_activities
+schema:
+  person: str?
+  vertraute_apps:
+    - str
+  garmin_sensor: str?

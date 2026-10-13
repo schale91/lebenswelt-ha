@@ -6,6 +6,14 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 - Wer eine Anfrage stellt, weiß die App aus dem Ingress (die angemeldete Home-Assistant-Person). Eine eigene Anmeldung gibt es nicht.
 - Die Daten liegen in `/data/pb_data` und sind Teil jedes Home-Assistant-Backups. Gesichert wird im gestoppten Zustand.
 
+## Konfiguration
+
+| Option | Bedeutung |
+|---|---|
+| `person` | HA-Benutzer-ID, für die Claude und Hintergrundaufgaben arbeiten. Leer = die einzige bekannte Person. |
+| `vertraute_apps` | Hostnamen anderer Apps, die ohne Ingress zugreifen dürfen (Standard: der MCP-Server, über den Claude arbeitet). |
+| `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
+
 ## Schnittstelle
 
 | Methode | Pfad | Zweck |
@@ -13,3 +21,9 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | GET | `/api/lebenswelt/ich` | angemeldete Person |
 | GET | `/api/lebenswelt/spielstand` | Spielstand der Person |
 | PUT | `/api/lebenswelt/spielstand` | Spielstand speichern (`{zeit, daten}`), 409 wenn der gespeicherte neuer ist |
+| GET | `/api/lebenswelt/dokumente?typ=a,b&seit=…` | Dokumente der Person, optional nur Änderungen seit `jetzt` der letzten Antwort |
+| POST | `/api/lebenswelt/dokumente` | `{dokumente:[{id?, typ, schluessel?, daten, ersetzen?}]}` anlegen oder zusammenführen |
+| PATCH | `/api/lebenswelt/dokumente/{id}` | `{daten:{…}}` zusammenführen; Punkt im Schlüssel ändert verschachtelte Werte, `null` löscht |
+| DELETE | `/api/lebenswelt/dokumente/{id}` | als gelöscht markieren |
+| GET | `/api/lebenswelt/suche?q=…&typ=…&offen=1` | Suche im Titel und in der Nummer |
+| GET | `/api/lebenswelt/personen` | bekannte Personen |
