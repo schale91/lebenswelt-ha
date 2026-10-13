@@ -132,3 +132,8 @@ routerAdd("GET", "/api/lebenswelt/personen", (e) => {
   const liste = e.app.findRecordsByFilter("spielstaende", "benutzer != ''", "", 0, 0)
   return e.json(200, { personen: liste.map((r) => ({ id: r.getString("benutzer"), name: r.getString("name") })) })
 })
+
+// Garmin-Abgleich sofort auslösen (sonst alle 15 Minuten)
+routerAdd("POST", "/api/lebenswelt/garmin", (e) => {
+  return e.json(200, require(`${__hooks}/hintergrund.js`).garminAbgleich() || { ok: false })
+})

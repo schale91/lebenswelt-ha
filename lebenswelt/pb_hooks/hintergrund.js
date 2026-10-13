@@ -2,18 +2,18 @@
 function garminAbgleich() {
   const h = require(`${__hooks}/hilfen.js`)
   const token = $os.getenv("SUPERVISOR_TOKEN")
-  if (!token) return
+  if (!token) return { ok: false, grund: "kein SUPERVISOR_TOKEN (homeassistant_api fehlt?)" }
   const person = h.benutzer({ request: { remoteAddr: "127.0.0.1:0", header: { get: () => "" } }, app: $app })
-  if (!person) return
+  if (!person) return { ok: false, grund: "keine Person bekannt" }
   const sensor = String(h.optionen().garmin_sensor || "sensor.garmin_connect_last_activities")
   let antwort
   try {
     antwort = $http.send({ url: "http://supervisor/core/api/states/" + sensor, headers: { Authorization: "Bearer " + token }, timeout: 20 })
   } catch (err) {
     console.log("Garmin-Abgleich: Home Assistant nicht erreichbar", err)
-    return
+    return { ok: false, grund: "Home Assistant nicht erreichbar: " + err }
   }
-  if (antwort.statusCode !== 200) return
+  if (antwort.statusCode !== 200) return { ok: false, grund: "HTTP " + antwort.statusCode }
   const liste = (antwort.json && antwort.json.attributes && antwort.json.attributes.last_activities) || []
   const sammlung = $app.findCollectionByNameOrId("dokumente")
   let neu = 0
@@ -55,6 +55,7 @@ function garminAbgleich() {
     neu++
   }
   if (neu) console.log("Garmin-Abgleich: " + neu + " neue Aktivitäten")
+  return { ok: true, gefunden: liste.length, neu: neu }
 }
 
 function anonymisiereVorgaenge() {

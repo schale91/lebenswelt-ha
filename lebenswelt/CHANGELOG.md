@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.2.1
+
+- Garmin-Abgleich auf Abruf (`POST /api/lebenswelt/garmin`) mit Rückmeldung.
+
 ## 0.2.0
 
 - Dokumentenspeicher für Aufgaben, Vorgänge, Training und mehr (`/api/lebenswelt/dokumente`, `/api/lebenswelt/suche`).
