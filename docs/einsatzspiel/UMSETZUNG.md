@@ -240,3 +240,14 @@ Frontend in `schale91/Claude`, Verzeichnis `app/src/einsatz/` (Anbindung und Abl
 - Vor jedem Kauf lädt das Frontend den Spielstand sofort hoch, damit frisch verdiente Münzen zählen. Nach dem Kauf zieht es denselben Betrag lokal ab und übernimmt `einsatzAusgabenBekannt`. Geprüft mit zwei Geräten: das zweite Gerät mit veraltetem Stand bekommt beim Hochladen 409 und übernimmt die berichtigten Münzen.
 - Die alten Shop-Artikel `fw_*` und `pol_*` sind entfernt. Fahrzeughalle und Polizei in der Szene zeigen den Bestand vom Server; Tore öffnen sich, solange ein Fahrzeug im Einsatz ist. Die zufälligen Schein-Einsätze der Szene laufen nicht mehr; die Darstellung am Einsatzort folgt in E2 und E3.
 - Server: Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur noch lesbar (Schreiben gibt 400 bzw. 403). Ein Stand mit ungültigen Zahlen wird nie gespeichert; ein unlesbarer Stand wird als `defekt_<Zeit>` gesichert und neu begonnen, statt die Einsatzwelt anzuhalten. Anlass war ein Test, in dem ein allgemeiner PATCH den Stand zerstörte.
+
+## 12. Bewertung nach Einsatzende, Ausrüstung mit Wirkung (13.10.2026)
+
+Entscheidung: Volle Sterne gibt es nicht für schnelles Eintreffen, sondern wenn der Einsatz rechtzeitig **beendet** ist (Meldung bis Arbeit erledigt, Ziel `ziel_ende_min`, sonst `ziel_eintreffen_min + arbeit_min`). In diese Zeit fließt alles ein, was im Einsatz zählt; das Protokoll nennt die Gründe mit Prozent („Länger dauerte es durch: …“).
+
+- Ohne Mindestausrüstung kein Einsatz (z. B. ohne Leiter keine Katzenrettung, wie bisher).
+- Persönliche Ausrüstung hat je Stufe eine Wirkung (`effekt` in `PSA_FEUERWEHR`/`PSA_POLIZEI`): Stiefel bestimmen Tempo und Stolpern zu Fuß (Wetter verstärkt das Stolpern), Stiefel und Einsatzkleidung verkürzen das Umziehen, Helmlampe gibt Sicht im Dunkeln, Handschuhe und Helm beschleunigen die Arbeit, TH-Kleidung die technische Hilfe, das eigene Funkgerät den Aufbruch der Polizei. Der Langsamste im Trupp bestimmt den Weg, die Arbeit zählt im Mittel.
+- Dunkelheit nach Sonnenzeiten je Monat (`SONNE`) bremst Weg und Arbeit, aufgehoben durch Helmlampen bei allen, Flutlicht oder eine Taschenlampe je Person.
+- Ohne Verteiler wird mit nur einem Strahlrohr gelöscht, mit Verteiler mit bis zu drei (je Rohr ein Trupp).
+- Fehlende Personen und fehlende optimale Geräte verlängern die Arbeit, statt pauschal Sterne zu kosten. Pauschale Abzüge bleiben nur für Vorschriften (`REGELN`), fehlende Mindest-Schutzausrüstung und große Schäden.
+- Folge für den Einstieg: 5 Sterne bei der Katze brauchen drei Kräfte und bessere Stiefel als Gummistiefel.

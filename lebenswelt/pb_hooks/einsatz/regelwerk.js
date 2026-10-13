@@ -294,54 +294,83 @@ const HAUS_AUSBAU = {
 
 /**
  * Persönliche Schutzausrüstung je Einsatzkraft (Feuerwehr). Stufe 0 ist die Grundausstattung beim Einzug.
- * Stufe 2 bei der Jacke (DIN EN 469) ist Voraussetzung für den Innenangriff unter Atemschutz.
+ * Jede Stufe lässt sich einzeln aufwerten und wirkt im Einsatz (Werte gelten für die jeweilige Stufe, nicht als Zuschlag):
+ *   tempo       Gehgeschwindigkeit zu Fuß im Einsatz (1 = normal), der langsamste im Trupp bestimmt
+ *   stolpern    Zeitverlust zu Fuß je Wetterstufe (ZEITEN.stolpern_wetter), der unsicherste im Trupp bestimmt
+ *   arbeit      Faktor auf die Arbeitszeit vor Ort (unter 1 = schneller), Mittel über den Trupp
+ *   arbeit_th   wie arbeit, nur bei technischer Hilfe (Stichwort TH)
+ *   nacht       Sicht im Dunkeln (1 = volle Sicht), zählt, wenn alle im Trupp sie haben
+ *   umziehen_s  Sekunden mehr oder weniger beim Umziehen im Gerätehaus
+ * Alle Werte sind Spielwerte. Stufe 2 bei der Jacke (DIN EN 469) ist Voraussetzung für den Innenangriff unter Atemschutz.
  */
 const PSA_FEUERWEHR = {
   helm: [
-    { name: "Helm ohne Visier (gebraucht)", preis: 0 },
-    { name: "Feuerwehrhelm DIN EN 443", preis: 180 },
-    { name: "Feuerwehrhelm DIN EN 443 mit Visier und Nackenschutz", preis: 350 },
-    { name: "Feuerwehrhelm mit Helmlampe und Sprechgarnitur", preis: 600 },
+    { name: "Helm ohne Visier (gebraucht)", preis: 0, effekt: { arbeit: 1.05 } },
+    { name: "Feuerwehrhelm DIN EN 443", preis: 180, effekt: {}, vorteil: "sitzt fest, kein Nachrücken bei der Arbeit" },
+    { name: "Feuerwehrhelm DIN EN 443 mit Visier und Nackenschutz", preis: 350, effekt: { arbeit: 0.97 }, vorteil: "Visier schützt die Augen, arbeitet ohne Absetzen" },
+    { name: "Feuerwehrhelm mit Helmlampe und Sprechgarnitur", preis: 600, effekt: { arbeit: 0.95, nacht: 1 }, vorteil: "sieht im Dunkeln, funkt ohne Hand am Gerät" },
   ],
   stiefel: [
-    { name: "Gummistiefel mit Stahlkappe", preis: 0 },
-    { name: "Feuerwehrstiefel DIN EN 15090", preis: 160 },
-    { name: "Lederschnürstiefel DIN EN 15090 (Typ F2A)", preis: 320 },
+    { name: "Gummistiefel mit Stahlkappe", preis: 0, effekt: { tempo: 0.85, stolpern: 0.15 } },
+    { name: "Feuerwehrstiefel DIN EN 15090", preis: 160, effekt: { tempo: 0.95, stolpern: 0.08, umziehen_s: -10 }, vorteil: "schneller zu Fuß, stolpert seltener, schneller angezogen" },
+    { name: "Lederschnürstiefel DIN EN 15090 (Typ F2A) mit Reißverschluss", preis: 320, effekt: { tempo: 1, stolpern: 0.03, umziehen_s: -15 }, vorteil: "am schnellsten zu Fuß, fester Halt bei Nässe und Glätte" },
   ],
   jacke: [
-    { name: "Arbeitsanzug", preis: 0 },
-    { name: "Einsatzjacke und -hose nach HuPF", preis: 300 },
-    { name: "Schutzkleidung DIN EN 469 für die Brandbekämpfung", preis: 650 },
+    { name: "Arbeitsanzug", preis: 0, effekt: {} },
+    { name: "Einsatzjacke und -hose nach HuPF", preis: 300, effekt: { umziehen_s: -10, arbeit: 0.97 }, vorteil: "schneller angezogen, bewegt sich freier" },
+    { name: "Schutzkleidung DIN EN 469 für die Brandbekämpfung", preis: 650, effekt: { umziehen_s: -10, arbeit: 0.97 }, vorteil: "Voraussetzung für den Innenangriff" },
   ],
   th_kleidung: [
-    { name: "keine", preis: 0 },
-    { name: "Leichte Schutzkleidung für die technische Hilfe", preis: 400 },
+    { name: "keine", preis: 0, effekt: {} },
+    { name: "Leichte Schutzkleidung für die technische Hilfe", preis: 400, effekt: { arbeit_th: 0.9 }, vorteil: "bei technischer Hilfe beweglicher und schneller" },
   ],
   handschuhe: [
-    { name: "Arbeitshandschuhe", preis: 0 },
-    { name: "Feuerwehrschutzhandschuhe DIN EN 659", preis: 90 },
+    { name: "Arbeitshandschuhe", preis: 0, effekt: {} },
+    { name: "Feuerwehrschutzhandschuhe DIN EN 659", preis: 90, effekt: { arbeit: 0.93 }, vorteil: "greift sicher, arbeitet schneller" },
   ],
   haube: [
-    { name: "keine", preis: 0 },
-    { name: "Flammschutzhaube DIN EN 13911", preis: 60 },
+    { name: "keine", preis: 0, effekt: {} },
+    { name: "Flammschutzhaube DIN EN 13911", preis: 60, effekt: {}, vorteil: "schützt Hals und Ohren vor Hitze" },
   ],
 }
 
-/** Persönliche Ausstattung je Polizeibeamtin/-beamter. */
+/** Persönliche Ausstattung je Polizeibeamtin/-beamter. reaktion_s: Sekunden mehr bis zum Aufbruch. */
 const PSA_POLIZEI = {
   weste: [
-    { name: "Warnweste", preis: 0 },
-    { name: "Unterziehschutzweste", preis: 400 },
+    { name: "Warnweste", preis: 0, effekt: {} },
+    { name: "Unterziehschutzweste", preis: 400, effekt: {}, vorteil: "Eigenschutz bei jedem Einsatz" },
   ],
   funk: [
-    { name: "Handfunkgerät (geteilt)", preis: 0 },
-    { name: "eigenes Handfunkgerät", preis: 250 },
+    { name: "Handfunkgerät (geteilt)", preis: 0, effekt: { reaktion_s: 15 } },
+    { name: "eigenes Handfunkgerät", preis: 250, effekt: {}, vorteil: "bricht schneller auf, das Gerät muss nicht erst übergeben werden" },
   ],
   bodycam: [
-    { name: "keine", preis: 0 },
-    { name: "Bodycam", preis: 300 },
+    { name: "keine", preis: 0, effekt: {} },
+    { name: "Bodycam", preis: 300, effekt: {}, vorteil: "dokumentiert den Einsatz" },
   ],
 }
+
+/** Lesbare Namen der Ausrüstungsteile für Texte im Protokoll. */
+const PSA_NAMEN = {
+  helm: "Helm",
+  stiefel: "Stiefel",
+  jacke: "Einsatzkleidung",
+  th_kleidung: "Kleidung für technische Hilfe",
+  handschuhe: "Handschuhe",
+  haube: "Flammschutzhaube",
+  weste: "Schutzweste",
+  funk: "Funkgerät",
+  bodycam: "Bodycam",
+}
+
+/**
+ * Sonnenaufgang und -untergang je Monat in Ortszeit (Stunden, gerundet, Norddeutschland um 53,5° Nord).
+ * Dazwischen ist es hell; sonst wirkt ZEITEN.nacht_* , abgeschwächt durch Helmlampe, Taschenlampe oder Flutlicht.
+ */
+const SONNE = [
+  [8.5, 16.3], [7.7, 17.3], [6.7, 18.3], [6.6, 20.3], [5.5, 21.2], [4.9, 21.9],
+  [5.2, 21.7], [6.0, 20.8], [7.0, 19.6], [7.9, 18.4], [7.9, 16.5], [8.6, 16.0],
+]
 
 /**
  * Lehrgänge. Dauer in Echtzeit-Stunden (spielwert, deutlich gekürzt). Während des Lehrgangs fehlt die Person.
@@ -633,7 +662,8 @@ const AUSBAU = {
  * intervall_min: mittlerer Abstand zwischen zwei Einsätzen dieser Art (mit Streuung ±30 %).
  * ablauf_min: Zeit ab Meldung, bis jemand eingetroffen sein muss, sonst verfällt der Einsatz.
  * arbeit_min: reine Arbeitszeit vor Ort bei optimaler Besetzung.
- * ziel_eintreffen_min: Eintreffzeit für volle Sterne (orientiert an kommunalen Bedarfsplänen, keine NDS-Vorgabe).
+ * ziel_eintreffen_min: angestrebte Eintreffzeit (orientiert an kommunalen Bedarfsplänen, keine NDS-Vorgabe).
+ * ziel_ende_min: Einsatz beendet für volle Sterne; ohne Angabe ziel_eintreffen_min + arbeit_min.
  * wachstum: Lagen, die mit der Zeit schlimmer werden (Brand breitet sich aus): Faktor je Minute Verzug.
  * mindestens: ohne das wird nicht ausgerückt bzw. nicht begonnen.
  * optimal: fehlt etwas davon, gibt es Abzüge bei den Sternen.
@@ -1076,21 +1106,22 @@ const REGELN = {
   },
 }
 
-/** Sterne: 5 möglich, mindestens 1 bei Erfolg, 0 wenn verfallen. Geben keine Punkte, nur Anzeige und Freischaltung. */
+/**
+ * Sterne: 5 möglich, mindestens 1 bei Erfolg, 0 wenn verfallen. Geben keine Punkte, nur Anzeige und Freischaltung.
+ * Maßgeblich ist, wann der Einsatz beendet ist (Meldung bis Arbeit erledigt), verglichen mit ziel_ende_min der Einsatzart
+ * (ohne Angabe: ziel_eintreffen_min + arbeit_min). In diese Zeit fließen Wege, Stärke, Geräte, Ausrüstung, Wetter und Dunkelheit ein.
+ * Dazu kommen Abzüge für Vorschriften (REGELN), fehlende Mindest-Schutzausrüstung und große Schäden.
+ */
 const STERNE = {
   max: 5,
-  // Verzug gegenüber ziel_eintreffen_min (Anteil) → Abzug
-  eintreffen: [
+  // Überschreitung von ziel_ende (Anteil) → Abzug
+  einsatzende: [
     { ueber: 0, abzug: 0 },
-    { ueber: 0.25, abzug: 0.5 },
-    { ueber: 0.5, abzug: 1 },
-    { ueber: 1, abzug: 2 },
-    { ueber: 2, abzug: 3 },
+    { ueber: 0.15, abzug: 0.5 },
+    { ueber: 0.3, abzug: 1 },
+    { ueber: 0.6, abzug: 2 },
+    { ueber: 1, abzug: 3 },
   ],
-  fehlende_person_unter_optimal: 0.25, // je fehlender Person bis optimal, höchstens 1.5
-  fehlende_person_max: 1.5,
-  fehlendes_geraet_optimal: 0.5, // je nicht erfüllter optimal-Gruppe, höchstens 1.5
-  fehlendes_geraet_max: 1.5,
   psa_unzureichend: 0.5,
   schaden_hoch: 1, // Brand ist stark angewachsen (wachstum · Verzug > 1)
   runden: "halbe", // halbe Sterne erlaubt
@@ -1113,6 +1144,12 @@ const ZEITEN = {
   zu_fuss_mit_leiter_ms: 1.2,
   handzugwagen_ms: 1.4,
   sonderrechte_tempo: 1.25, // § 35 / § 38 StVO: freie Bahn, aber angepasst
+  fehlendes_geraet_arbeit: 0.25, // je fehlender optimal-Gruppe dauert die Arbeit so viel länger
+  personen_je_rohr: 2, // ein Trupp je Strahlrohr
+  verteiler_abgaenge: 3, // Verteiler B-CBC: drei Rohre; ohne Verteiler nur eines
+  nacht_arbeit: 1.25, // Arbeit im Dunkeln ohne Licht
+  nacht_zu_fuss: 1.15, // zu Fuß im Dunkeln ohne Licht
+  stolpern_wetter: { trocken: 1, hitze: 1, sturm: 1.5, nass: 2, schnee: 3, glaette: 4 },
 }
 
 module.exports = {
@@ -1130,6 +1167,8 @@ module.exports = {
   HAUS_AUSBAU,
   PSA_FEUERWEHR,
   PSA_POLIZEI,
+  PSA_NAMEN,
+  SONNE,
   LEHRGAENGE,
   DIENSTGRADE_FEUERWEHR,
   FUNKTIONEN_FEUERWEHR,

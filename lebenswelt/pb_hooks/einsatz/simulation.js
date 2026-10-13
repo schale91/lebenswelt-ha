@@ -50,7 +50,7 @@ function ortszeit(ms) {
   }
   const sommer = ms >= letzterSonntag(2) && ms < letzterSonntag(9)
   const l = new Date(ms + (sommer ? 2 : 1) * STD)
-  return { stunde: l.getUTCHours(), wochentag: l.getUTCDay(), monat: l.getUTCMonth() + 1 }
+  return { stunde: l.getUTCHours(), minute: l.getUTCMinutes(), wochentag: l.getUTCDay(), monat: l.getUTCMonth() + 1 }
 }
 
 /** Zahl mit einer Nachkommastelle und deutschem Komma, für Texte im Protokoll. */
@@ -294,6 +294,60 @@ function ausbauFaktor(R, s, schluessel) {
 }
 
 /** Wann ist die Person nach dem Alarm umgezogen am Gerätehaus? */
+// ---------- Ausrüstung und Licht ----------
+
+/** Wirkung der persönlichen Ausrüstung einer Person: Werte der jeweils gekauften Stufe, fehlende Werte neutral. */
+function psaEffekt(R, p) {
+  const tabelle = p.org === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR
+  const e = { tempo: 1, stolpern: 0, arbeit: 1, arbeit_th: 1, nacht: 0, umziehen_s: 0, reaktion_s: 0 }
+  for (const [teil, stufen] of Object.entries(tabelle || {})) {
+    const st = stufen[Math.min(stufen.length - 1, (p.psa && p.psa[teil]) || 0)]
+    const w = (st && st.effekt) || {}
+    if (w.tempo !== undefined) e.tempo *= w.tempo
+    if (w.stolpern !== undefined) e.stolpern += w.stolpern
+    if (w.arbeit !== undefined) e.arbeit *= w.arbeit
+    if (w.arbeit_th !== undefined) e.arbeit_th *= w.arbeit_th
+    if (w.nacht !== undefined) e.nacht = Math.max(e.nacht, w.nacht)
+    if (w.umziehen_s !== undefined) e.umziehen_s += w.umziehen_s
+    if (w.reaktion_s !== undefined) e.reaktion_s += w.reaktion_s
+  }
+  return e
+}
+
+/** Ausrüstung eines Trupps: der Langsamste und Unsicherste bestimmen den Weg, die Arbeit im Mittel. */
+function truppEffekt(R, leute) {
+  const alle = leute.map((p) => psaEffekt(R, p))
+  const mittel = (k) => alle.reduce((n, x) => n + x[k], 0) / Math.max(1, alle.length)
+  return {
+    tempo: Math.min.apply(null, alle.map((x) => x.tempo).concat([1])),
+    stolpern: Math.max.apply(null, alle.map((x) => x.stolpern).concat([0])),
+    arbeit: mittel("arbeit"),
+    arbeit_th: mittel("arbeit_th"),
+    nacht: Math.min.apply(null, alle.map((x) => x.nacht).concat([alle.length ? 1 : 0])),
+  }
+}
+
+/** Ist es zum Zeitpunkt dunkel (Ortszeit, Sonnenzeiten je Monat)? */
+function dunkel(R, t) {
+  const z = ortszeit(t)
+  const h = z.stunde + (z.minute || 0) / 60
+  const sonne = (R.SONNE || [])[z.monat - 1]
+  return sonne ? h < sonne[0] || h >= sonne[1] : false
+}
+
+/** Licht an der Einsatzstelle (0 bis 1): Flutlicht, Taschenlampen je Person oder Helmlampen bei allen. */
+function licht(R, bestand, leute, trupp) {
+  let l = trupp.nacht
+  for (const [id, n] of Object.entries(bestand)) {
+    const g = R.GERAETE[id]
+    if (!g || !g.effekt || !g.effekt.nacht || !n) continue
+    // Taschenlampen helfen erst, wenn jede Person eine hat
+    const voll = g.effekt.nacht >= 1 ? true : n >= leute
+    if (voll) l = Math.max(l, g.effekt.nacht)
+  }
+  return Math.min(1, l)
+}
+
 function feuerwehrBereit(R, s, p, alarm, wetter) {
   const haus = s.haeuser.find((h) => h.id === p.haus)
   const start = haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
@@ -311,7 +365,7 @@ function feuerwehrBereit(R, s, p, alarm, wetter) {
     beste = Math.min(beste, m / (a.tempo_ms * wf) + Math.max(0, extra))
   }
   const stufe = R.GEBAEUDE.geraetehaus[s.gebaeude.geraetehaus]
-  const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s"))
+  const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s") + psaEffekt(R, p).umziehen_s)
   return alarm + Math.round((reaktion + beste + umziehen) * 1000)
 }
 
@@ -373,7 +427,7 @@ function plane(R, s, e, alarm, umwelt) {
 
   // Bereitschaftszeit je Person
   const bereit = personen
-    .map((p) => ({ p, t: org === "polizei" ? alarm + POLIZEI_REAKTION_S * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
+    .map((p) => ({ p, t: org === "polizei" ? alarm + (POLIZEI_REAKTION_S + psaEffekt(R, p).reaktion_s) * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
     .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : 1))
 
   const fahrzeuge = s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org && frei(f, alarm))
@@ -446,9 +500,16 @@ function plane(R, s, e, alarm, umwelt) {
       tempo = Math.min.apply(null, motor.map((f) => R.FAHRZEUGE[f.typ].tempo_kmh)) / 3.6 * R.ZEITEN.sonderrechte_tempo
       weg = strassenweg(R, basis, ort)
     }
-    const fahrzeit = Math.round(((weg * R.METER_JE_EINHEIT) / (tempo * wf)) * zf * 1000)
+    // Zu Fuß bestimmen Stiefel, Wetter und Licht das Tempo
+    const te = truppEffekt(R, leute)
+    let fussFaktor = 1
+    if (zuFuss) {
+      fussFaktor = (1 / te.tempo) * (1 + te.stolpern * ((R.ZEITEN.stolpern_wetter || {})[wetter] || 1))
+      if (dunkel(R, abfahrt)) fussFaktor *= 1 + (R.ZEITEN.nacht_zu_fuss - 1) * (1 - licht(R, bestand, leute.length, te))
+    }
+    const fahrzeit = Math.round(((weg * R.METER_JE_EINHEIT) / (tempo * wf)) * zf * fussFaktor * 1000)
     const eintreffen = abfahrt + fahrzeit
-    const kandidat = { auswahl, motor, trupp, leute, bestand, mit, abfahrt, fahrzeit, eintreffen }
+    const kandidat = { auswahl, motor, trupp, leute, bestand, mit, abfahrt, fahrzeit, eintreffen, te, fussFaktor }
     const punkte = (k) => [k.auswahl.length, -fehlendeGruppen(opt.geraete, k.bestand).length * 0 - Math.min(k.leute.length, opt.personen || 0), k.eintreffen]
     if (!bester) bester = kandidat
     else {
@@ -466,24 +527,52 @@ function plane(R, s, e, alarm, umwelt) {
   }
   if (!bester) return { grund: naechsterGrund || "Keine passende Ausrüstung." }
 
-  // Arbeit vor Ort
+  // Arbeit vor Ort. Jeder Faktor wird mit Grund vermerkt, damit das Protokoll erklärt, was Zeit gekostet hat.
   const vorhanden = bester.leute.length
   const verzugMin = Math.max(0, (bester.eintreffen - e.meldung) / MIN)
-  let geraetFaktor = 1
+  const faktoren = []
+  const merke = (grund, faktor, text) => {
+    if (Math.abs(faktor - 1) >= 0.01) faktoren.push({ grund, faktor: Math.round(faktor * 100) / 100, text })
+  }
+  if (bester.fussFaktor > 1.01) merke("zu_fuss", bester.fussFaktor, "Weg zu Fuß: Stiefel, Wetter und Licht")
+  merke("personen", Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5), vorhanden + " von optimal " + (opt.personen || vorhanden) + " Einsatzkräften")
+  const fehltOpt = fehlendeGruppen(opt.geraete, bester.bestand)
+  const fehltOptQ = fehlendeQualifikation(opt.qualifikation, bester.leute, alarm)
+  if (fehltOpt.length + fehltOptQ.length)
+    merke(
+      "geraete",
+      1 + R.ZEITEN.fehlendes_geraet_arbeit * (fehltOpt.length + fehltOptQ.length),
+      "ohne " + fehltOpt.map((g) => gruppenText(R, g)).concat(fehltOptQ.map(([id]) => R.LEHRGAENGE[id].name)).join("; "),
+    )
   const sperren = []
   for (const r of art.regeln || []) {
     const regel = R.REGELN[r]
     if (regel.sperrt && !regelErfuellt(R, s, regel, bester, e, alarm)) {
       sperren.push(r)
-      geraetFaktor *= 1.5
+      merke(r, 1.5, regel.name + " fehlt, nur Außenangriff")
     }
   }
-  const loesch = Object.entries(bester.bestand).reduce((sum, [id, n]) => {
+  // Löschleistung: ohne Verteiler nur ein Strahlrohr, mit Verteiler bis zu drei, je Rohr ein Trupp
+  const rohreMoeglich = Math.min(bester.bestand.verteiler ? R.ZEITEN.verteiler_abgaenge : 1, Math.max(1, Math.floor(vorhanden / R.ZEITEN.personen_je_rohr)))
+  const rohre = []
+  const sonstige = []
+  for (const [id, n] of Object.entries(bester.bestand)) {
     const g = R.GERAETE[id]
-    return sum + (g && g.effekt && g.effekt.loeschen_l_min ? g.effekt.loeschen_l_min * Math.min(n, 2) : 0)
-  }, 0)
-  if (art.wachstum && loesch > 0) geraetFaktor *= Math.max(0.7, Math.min(2.5, Math.sqrt(200 / loesch)))
-  const arbeit = art.arbeit_min * Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5) * geraetFaktor * (1 + (art.wachstum || 0) * verzugMin)
+    if (!g || !g.effekt || !g.effekt.loeschen_l_min) continue
+    for (let i = 0; i < n; i++) (g.kategorie === "strahlrohr" ? rohre : sonstige).push(g.effekt.loeschen_l_min)
+  }
+  rohre.sort((x, y) => y - x)
+  sonstige.sort((x, y) => y - x)
+  const loesch = rohre.slice(0, rohreMoeglich).reduce((n, x) => n + x, 0) + sonstige.slice(0, Math.max(0, vorhanden - Math.min(rohre.length, rohreMoeglich))).reduce((n, x) => n + x, 0)
+  if (art.wachstum && loesch > 0) {
+    const text = rohre.length > 1 && !bester.bestand.verteiler ? "nur ein Strahlrohr, kein Verteiler" : "Löschleistung " + loesch + " l/min"
+    merke("loeschen", Math.max(0.7, Math.min(2.5, Math.sqrt(200 / loesch))), text)
+  }
+  if (art.wachstum && verzugMin > 0) merke("ausbreitung", 1 + art.wachstum * verzugMin, "Feuer hat sich bis zum Eintreffen ausgebreitet")
+  const th = String(art.stichwort || "").indexOf("TH") === 0
+  merke("ausruestung", bester.te.arbeit * (th ? bester.te.arbeit_th : 1), "persönliche Ausrüstung")
+  if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
+  const arbeit = faktoren.filter((f) => f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
   const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN)
   const zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
   // Ohne Rückmeldung kommen alle Alarmierten zum Gerätehaus, auch wer nicht mehr gebraucht wird
@@ -509,6 +598,7 @@ function plane(R, s, e, alarm, umwelt) {
       zurueck,
       einsatzbereit: zurueck + (bester.motor.length ? R.ZEITEN.einsatzbereit_s * 1000 : 0),
       verzug_min: Math.round(verzugMin * 10) / 10,
+      faktoren,
       gesperrt: sperren,
       vergeblich,
     },
@@ -541,6 +631,11 @@ function regelErfuellt(R, s, regel, k, e, t) {
   return true
 }
 
+/** Minuten von der Meldung bis zum Einsatzende für volle Sterne. */
+function zielEnde(art) {
+  return art.ziel_ende_min || (art.ziel_eintreffen_min || art.ablauf_min) + (art.arbeit_min || 0)
+}
+
 function bewerte(R, s, e) {
   const art = R.EINSATZARTEN[e.art]
   const pl = e.plan
@@ -549,27 +644,21 @@ function bewerte(R, s, e) {
   if (polizeiVorOrt(s, e, pl.arbeit_ende)) k.bestand.polizei_vor_ort = 1
   const abzuege = []
   const ziehe = (grund, sterne, text) => abzuege.push({ grund, sterne, text })
-  const dauerMin = (pl.eintreffen - e.meldung) / MIN
-  const anteil = dauerMin / art.ziel_eintreffen_min - 1
+  // Zeit bis zum Einsatzende gegen das Ziel der Einsatzart; die Faktoren aus der Planung erklären, was gedauert hat
+  const dauerMin = (pl.arbeit_ende - e.meldung) / MIN
+  const ziel = zielEnde(art)
+  const anteil = dauerMin / ziel - 1
   let ab = 0
-  for (const stufe of R.STERNE.eintreffen) if (anteil > stufe.ueber && stufe.abzug > ab) ab = stufe.abzug
-  if (ab) ziehe("eintreffen", ab, "Eingetroffen nach " + komma(dauerMin) + " Minuten, Ziel waren " + art.ziel_eintreffen_min + ".")
-  const opt = art.optimal || {}
-  if (opt.personen && leute.length < opt.personen)
-    ziehe("personen", Math.min(R.STERNE.fehlende_person_max, (opt.personen - leute.length) * R.STERNE.fehlende_person_unter_optimal), leute.length + " von optimal " + opt.personen + " Einsatzkräften.")
-  const fehltG = fehlendeGruppen(opt.geraete, k.bestand)
-  const fehltQ = fehlendeQualifikation(opt.qualifikation, leute, pl.eintreffen)
-  const fehlend = fehltG.length + fehltQ.length
-  if (fehlend)
-    ziehe(
-      "geraete",
-      Math.min(R.STERNE.fehlendes_geraet_max, fehlend * R.STERNE.fehlendes_geraet_optimal),
-      "Gefehlt hat: " + fehltG.map((g) => gruppenText(R, g)).concat(fehltQ.map(([id]) => R.LEHRGAENGE[id].name)).join("; ") + ".",
-    )
+  for (const stufe of R.STERNE.einsatzende) if (anteil > stufe.ueber && stufe.abzug > ab) ab = stufe.abzug
+  if (ab) {
+    const bremsen = (pl.faktoren || []).filter((f) => f.faktor > 1).sort((x, y) => y.faktor - x.faktor)
+    const warum = bremsen.length ? " Länger dauerte es durch: " + bremsen.map((f) => f.text + " (+" + Math.round((f.faktor - 1) * 100) + " %)").join(", ") + "." : ""
+    ziehe("einsatzende", ab, "Einsatz beendet nach " + komma(dauerMin) + " Minuten, Ziel waren " + komma(ziel) + "." + warum)
+  }
   if (art.psa) {
     const tabelle = art.org === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR
     const mangel = Object.entries(art.psa).filter(([teil, stufe]) => tabelle[teil] && leute.some((p) => (p.psa[teil] || 0) < stufe))
-    if (mangel.length) ziehe("psa", R.STERNE.psa_unzureichend, "Schutzausrüstung reicht nicht: " + mangel.map(([t]) => tabelle[t][0] ? t : t).join(", ") + ".")
+    if (mangel.length) ziehe("psa", R.STERNE.psa_unzureichend, "Schutzausrüstung reicht nicht: " + mangel.map(([t]) => (R.PSA_NAMEN && R.PSA_NAMEN[t]) || t).join(", ") + ".")
   }
   if (art.wachstum && art.wachstum * pl.verzug_min > 1) ziehe("schaden", R.STERNE.schaden_hoch, "Das Feuer hatte sich bis zum Eintreffen stark ausgebreitet.")
   for (const r of art.regeln || []) {
@@ -976,5 +1065,5 @@ module.exports = {
   ortszeit,
   preis,
   // für Tests
-  _intern: { plane, bewerte, erzeuge, feuerwehrBereit, zufall },
+  _intern: { plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde },
 }

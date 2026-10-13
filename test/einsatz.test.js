@@ -56,15 +56,22 @@ test("Einstieg 5: mit Klappleiter klappt die Rettung, aber höchstens 3 Sterne (
   assert.ok(e.plan.zu_fuss)
 })
 
-test("Einstieg 6: zweites Haus, Fahrrad, Handzugwagen, Handschuhe und Box ergeben 5 Sterne und schalten den Mülltonnenbrand frei", () => {
+test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute Stiefel ergeben 5 Sterne und schalten den Mülltonnenbrand frei", () => {
   let s = S.neuerStand(R, T0, 4)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "bauplatz", id: "bp02" })
+  s = kaufe(s, { art: "bauplatz", id: "bp03" })
   s = kaufe(s, { art: "haus_ausbau", ziel: s.haeuser[1].id, id: "fahrrad" })
+  s = kaufe(s, { art: "haus_ausbau", ziel: s.haeuser[2].id, id: "fahrrad" })
   s = kaufe(s, { art: "fahrzeug", id: "handzugwagen" })
   s = kaufe(s, { art: "geraet", id: "klappleiter" })
   s = kaufe(s, { art: "geraet", id: "tierhandschuhe" })
   s = kaufe(s, { art: "geraet", id: "transportbox" })
+  for (const p of s.personal) {
+    s = kaufe(s, { art: "psa", ziel: p.id, id: "stiefel", stufe: 1 })
+    s = kaufe(s, { art: "psa", ziel: p.id, id: "stiefel", stufe: 2 })
+    s = kaufe(s, { art: "psa", ziel: p.id, id: "helm", stufe: 1 })
+  }
   const { e, stand } = katze(s)
   assert.equal(e.status, "abgeschlossen", e.grund)
   assert.equal(e.bewertung.sterne, 5, JSON.stringify(e.bewertung.abzuege))
@@ -191,4 +198,62 @@ test("Ohne Rückmeldung kommen alle, mit Rückmeldung nur die Gebrauchten", () =
   for (const h of s.haeuser) s = kaufe(s, { art: "alarmierung", ziel: h.id, id: "fme_rueck" })
   const mit = S._intern.erzeuge(R, s, "tier_katze", T0 + MIN, trocken, null, "baum_feuerwehr")
   assert.equal(mit.plan.vergeblich.length, 0)
+})
+
+/** Drei Kräfte nah am Feuerwehrhaus mit Fahrrad, Leiter, Handschuhen und Box; Ausrüstung je nach Aufruf. */
+function katzenWache(saat, psa) {
+  let s = S.neuerStand(R, T0, saat)
+  for (const bp of ["bp01", "bp02", "bp03"]) s = kaufe(s, { art: "bauplatz", id: bp })
+  for (const h of s.haeuser) s = kaufe(s, { art: "haus_ausbau", ziel: h.id, id: "fahrrad" })
+  for (const g of ["klappleiter", "tierhandschuhe", "transportbox"]) s = kaufe(s, { art: "geraet", id: g })
+  for (const p of s.personal) for (const [teil, bis] of Object.entries(psa)) for (let st = 1; st <= bis; st++) s = kaufe(s, { art: "psa", ziel: p.id, id: teil, stufe: st })
+  return s
+}
+
+test("Ausrüstung: mit Gummistiefeln dauert der Einsatz länger als mit Lederstiefeln", () => {
+  const gummi = katze(katzenWache(20, {})).e
+  const leder = katze(katzenWache(20, { stiefel: 2 })).e
+  assert.ok(gummi.plan.arbeit_ende > leder.plan.arbeit_ende, "Gummistiefel müssen bremsen")
+  assert.ok(gummi.bewertung.sterne <= leder.bewertung.sterne)
+  assert.ok(gummi.plan.faktoren.some((f) => f.grund === "zu_fuss"))
+})
+
+test("Ausrüstung: gute Stiefel verkürzen das Umziehen", () => {
+  const s = katzenWache(21, {})
+  const p = s.personal[0]
+  const ohne = S._intern.feuerwehrBereit(R, s, p, T0, "trocken")
+  const mit = S._intern.feuerwehrBereit(R, s, Object.assign({}, p, { psa: { stiefel: 2 } }), T0, "trocken")
+  assert.equal(ohne - mit, 15000)
+})
+
+test("Dunkelheit bremst, Helmlampen bei allen heben das auf", () => {
+  const nacht = Date.UTC(2026, 9, 13, 20) // 22 Uhr Ortszeit
+  assert.ok(S._intern.dunkel(R, nacht))
+  assert.ok(!S._intern.dunkel(R, T0))
+  const ohne = katze(katzenWache(22, { stiefel: 2 }), nacht).e
+  const lampe = katze(katzenWache(22, { stiefel: 2, helm: 3 }), nacht).e
+  assert.ok(ohne.plan.faktoren.some((f) => f.grund === "dunkel"))
+  assert.ok(!lampe.plan.faktoren.some((f) => f.grund === "dunkel"))
+  assert.ok(ohne.plan.arbeit_ende - ohne.plan.eintreffen > lampe.plan.arbeit_ende - lampe.plan.eintreffen)
+})
+
+test("Ohne Verteiler wird mit nur einem Strahlrohr gelöscht", () => {
+  const brand = (mitVerteiler) => {
+    let s = S.neuerStand(R, T0, 23)
+    for (const bp of ["bp01", "bp02", "bp03", "bp04"]) s = kaufe(s, { art: "bauplatz", id: bp })
+    s = kaufe(s, { art: "fahrzeug", id: "tsf_w" })
+    for (const p of s.personal) p.lehrgaenge.fahrberechtigung = T0 - 1
+    if (!mitVerteiler) s = S.einraeumen(s, { fahrzeug: s.fahrzeuge[0].id, geraet: "verteiler", richtung: "aus" }, R).stand
+    s.freigeschaltet.push("b_hecke")
+    s = kaufe(s, { art: "einsatzart", id: "b_hecke" })
+    for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+    const e = S._intern.erzeuge(R, s, "b_hecke", T0 + MIN, trocken, null, "hecke_nachbar")
+    assert.equal(e.status, "alarmiert", e.grund)
+    return e.plan
+  }
+  const mit = brand(true)
+  const ohne = brand(false)
+  assert.ok(ohne.arbeit_ende - ohne.eintreffen > mit.arbeit_ende - mit.eintreffen, "ohne Verteiler muss es länger dauern")
+  assert.ok(ohne.faktoren.some((f) => /Verteiler/.test(f.text)), JSON.stringify(ohne.faktoren))
+  assert.ok(mit.faktoren.some((f) => f.grund === "loeschen" && f.faktor < 1), "zwei Rohre löschen schneller")
 })

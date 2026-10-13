@@ -54,6 +54,22 @@ function psa(ort, p) {
   }
 }
 
+// Ausrüstung: jede Stufe mit Wirkung, ab Stufe 1 mit Vorteilstext; bekannte Wirkungen
+const PSA_WIRKUNGEN = ["tempo", "stolpern", "arbeit", "arbeit_th", "nacht", "umziehen_s", "reaktion_s"]
+for (const [tabelle, teile] of [["PSA_FEUERWEHR", R.PSA_FEUERWEHR], ["PSA_POLIZEI", R.PSA_POLIZEI]]) {
+  for (const [teil, stufen] of Object.entries(teile)) {
+    if (!R.PSA_NAMEN[teil]) f(`${tabelle}.${teil}: Name fehlt in PSA_NAMEN`)
+    stufen.forEach((st, i) => {
+      if (!st.effekt || typeof st.effekt !== "object") f(`${tabelle}.${teil}[${i}]: effekt fehlt`)
+      for (const k of Object.keys(st.effekt || {})) if (PSA_WIRKUNGEN.indexOf(k) < 0) f(`${tabelle}.${teil}[${i}]: unbekannte Wirkung "${k}"`)
+      if (i > 0 && !st.vorteil) f(`${tabelle}.${teil}[${i}]: vorteil fehlt`)
+      if (i > 0 && !(st.preis > stufen[i - 1].preis)) f(`${tabelle}.${teil}[${i}]: höhere Stufe muss mehr kosten`)
+    })
+  }
+}
+if (!Array.isArray(R.SONNE) || R.SONNE.length !== 12) f("SONNE: zwölf Monate nötig")
+else R.SONNE.forEach(([auf, unter], i) => { if (!(auf > 0 && auf < unter && unter < 24)) f(`SONNE[${i}]: ungültig`) })
+
 // Lehrgänge: Voraussetzungen bekannt und ohne Kreis
 for (const [id, l] of Object.entries(R.LEHRGAENGE)) {
   quelle(`LEHRGAENGE.${id}`, l.quelle)
@@ -147,6 +163,7 @@ for (const [id, e] of Object.entries(arten)) {
   if (!(e.ablauf_min > 0)) f(`${ort}: ablauf_min fehlt`)
   if (!(e.arbeit_min >= 0)) f(`${ort}: arbeit_min fehlt`)
   if (!(e.ziel_eintreffen_min > 0)) f(`${ort}: ziel_eintreffen_min fehlt`)
+  if (e.ziel_ende_min !== undefined && !(e.ziel_ende_min >= e.ziel_eintreffen_min)) f(`${ort}: ziel_ende_min liegt vor dem Eintreffen`)
   if (e.ziel_eintreffen_min > e.ablauf_min) f(`${ort}: Ziel-Eintreffzeit liegt nach dem Verfall`)
   if (e.freischaltung) {
     if (!arten[e.freischaltung.nach]) f(`${ort}: Freischaltung nach unbekanntem "${e.freischaltung.nach}"`)
