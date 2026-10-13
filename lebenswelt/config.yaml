@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.2.1"
+version: "0.3.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha
@@ -21,8 +21,10 @@ options:
   vertraute_apps:
     - 81f33d0f-ha-mcp
   garmin_sensor: sensor.garmin_connect_last_activities
+  wetter_entitaet: weather.forecast_home
 schema:
   person: str?
   vertraute_apps:
     - str
   garmin_sensor: str?
+  wetter_entitaet: str?

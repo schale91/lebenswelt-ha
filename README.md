@@ -10,6 +10,13 @@ https://github.com/schale91/lebenswelt-ha
 
 Das Repository enthält nur den Bauplan der App, keine persönlichen Daten.
 
-## In Vorbereitung: Einsatzspiel
+## Einsatzspiel
 
-Feuerwehr und Polizei als Spiel im Spiel auf der Hauptkarte. Konzept, Umsetzungsplan und Übergabe stehen in [`docs/einsatzspiel/`](docs/einsatzspiel/), die Spielwerte in [`lebenswelt/pb_hooks/einsatz/regelwerk.js`](lebenswelt/pb_hooks/einsatz/regelwerk.js). Prüfen mit `node werkzeuge/pruefe-regelwerk.js --baum`.
+Feuerwehr und Polizei als Teil der Hauptkarte, im Hintergrund simuliert. Konzept, Umsetzungsplan und Bestandsaufnahme stehen in [`docs/einsatzspiel/`](docs/einsatzspiel/), die Spielwerte in [`lebenswelt/pb_hooks/einsatz/regelwerk.js`](lebenswelt/pb_hooks/einsatz/regelwerk.js), die Simulation in [`lebenswelt/pb_hooks/einsatz/simulation.js`](lebenswelt/pb_hooks/einsatz/simulation.js).
+
+Prüfen:
+
+```
+node werkzeuge/pruefe-regelwerk.js --baum
+node --test test/
+```

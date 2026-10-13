@@ -38,13 +38,29 @@ routerAdd("PUT", "/api/lebenswelt/spielstand", (e) => {
   if (r && r.getInt("zeit") > zeit) {
     return e.json(409, { zeit: r.getInt("zeit"), daten: r.get("daten") })
   }
+  // Kaufbuch des Einsatzspiels: Käufe, die dieser Stand noch nicht kennt, nachträglich abziehen
+  let daten = body.daten
+  let speicherZeit = zeit
+  let nachgezogen = 0
+  try {
+    const welt = e.app.findFirstRecordByFilter("dokumente", "besitzer = {:b} && typ = 'einsatzwelt' && schluessel = 'stand'", { b: ich.id })
+    const ausgaben = JSON.parse(toString(welt.get("daten")) || "{}").ausgaben || []
+    const ab = require(`${__hooks}/einsatz/kaufbuch.js`).abgleich(daten, ausgaben)
+    daten = ab.daten
+    nachgezogen = ab.nachgezogen
+    if (nachgezogen) speicherZeit = Math.max(zeit, Date.now())
+  } catch (_) {
+    // noch keine Einsatzwelt
+  }
   if (!r) {
     r = new Record(e.app.findCollectionByNameOrId("spielstaende"))
     r.set("benutzer", ich.id)
   }
   r.set("name", ich.anzeige || ich.name)
-  r.set("zeit", zeit)
-  r.set("daten", body.daten)
+  r.set("zeit", speicherZeit)
+  r.set("daten", daten)
   e.app.save(r)
+  // Berichtigter Stand: das Frontend übernimmt ihn wie bei einem Konflikt
+  if (nachgezogen) return e.json(409, { zeit: speicherZeit, daten: daten, nachgezogen: nachgezogen })
   return e.json(200, { zeit: zeit })
 })

@@ -16,7 +16,9 @@
 
 const VERSION = 1
 
-const PREISFAKTOR = 1 // spielwert
+// Entscheidung 13.10.2026: ein normaler Tag bringt etwa 30 Münzen; mit 0,05 kostet alles zusammen rund 60 000 (etwa fünf Jahre)
+const PREISFAKTOR = 0.05 // spielwert
+const PREIS_MINIMUM = 10 // spielwert: nichts kostet weniger (außer Kostenlosem)
 
 /** Quellen, auf die sich Einträge über `quelle` beziehen. Stand der Recherche: Oktober 2026. */
 const QUELLEN = {
@@ -38,7 +40,8 @@ const QUELLEN = {
 }
 
 /** Maßstab der Hauptkarte: Meter je Welteinheit. Vorläufig, das Frontend prüft gegen die echten Abstände. */
-const METER_JE_EINHEIT = 5 // spielwert
+// 3 statt 5 seit E0: die Modelle sind mit etwa 1 m je Einheit gebaut, und zu Fuß soll der nächste Baum in 5 Minuten erreichbar sein
+const METER_JE_EINHEIT = 3 // spielwert
 
 // STRASSEN-ANFANG (aus dem Frontend exportiert mit app/skripte/strassennetz.ts, nicht von Hand ändern)
 /** Straßennetz der Hauptkarte: Knoten (Weltkoordinaten) und Kanten mit Länge in Welteinheiten. */
@@ -1094,6 +1097,11 @@ const STERNE = {
   freischaltung_standard: 3,
 }
 
+/** Personal der Polizei: Beamtinnen und Beamte werden an die Dienststelle versetzt (begrenzt durch personal_max). */
+const PERSONAL = {
+  polizei: { name: "Beamtin/Beamter an die Dienststelle versetzen", preis: 600 }, // spielwert
+}
+
 /** Zeiten der Simulation, die nicht an Orten hängen (spielwert). */
 const ZEITEN = {
   ausruecken_s: 45, // vom Erreichen der Mindeststärke bis zur Abfahrt
@@ -1110,6 +1118,7 @@ const ZEITEN = {
 module.exports = {
   VERSION,
   PREISFAKTOR,
+  PREIS_MINIMUM,
   QUELLEN,
   METER_JE_EINHEIT,
   STRASSEN,
@@ -1134,4 +1143,5 @@ module.exports = {
   REGELN,
   STERNE,
   ZEITEN,
+  PERSONAL,
 }

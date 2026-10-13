@@ -15,6 +15,9 @@ routerAdd("GET", "/api/lebenswelt/dokumente", (e) => {
   if (typen.length) {
     filter += " && (" + typen.map((_, i) => "typ = {:t" + i + "}").join(" || ") + ")"
     typen.forEach((t, i) => (p["t" + i] = t))
+  } else {
+    // Einsatzspiel (Stand ändert sich jede Minute, Protokoll wächst) nur über die eigenen Routen bzw. ausdrücklich per typ
+    filter += " && typ != 'einsatzwelt' && typ != 'einsatz'"
   }
   if (seit) {
     filter += " && updated > {:seit}"

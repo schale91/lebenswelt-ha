@@ -214,3 +214,18 @@ Antworten auf Abschnitt 8 und daraus folgende Änderungen am Plan:
 6. **Kein eigenes Spiel, keine Leitstelle:** Das Einsatzspiel ist Teil der Oberfläche. Kräfte und Fahrzeuge bewegen sich auf der Karte und arbeiten Einsätze ab, wenn sie anstehen. Gekauft wird alles im **Store** der Lebenswelt (dort ein Bereich für Feuerwehr und Polizei mit dem Technikbaum). Ein Klick auf das Feuerwehrhaus bzw. die Dienststelle zeigt die Bilanz: Sterne je Einsatz (frisch vergebene Sterne leuchten kurz auf), Protokoll mit Abzügen und Statistik. Etappe E1 wird entsprechend umgeplant: statt Leitstelle mit Reitern ein Store-Bereich plus Bilanzfenster.
 7. **Reihenfolge:** Zuerst werden in der App die Schnelleingabe und der Umzug von Briefings, Gesundheit und Laufplanung fertiggestellt, danach folgen E0 und die Simulation.
 8. **Kein KI-Guthaben im Betrieb:** Simulation, Disposition, Bewertung und Darstellung laufen ohne Claude, nur in der Datenbank-App (Cron) und im Browser. Es kommt keine Routine für das Einsatzspiel dazu.
+
+## 10. Stand der Simulation (13.10.2026)
+
+Umgesetzt in `lebenswelt/pb_hooks/einsatz/` (`simulation.js`, `kaufbuch.js`, `dienst.js`) und `einsatz.pb.js`, getestet mit `node --test test/` (Einstieg 1 bis 6, keine Doppelbelegung über 30 Tage, Teile gleich Ganzes, 30 Tage unter einer Sekunde, Folgeeinsatz, Kaufbuch, Rückmeldung) und in der PocketBase-Laufzeit.
+
+Abweichungen und Ergänzungen gegenüber Abschnitt 3 bis 5:
+
+- `METER_JE_EINHEIT` 3 statt 5 (siehe E0), damit der nächste Baum zu Fuß in 5 Minuten erreichbar ist.
+- Wege: zu Fuß und mit dem Rad über die kürzere Strecke aus Straße und Luftlinie · 1,3; Fahrzeuge über das Straßennetz.
+- Zu Fuß trägt jede Einsatzkraft bis zu 2 Slots aus dem Lager (`TRAGEN_SLOTS_JE_PERSON`).
+- Ausgerückt wird höchstens mit der optimalen Stärke. Ohne Rückmeldung (Sirene, einfacher Meldeempfänger) sind Alarmierte, die nicht gebraucht werden, 10 Minuten gebunden.
+- Polizei startet an der Dienststelle (Reaktion 30 s, kein Umziehen). Personal kommt über `PERSONAL.polizei` (Versetzung an die Dienststelle), begrenzt durch `personal_max`.
+- Kaufbuch: `einsatzwelt.ausgaben`; der Spielstand merkt sich `einsatzAusgabenBekannt`. Das Frontend muss dieses Feld speichern und nach einem Kauf aus der Antwort übernehmen (E1).
+- Dokumente `einsatzwelt` und `einsatz` kommen nicht mehr über die allgemeine Dokumentliste.
+- Benachrichtigungsoptionen entfallen (Entscheidung 2).
