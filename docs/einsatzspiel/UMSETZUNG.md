@@ -201,3 +201,15 @@ Der **Schlauch** ist eine `TubeGeometry` entlang einer Kurve (Catmull-Rom) von d
 3. **Namen der Einsatzkräfte:** frei wählbar oder aus einer Liste? Echte Namen nur in der Datenbank, nie im Repository.
 4. **Ton:** Martinshorn und Sirene ja oder nein, und standardmäßig an oder aus?
 5. **Startguthaben für das Einsatzspiel:** bei null anfangen oder mit einem kleinen Bonus, damit die Katze gleich gerettet werden kann?
+
+## 9. Entscheidungen (13.10.2026)
+
+Antworten auf Abschnitt 8 und daraus folgende Änderungen am Plan:
+
+1. **Wirtschaft:** `PREISFAKTOR = 0,05`, Mindestpreis 10 Münzen. Ein normaler Tag bringt nach den Regeln der App etwa 30 Münzen (rund 300 XP, 1 Münze je 10 XP). Alles zusammen kostet damit rund 60 000 Münzen, also etwa fünf Jahre.
+2. **Benachrichtigung:** keine. Das Einsatzspiel läuft still im Hintergrund und verlangt keine Aufmerksamkeit. Die Optionen `einsatz_benachrichtigung` und `einsatz_ruhezeit` entfallen. Wetter-Entität: `weather.forecast_home`.
+3. **Namen:** frei wählbar, beim Einzug mit einem Vorschlag aus einer Liste erfundener Namen. Echte Namen nur in der Datenbank.
+4. **Ton:** kein Ton.
+5. **Start:** Die Einsatzart „Katze auf Baum“ ist von Anfang an gekauft. Sonst beginnt alles bei null (die App selbst startet seit dem 13.10.2026 bei Level 0).
+6. **Kein eigenes Spiel, keine Leitstelle:** Das Einsatzspiel ist Teil der Oberfläche. Kräfte und Fahrzeuge bewegen sich auf der Karte und arbeiten Einsätze ab, wenn sie anstehen. Gekauft wird alles im **Store** der Lebenswelt (dort ein Bereich für Feuerwehr und Polizei mit dem Technikbaum). Ein Klick auf das Feuerwehrhaus bzw. die Dienststelle zeigt die Bilanz: Sterne je Einsatz (frisch vergebene Sterne leuchten kurz auf), Protokoll mit Abzügen und Statistik. Etappe E1 wird entsprechend umgeplant: statt Leitstelle mit Reitern ein Store-Bereich plus Bilanzfenster.
+7. **Reihenfolge:** Zuerst werden in der App die Schnelleingabe und der Umzug von Briefings, Gesundheit und Laufplanung fertiggestellt, danach folgen E0 und die Simulation.
