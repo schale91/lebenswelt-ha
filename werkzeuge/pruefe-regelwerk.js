@@ -100,6 +100,19 @@ for (const [id, o] of Object.entries(R.ORGANISATIONEN)) {
 }
 for (const [id, P] of Object.entries(R.PERSONAL)) for (const l of P.lehrgaenge || []) if (!R.LEHRGAENGE[l]) f(`PERSONAL.${id}: unbekannter Lehrgang "${l}"`)
 for (const [k, v] of Object.entries(R.FREISCHALTUNG_LEVEL)) if (!(Number.isInteger(v) && v > 0)) f(`FREISCHALTUNG_LEVEL.${k}: ganze Zahl über 0 nötig`)
+// Rettungsdienst: Patienten, Notarzt, Gebäude-Voraussetzungen, Defibrillatoren
+if (!R.RETTUNG || !(R.RETTUNG.hilfsfrist_min > 0)) f("RETTUNG: hilfsfrist_min fehlt")
+for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
+  if (a.patient && !(R.RETTUNG.patient[a.patient])) f(`EINSATZARTEN.${id}: unbekannte Dringlichkeit "${a.patient}"`)
+  if ((a.notarzt || a.reanimation) && !a.patient) f(`EINSATZARTEN.${id}: notarzt oder reanimation ohne patient`)
+  for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) if (!(R.GEBAEUDE[g] && R.GEBAEUDE[g][st])) f(`EINSATZARTEN.${id}: Gebäudestufe ${g}[${st}] gibt es nicht`)
+}
+for (const [id, l] of Object.entries(R.LEHRGAENGE)) for (const [g, st] of Object.entries(l.gebaeude || {})) if (!(R.GEBAEUDE[g] && R.GEBAEUDE[g][st])) f(`LEHRGAENGE.${id}: Gebäudestufe ${g}[${st}] gibt es nicht`)
+for (const [id, a] of Object.entries(R.AUSBAU)) {
+  if (a.effekt && a.effekt.aed_ort && !R.ORTE[a.effekt.aed_ort]) f(`AUSBAU.${id}: unbekannter Ort "${a.effekt.aed_ort}"`)
+  if (a.gebaeude !== "ort" && !R.GEBAEUDE[a.gebaeude]) f(`AUSBAU.${id}: unbekanntes Gebäude "${a.gebaeude}"`)
+}
+for (const [geb, stufen] of Object.entries(R.GEBAEUDE)) stufen.forEach((st, i) => { if (st.ort && !R.ORTE[st.ort]) f(`GEBAEUDE.${geb}[${i}]: unbekannter Ort "${st.ort}"`) })
 for (const nb of R.NEUBAUGEBIETE) if (!(nb.bauzeit_h > 0)) f(`NEUBAUGEBIETE.${nb.id}: bauzeit_h fehlt`)
 if (!Array.isArray(R.SONNE) || R.SONNE.length !== 12) f("SONNE: zwölf Monate nötig")
 else R.SONNE.forEach(([auf, unter], i) => { if (!(auf > 0 && auf < unter && unter < 24)) f(`SONNE[${i}]: ungültig`) })

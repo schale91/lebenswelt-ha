@@ -841,7 +841,9 @@ Offen ist derzeit nichts.
 
 **Umgesetzt: D4 Werkstatt mit Abschleppdienst und Bauhof** (Add-on 0.10.0). Beide Betriebe mit vier Ausbaustufen, Personal, Geräten, Fahrzeugen ohne Sonderrechte und den Einsätzen aus den Abschnitten 9 und 10. Ohne eigenen Betrieb übernimmt die Grundversorgung von außen (Abschleppdienst aus der Stadt, Straßenmeisterei) mit langer Anfahrt und höchstens 3 Sternen. Folgeeinsätze verbinden Feuerwehr und Polizei mit beiden Betrieben (Bergung nach Unfall, Reinigung nach Ölspur, Absperrung nach Sturmschaden, Umsetzen von Falschparkern). Streuen wirkt auf die Fahrzeiten: Gestreut gilt bei Glätte der Reibwert für Nässe. Vereinfacht: Das Personal wohnt auswärts und hat Rufbereitschaft rund um die Uhr; Mechaniker im Dorf, die zugleich in der Feuerwehr sind, gibt es über den Arbeitgeber Kfz-Werkstatt bei den Häusern. Tests in `test/werkstatt.test.js`.
 
-**Als Nächstes:** D5 Rettungsdienst (Level 16).
+**Umgesetzt: D5 Rettungsdienst** (Add-on 0.11.0). Nachbarwache, Rettungswache in vier Stufen, KTW, RTW, NEF, Patienten mit Dringlichkeit und Transport, Notarzt über NEF, Hubschrauber oder Stadt, Erreichungsgrad der Hilfsfrist, Landestelle, Leitstelle mit Notrufabfrage und Telefonreanimation, öffentliche Defibrillatoren, Rettungsdienst-Teil in bestehenden Einsätzen und fünf gemeinsame Einsätze aus 13.6. Abnahme laut Abschnitt 20 in `test/rettungsdienst.test.js`: Reanimation mit und ohne Defibrillator, zweiter Notfall bekommt die Nachbarwache, vor Level 16 unverändert. Vereinfacht gegenüber dem Konzept: Der Rettungshubschrauber fliegt nur tagsüber und kommt ohne eigenen Kauf; Praxisanleiter, Ruheraum und Waschhalle fehlen noch; „Tragehilfe“ und „Schlägerei beim Schützenfest“ sind nicht umgesetzt; der Rettungsdienst-Teil ist ein Folgeeinsatz mit eigenen Sternen, eine eigene Bewertung der Übergabe (Zusammenarbeit) gibt es dafür noch nicht.
+
+**Als Nächstes:** D6 DRK (Level 20).
 
 ---
 
