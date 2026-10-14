@@ -849,7 +849,9 @@ Offen ist derzeit nichts.
 
 **Umgesetzt: D8 THW** (Add-on 0.15.0). Mitgliedschaft, Unterkunft in vier Stufen, Fahrzeuge und Fachgruppen-Geräte; das THW kommt nur auf Anforderung und hängt damit an der Führungsausbildung der Feuerwehr (Abnahme in `test/thw.test.js`). Vereinfacht: Die Fachgruppen sind keine eigenen Einheiten, sondern ergeben sich aus Geräten, Fahrzeugen und Lehrgängen; Ortung (Endstufe) fehlt noch.
 
-**Als Nächstes:** D9 Alle zusammen (Level 30).
+**Umgesetzt: D9 Alle zusammen** (Add-on 0.16.0). Sechs Großlagen aus 13.7 mit gleichzeitiger Alarmierung aller Dienste, Häufigkeit nach Zusammenarbeit, Behandlungsplatz des DRK. Abnahme in `test/grosslagen.test.js`: eine Großlage über mehrere Stunden wird in wenigen Millisekunden fortgeschrieben. Vereinfacht: Die Kopplung an den echten Elbpegel fehlt (Hochwasser hängt an den Monaten), der Kampfmittelbeseitigungsdienst ist nur Text, und die Teile einer Großlage werden einzeln bewertet; eine gemeinsame Gesamtnote gibt es nicht.
+
+Alle Etappen D1 bis D9 sind damit umgesetzt. Offene Ideen stehen in Abschnitt 22 und in den Vereinfachungen oben.
 
 ---
 

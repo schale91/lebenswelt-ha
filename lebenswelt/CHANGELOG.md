@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.16.0
+
+- Einsatzspiel, alle zusammen (ab Level 30): Sechs Großlagen (`grosslage`), die nicht gekauft werden, sondern ab dem Level selten von selbst kommen: Elbhochwasser, Sturm im ganzen Dorf, Busunfall mit vielen Verletzten, Bombenfund mit Evakuierung (bei Erdarbeiten an einer Baustelle), Scheunenbrand mit Stromausfall, Dorffest-Wochenende. Die Leitstelle alarmiert alle beteiligten Dienste gleichzeitig, das THW kommt wie sonst auf Anforderung. Jede Person ist nie in zwei Einsätzen zugleich.
+- Wie oft Großlagen kommen, hängt an der Zusammenarbeit der letzten gemeinsamen Einsätze (`GROSSLAGE`); jede Großlage bewertet selbst die Zusammenarbeit mit der Polizei.
+- DRK: Behandlungsplatz bei vielen Verletzten.
+- Einsatzarten mit `ab_level`, die an Baustellen hängen, kommen erst ab ihrem Level.
+
 ## 0.15.0
 
 - Einsatzspiel, THW-Ortsverband (ab Level 27, `ORGANISATIONEN.thw`): Mitgliedschaft für Bewohner als zweite Organisation (Grundausbildung), Lehrgänge Motorsäge, Kraftfahrer, Elektrofachkraft und Gruppenführung, Unterkunft in vier Stufen (Stufe 0 als Lagerraum in der Scheune, Stufe 3 mit Übungsgelände), MTW, Gerätekraftwagen, Radlader, Geräte der Bergungsgruppe und der Fachgruppen (Netzersatzanlage, Großpumpe, Sandsack-Füllanlage). Ohne eigene Helfer kommt der Ortsverband der Kreisstadt.
