@@ -29,3 +29,21 @@ onBootstrap((e) => {
     // beim Start nicht kritisch
   }
 })
+
+// Selbst-Update der App: alle 10 Minuten nach einer neuen Version sehen (siehe app_paket.js)
+cronAdd("app_paket", "*/10 * * * *", () => {
+  try {
+    require(`${__hooks}/app_paket.js`).aktualisiere(false)
+  } catch (err) {
+    console.log("App-Paket fehlgeschlagen", err)
+  }
+})
+
+onBootstrap((e) => {
+  e.next()
+  try {
+    require(`${__hooks}/app_paket.js`).aktualisiere(false)
+  } catch (_) {
+    // beim Start nicht kritisch
+  }
+})

@@ -144,3 +144,14 @@ routerAdd("GET", "/api/lebenswelt/personen", (e) => {
 routerAdd("POST", "/api/lebenswelt/garmin", (e) => {
   return e.json(200, require(`${__hooks}/hintergrund.js`).garminAbgleich() || { ok: false })
 })
+
+// Selbst-Update der App: Stand ansehen und sofort nachsehen (sonst alle 10 Minuten)
+routerAdd("GET", "/api/lebenswelt/app-paket", (e) => {
+  return e.json(200, require(`${__hooks}/app_paket.js`).zustand())
+})
+routerAdd("POST", "/api/lebenswelt/app-paket", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  if (!h.benutzer(e)) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const erzwingen = Boolean((e.requestInfo().body || {}).erzwingen)
+  return e.json(200, require(`${__hooks}/app_paket.js`).aktualisiere(erzwingen))
+})
