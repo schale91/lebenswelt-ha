@@ -821,7 +821,7 @@ Offen ist derzeit nichts.
 
 ## 25. Stand der Umsetzung (14.10.2026)
 
-**Umgesetzt: D1 Bewohner und Level, D2 Sportplatz.** Add-on Version 0.7.0 (`lebenswelt-ha`), Frontend im Repository `Claude`, Ordner `app/`.
+**Umgesetzt: D1 Bewohner und Level, D2 Sportplatz.** Add-on Version 0.8.0 (`lebenswelt-ha`), Frontend im Repository `Claude`, Ordner `app/`.
 
 - **Server** (`simulation.js`, `regelwerk.js`, `dienst.js`): Bewohner mit Beruf (`BERUFE`, `ARBEITGEBER`, `ARBEITSZEIT`), Schichtplan der Polizei (`SCHICHTEN`), Mitgliedschaften (`MITGLIEDSCHAFTEN`: Feuerwehr für Polizei mit Haus, Sportverein), Level aus dem Spielstand (`level` im Stand, nur steigend), `FREISCHALTUNG_LEVEL`, Sportplatz als Gebäude mit neun Stufen und eigenen Bauphasen für den Rasen, Training als Ereignis, Fitness wirkt auf Weg, Tempo zu Fuß und Arbeit. Stand Version 2, alte Stände werden übernommen und rechnen gleich.
 - **Tests:** `node --test test/*.test.js` (48 Tests, davon 17 neu in `test/bewohner.test.js`), `node werkzeuge/pruefe-regelwerk.js` prüft die neuen Blöcke. Kaufen in der PocketBase-Laufzeit (0.40.4) geprüft.
@@ -835,7 +835,7 @@ Offen ist derzeit nichts.
 - Polizei an der Dienststelle bleibt für Polizei-Einsätze immer verfügbar (wie bisher). Der Schichtplan bestimmt nur, wann eine Polizistin oder ein Polizist für die Feuerwehr da ist.
 - Die Zeiten bis zu einem Level in 14.3 sind gegenüber der zweiten Fassung berichtigt (dort war die Levelkurve um ein Level verschoben gerechnet).
 
-**Damit es auf dem Handy ankommt:** Das Add-on 0.7.0 in Home Assistant aktualisieren. Das App-Paket baut die Pipeline nur vom Zweig `claude/code-readiness-check-40jtgv`; der Stand liegt auf `claude/jolly-allen-zfccim` und muss dorthin übernommen werden.
+**Damit es auf dem Handy ankommt:** Das Add-on 0.8.0 in Home Assistant aktualisieren. Das App-Paket baut die Pipeline nur vom Zweig `claude/code-readiness-check-40jtgv`; der Stand liegt auf `claude/jolly-allen-zfccim` und muss dorthin übernommen werden.
 
 **Als Nächstes:** D3 Zusammenarbeit von Feuerwehr und Polizei (Level 8).
 

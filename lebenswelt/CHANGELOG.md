@@ -1,12 +1,33 @@
 # Änderungen
 
-## 0.7.0
+## 0.8.0
 
 - Einsatzspiel, Dorfbewohner: Wer in ein Haus zieht, hat einen Beruf. `kaufen` mit `art: "bauplatz"` (und bei der Einliegerwohnung) nimmt `bewohner: {org, beruf, arbeitgeber}` an. Feuerwehr: `beruf: "dorf"` mit einem Arbeitgeber im Dorf (`ARBEITGEBER`, begrenzte Stellen) kommt in der Arbeitszeit vom Arbeitsplatz und braucht 60 s mehr; `beruf: "auswaerts"` fehlt werktags von 7 bis 17 Uhr. Polizei: wohnt im Dorf, Schichtdienst an der Dienststelle, zählt zu deren Personal. Wer schon da war, bleibt „wie bisher“ (`beruf: "frei"`). Ohne `bewohner` gilt das auch für neue Häuser (ältere App-Versionen).
 - Mitgliedschaften: `kaufen` mit `art: "mitgliedschaft"`. Polizistinnen und Polizisten mit Haus im Dorf treten mit `id: "feuerwehr"` in die Feuerwehr ein (Grundausbildung als Lehrgang) und rücken außerhalb ihrer Schicht mit aus; Lehrgänge und Schutzausrüstung der Feuerwehr gibt es dann auch für sie (`psa` mit `org`). Eine Person ist nie in zwei Einsätzen zugleich.
 - Level der Lebenswelt: Der Server liest es aus dem Spielstand (Summe der Skill-XP) und merkt es sich im Stand (`level`, nur steigend). `FREISCHALTUNG_LEVEL` legt fest, ab wann ein Dienst kommt (Sportverein ab 5, Rettungswache ab 16, alle zusammen ab 30).
 - Sportplatz (`GEBAEUDE.sportplatz`, Ort `sportplatz`) in neun Stufen mit Level-Grenzen, eigene Bauphasen für den Rasenplatz (im Winter länger). Sportverein (`mitgliedschaft` `sportverein`) trainiert dienstags und donnerstags um 19 Uhr; Fitness (Start 50) macht schneller zu Fuß, mit dem Rad und bei der Arbeit.
 - Stand Version 2, ältere Stände werden beim Laden übernommen.
+
+## 0.7.0
+
+- Fitness-Welt: Neue Option `fitness_personen` (HA-Benutzer-ID oder Anmeldename). Diese Personen bekommen in der App nur die Fitness-Welt: dieselbe Karte, dasselbe Einsatzspiel und derselbe Shop mit denselben Preisen, aber kein Smarthome, keine Aufgaben und kein Kraftbuch. `GET /api/lebenswelt/ich` liefert dazu `profil` (`voll` oder `fitness`).
+- Neue Route `GET /api/lebenswelt/familie`: Bewegung der letzten 14 Tage aller Personen, die in der Fitness-Welt etwas eingetragen haben (Schritte, Heim-Physio, Physio in der Praxis, Nilo schieben), dazu ihr Schrittziel. Gelesen wird aus dem Spielstand (`state.bewegungen`), es gibt keine neue Sammlung.
+- Updates per Knopf (`POST /api/lebenswelt/app-paket` und `/installieren`) sind für Personen der Fitness-Welt gesperrt (403).
+- Spielstände merken sich ihr Profil (Feld `profil`, Migration). Ohne Option `person` arbeitet Claude weiter für die eine Person mit voller Lebenswelt, auch wenn eine Fitness-Welt dazukommt.
+- Push-Nachrichten: an die Familie, wenn in der Fitness-Welt „Nilo schieben“ eingetragen wird; um 19 Uhr Ortszeit an Personen der Fitness-Welt, die heute noch nichts eingetragen haben; an die Person, die freigeben soll, sobald Wünsche zur Freigabe (Dokumente `freigabe`) angelegt werden.
+- `GET /api/lebenswelt/familie` liefert zusätzlich den Stand der Wünsche (`wuensche`: Vorschlag, Titel, Status, Anmerkung).
+- Schiffsverkehr auf der Elbe: neues Programm `ais/ais.py` empfängt AIS-Daten von aisstream.io für einen Umkreis um `zone.home` (Optionen `ais_schluessel`, `ais_radius_km`) und legt die Schiffe mit Lage relativ zum Zuhause in `/data/ais.json` ab. Neue Route `GET /api/lebenswelt/schiffe`. Im Container dafür `python3` und `py3-websockets`, Start über `start.sh`.
+
+## 0.6.2
+
+- Neue Unteraufgaben bekommen beim Anlegen zwei Wochen als `faellig`, wenn keine mitkommt: Aufgaben mit `vorgang` oder `eltern` sowie Dokumente vom Typ `unteraufgabe`. Gilt für App und Claude, nur beim Anlegen; danach lässt sich die Fälligkeit frei ändern.
+
+## 0.6.1
+
+- Vorgänge „Warten auf LKA (KTA PMK)“: Wer einen Vorgang neu auf diesen Status setzt (App, Claude, jede Route), bekommt automatisch eine Wiedervorlage in zwei Monaten als `frist` (am Monatsende gekappt, Ortszeit). Kommt in derselben Änderung eine `frist` mit, bleibt sie stehen. Regeln in `pb_hooks/vorgaenge.js`.
+- Einmaliger Nachtrag (Migration): Vorgänge, die schon beim LKA liegen und keine Frist haben, bekommen den 31.10.2026.
+- Morgens um 6:30 Uhr (Winterzeit) bzw. 7:30 Uhr (Sommerzeit) eine Push-Nachricht, wenn eine Wiedervorlage heute fällig ist. Die Nachricht nennt nur die Zahl der Vorgänge, keinen Titel und keine Nummer.
+
 ## 0.6.0
 
 - Löschwasser im Einsatzspiel: Bei Bränden mit Strahlrohren muss eine Wasserversorgung aufgebaut werden. Gewählt wird die schnellste Quelle: ein Unterflurhydrant (mit Standrohr) oder ein offenes Gewässer wie die Elbe (Pumpe, mindestens zwei A-Saugschläuche, Saugkorb), sofern die B- und C-Schläuche bis dorthin reichen. Leitung verlegen kostet Zeit (`ZEITEN.leitung_m_s`, `wasser_hydrant_s`, `wasser_ansaugen_s`), in der sich das Feuer weiter ausbreitet. Wasser im Tank überbrückt den Aufbau. Ohne erreichbare Quelle gilt der Faktor `nur_tankwasser` bzw. `ohne_wasser`. Der Plan enthält `wasser` (Quelle, Lage, Meter, Verzug).
