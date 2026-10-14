@@ -947,7 +947,8 @@ const BAU = {
   // Behelfsbetrieb, solange am Gerätehaus bzw. an der Dienststelle gebaut wird (Container-Umkleide, enge Zufahrt)
   behelf: { umziehen_s: 30, ausruecken_s: 20, reaktion_s: 20 },
   // Baustellenampel und Baufahrzeuge auf der Straße in lauten Phasen: wer in der Nähe vorbei muss, verliert Zeit
-  verkehr: { radius: 20, fahrzeug_s: 25, zu_fuss_s: 8 },
+  // radius: um Start und Ziel beim Ausrücken; weg_radius: direkt an der Route vom Haus zum Gerätehaus
+  verkehr: { radius: 20, weg_radius: 12, fahrzeug_s: 25, zu_fuss_s: 8 },
   // Anteil der Zeit, der bei diesem Wetter auf der Baustelle verloren geht (wird am Ende einmal nachgerechnet)
   wetter_verzug: { sturm: 1, schnee: 0.6, glaette: 0.6, nass: 0.25 },
   // Die Baufirma hat zwei Kolonnen; weitere Aufträge warten, bis eine frei wird
@@ -2282,6 +2283,7 @@ const GEWAESSER = [{ id: "elbe", name: "der Elbe", punkte: [[-200, -50], [200, -
 
 /** Zeiten der Simulation, die nicht an Orten hängen (spielwert). */
 const ZEITEN = {
+  abkuerzung_max: 30, // spielwert: zu Fuß und mit dem Rad am Anfang und Ende über Hof oder Platz (Einheiten, etwa 90 m)
   ausruecken_s: 45, // vom Erreichen der Mindeststärke bis zur Abfahrt
   warten_auf_staerke_max_s: 180, // danach rückt aus, wer da ist, sofern Mindeststärke erreicht
   rueckfahrt_faktor: 1.3, // ohne Sonderrechte langsamer zurück
