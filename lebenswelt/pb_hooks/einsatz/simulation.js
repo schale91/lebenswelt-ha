@@ -298,8 +298,26 @@ function inSchicht(R, p, t) {
  * Kann die Person zum Zeitpunkt t für diese Organisation ausrücken? Die Polizei an der Dienststelle ist immer besetzt
  * (wie bisher). Für die Feuerwehr zählen Beruf und Schicht: Pendler fehlen in der Arbeitszeit, wer Schicht hat, auch.
  */
+/** Läuft gerade der Wachdienst der DLRG (Wachturm gebaut, Sommerwochenende, Uhrzeit)? */
+function wachdienstAktiv(R, s, t) {
+  const W = R.WACHDIENST
+  const st = W && R.GEBAEUDE.wachstation && R.GEBAEUDE.wachstation[s.gebaeude.wachstation || 0]
+  if (!st || !st.wachdienst || !levelReicht(s, R.ORGANISATIONEN.dlrg.ab_level)) return false
+  const z = ortszeit(t)
+  return W.tage.indexOf(z.wochentag) >= 0 && W.monate.indexOf(z.monat) >= 0 && z.stunde >= W.von && z.stunde < W.bis
+}
+
+/** Sitzt die Person gerade auf dem Wachturm? Die ersten Mitglieder (nach Nummer) mit Rettungsschwimmabzeichen. */
+function aufWache(R, s, p, t) {
+  if (!s || !istMitglied(p, "dlrg") || !wachdienstAktiv(R, s, t)) return false
+  const wache = s.personal.filter((q) => istMitglied(q, "dlrg") && hatLehrgang(q, "rs_bronze", t)).sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1))).slice(0, R.WACHDIENST.personen)
+  return wache.some((q) => q.id === p.id)
+}
+
 function einsatzbereitFuer(R, p, org, t, s) {
   if (!verfuegbar(p, t) || !istMitglied(p, org)) return false
+  // Wer auf dem Wachturm sitzt, fehlt allen anderen
+  if (org !== "dlrg" && aufWache(R, s, p, t)) return false
   if (org === "polizei" && p.org === "polizei") return true
   if (org === "rettungsdienst" && p.org === "rettungsdienst") {
     // Stufe 1 der Rettungswache ist nur tagsüber besetzt
@@ -544,8 +562,8 @@ function bauFelder(s) {
     s.version = 2
   }
   if (s.level === undefined) s.level = 0
-  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
-  for (const o of ["werkstatt", "bauhof", "rettungsdienst", "drk"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
+  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft", "wachstation"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
+  for (const o of ["werkstatt", "bauhof", "rettungsdienst", "drk", "dlrg"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
 }
 
 /** Gebäude einer Organisation (geraetehaus, dienststelle, werkstatt, bauhof). */
@@ -921,7 +939,9 @@ function plane(R, s, e, alarm, umwelt) {
   const reaktionS = (p) =>
     org === "polizei"
       ? POLIZEI_REAKTION_S + psaEffekt(R, p, "polizei").reaktion_s + (behelfAktiv(R, s, "dienststelle", alarm) ? R.BAU.behelf.reaktion_s : 0)
-      : ((R.ORGANISATIONEN && R.ORGANISATIONEN[org] && R.ORGANISATIONEN[org].reaktion_s) || 120) + (behelfAktiv(R, s, geb, alarm) ? R.BAU.behelf.reaktion_s : 0)
+      : org === "dlrg" && aufWache(R, s, p, alarm)
+        ? R.WACHDIENST.reaktion_s
+        : ((R.ORGANISATIONEN && R.ORGANISATIONEN[org] && R.ORGANISATIONEN[org].reaktion_s) || 120) + (behelfAktiv(R, s, geb, alarm) ? R.BAU.behelf.reaktion_s : 0)
   const bereit = personen
     .map((p) => ({ p, t: org === "feuerwehr" ? feuerwehrBereit(R, s, p, alarm, wetter) : alarm + reaktionS(p) * 1000 }))
     .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : 1))
@@ -1305,10 +1325,10 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     // Für den Patienten zählt die Zeit ab dem ersten Notruf; Erste Hilfe leistet die Feuerwehr ab ihrem Eintreffen
     e.notruf = folgeVon ? folgeVon.notruf || folgeVon.meldung : t
     const fp = folgeVon && folgeVon.plan
-    const helfer = folgeVon && (R.EINSATZARTEN[folgeVon.art].org === "feuerwehr" || R.EINSATZARTEN[folgeVon.art].org === "drk")
+    const helfer = folgeVon && ["feuerwehr", "drk", "dlrg"].indexOf(R.EINSATZARTEN[folgeVon.art].org) >= 0
     // Sanitätswachdienst vor Ort: Erste Hilfe sofort
     const wache = s.laufend.find((x) => R.EINSATZARTEN[x.art].wache && x.ort === ort && x.plan && x.plan.eintreffen <= t && x.plan.arbeit_ende > t)
-    if (wache) e.erste_hilfe = t
+    if (wache || (R.WACHDIENST && ort === R.WACHDIENST.ort && wachdienstAktiv(R, s, t))) e.erste_hilfe = t
     else if (fp && fp.eintreffen && helfer) {
       const leute = fp.personen.map((x) => s.personal.find((q) => q.id === x.id)).filter(Boolean)
       if ((fp.bestand && fp.bestand.notfallrucksack) || leute.some((q) => hatLehrgang(q, "erste_hilfe", fp.eintreffen))) e.erste_hilfe = fp.eintreffen
@@ -1839,6 +1859,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (p.lehrgang_laeuft) return fehler("Die Person ist schon in einem Lehrgang.")
     for (const v of l.voraussetzung || []) if (!hatLehrgang(p, v, jetzt)) return fehler("Voraussetzung fehlt: " + R.LEHRGAENGE[v].name + ".")
     for (const [g, st] of Object.entries(l.gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
+    if (l.fitness_min && fitnessVon(R, p) < l.fitness_min) return fehler("Dafür braucht es Fitness " + l.fitness_min + ". Training im Sportverein hilft.")
     roh = l.preis
     p.lehrgang_laeuft = { id, bis: jetzt + Math.round(l.dauer_h * STD * ausbauFaktor(R, s, "lehrgang_faktor")) }
   } else if (art === "psa") {
@@ -1923,6 +1944,7 @@ function kaufe(stand, auftrag, jetzt, R) {
       if (m.braucht_haus && !p.haus) return fehler("Nur wer im Dorf wohnt, kann eintreten.")
       if ((p.mitglied || []).length >= 1) return fehler("Mehr als zwei Organisationen sind nicht möglich.")
       if (p.lehrgang_laeuft) return fehler("Die Person ist gerade in einem Lehrgang.")
+      if (m.fitness_min && fitnessVon(R, p) < m.fitness_min) return fehler("Dafür braucht es Fitness " + m.fitness_min + ". Training im Sportverein hilft.")
       p.mitglied = (p.mitglied || []).concat([id])
       if (m.grundausbildung) p.lehrgang_laeuft = { id: m.grundausbildung, bis: jetzt + Math.round(m.grundausbildung_h * STD) }
     }
@@ -1985,5 +2007,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
