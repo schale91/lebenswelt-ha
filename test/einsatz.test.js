@@ -406,3 +406,40 @@ test("Ohne Kräfte wartet ein Einsatz und wird alarmiert, sobald jemand da ist; 
   assert.equal(v.status, "verfallen")
   assert.equal(v.grund, "Keine Einsatzkraft verfügbar.")
 })
+
+test("Löschwasser: schnellste Quelle aus Hydrant oder Elbe, Tank überbrückt den Aufbau", () => {
+  const W = S._intern.wasserversorgung
+  const s = S.neuerStand(R, T0, 51)
+  const ort = { x: -40, z: -2 } // 10 Einheiten = 30 m vom Hydranten h1
+  const schlauch = { b_schlauch: 4, c_schlauch_15: 6 } // 170 m
+  // Hydrant mit Standrohr, ohne Tank: Aufbau voll als Verzug
+  const h = W(R, s, ort, { ...schlauch, standrohr: 1 }, 200)
+  assert.equal(h.quelle, "hydrant")
+  assert.equal(h.meter, 30)
+  assert.equal(h.sekunden, Math.round(R.ZEITEN.wasser_hydrant_s + 30 / R.ZEITEN.leitung_m_s))
+  // Mit 1000 l im Tank (5 min bei 200 l/min) kein Verzug
+  assert.equal(W(R, s, ort, { ...schlauch, standrohr: 1, fahrzeug_tank_l: 1000 }, 200).sekunden, 0)
+  // Ohne Standrohr, aber mit Pumpe und Saugausrüstung: Elbe (z -50) in 48 x 3 = 144 m
+  const e = W(R, s, ort, { ...schlauch, pfpn_1000: 1, a_saugschlauch: 4, saugkorb: 1 }, 200)
+  assert.equal(e.quelle, "gewaesser")
+  assert.equal(e.meter, 144)
+  // Ein Saugschlauch reicht nicht
+  assert.equal(W(R, s, ort, { ...schlauch, pfpn_1000: 1, a_saugschlauch: 1, saugkorb: 1 }, 200).quelle, "keine")
+  // Schläuche zu kurz für den Hydranten: nur Tank
+  const t = W(R, s, ort, { c_schlauch_15: 1, standrohr: 1, fahrzeug_tank_l: 750 }, 200)
+  assert.equal(t.quelle, "tank")
+  assert.equal(t.faktor, R.ZEITEN.nur_tankwasser)
+})
+
+test("Löschwasser: gekaufte Hydranten stehen an den Hydrantenplätzen", () => {
+  let s = S.neuerStand(R, T0, 52)
+  assert.equal(S._intern.hydrantenVon(R, s).length, 3)
+  s = kaufe(s, { art: "ausbau", id: "hydrant_a" })
+  const h = S._intern.hydrantenVon(R, s)
+  assert.equal(h.length, 4)
+  assert.deepEqual(h[3], R.HYDRANT_PLAETZE[0])
+  // Ohne Platz auf der Karte lässt sich kein Hydrant kaufen
+  const RO = Object.assign({}, R, { HYDRANT_PLAETZE: [] })
+  const r = S.kaufe(S.neuerStand(RO, T0, 53), { art: "ausbau", id: "hydrant_b" }, T0, RO)
+  assert.match(r.fehler, /Platz/)
+})

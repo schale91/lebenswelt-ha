@@ -87,7 +87,24 @@ function mitKarte(r) {
   const neubaugebiete = R.NEUBAUGEBIETE.map((n) => (k.neubaugebiete && k.neubaugebiete[n.id] ? Object.assign({}, n, { ursprung: k.neubaugebiete[n.id] }) : n))
   const zahl = (v) => typeof v === "number" && isFinite(v)
   const schutz = Array.isArray(k.schutz) ? k.schutz.filter((z) => z && zahl(z.x) && zahl(z.z) && zahl(z.r) && z.r > 0) : R.SCHUTZZONEN || []
-  return Object.assign({}, R, { STRASSEN: k.strassen, ORTE: orte, BAUPLAETZE: bauplaetze, NEUBAUGEBIETE: neubaugebiete, SCHUTZZONEN: schutz, KARTE: "privat" })
+  // Löschwasser der echten Karte; fehlt ein Feld, gilt das Regelwerk
+  const punkte = (l) => (Array.isArray(l) ? l.filter((h) => h && typeof h.id === "string" && zahl(h.x) && zahl(h.z)).map((h) => ({ id: h.id, x: h.x, z: h.z })) : null)
+  const hydranten = punkte(k.hydranten) || R.HYDRANTEN
+  const hydrantPlaetze = punkte(k.hydrant_plaetze) || R.HYDRANT_PLAETZE
+  const gewaesser = Array.isArray(k.gewaesser)
+    ? k.gewaesser.filter((g) => g && typeof g.name === "string" && Array.isArray(g.punkte) && g.punkte.length >= 2 && g.punkte.every((p) => Array.isArray(p) && zahl(p[0]) && zahl(p[1])))
+    : R.GEWAESSER
+  return Object.assign({}, R, {
+    STRASSEN: k.strassen,
+    ORTE: orte,
+    BAUPLAETZE: bauplaetze,
+    NEUBAUGEBIETE: neubaugebiete,
+    SCHUTZZONEN: schutz,
+    HYDRANTEN: hydranten,
+    HYDRANT_PLAETZE: hydrantPlaetze,
+    GEWAESSER: gewaesser,
+    KARTE: "privat",
+  })
 }
 
 function karteGueltig(k) {

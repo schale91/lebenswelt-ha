@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.6.0
+
+- Löschwasser im Einsatzspiel: Bei Bränden mit Strahlrohren muss eine Wasserversorgung aufgebaut werden. Gewählt wird die schnellste Quelle: ein Unterflurhydrant (mit Standrohr) oder ein offenes Gewässer wie die Elbe (Pumpe, mindestens zwei A-Saugschläuche, Saugkorb), sofern die B- und C-Schläuche bis dorthin reichen. Leitung verlegen kostet Zeit (`ZEITEN.leitung_m_s`, `wasser_hydrant_s`, `wasser_ansaugen_s`), in der sich das Feuer weiter ausbreitet. Wasser im Tank überbrückt den Aufbau. Ohne erreichbare Quelle gilt der Faktor `nur_tankwasser` bzw. `ohne_wasser`. Der Plan enthält `wasser` (Quelle, Lage, Meter, Verzug).
+- Neue Listen `HYDRANTEN`, `HYDRANT_PLAETZE` und `GEWAESSER` im Regelwerk; die private Karte ersetzt sie (Felder `hydranten`, `hydrant_plaetze`, `gewaesser`). Überflurhydranten gibt es nicht.
+- Ausbau `hydrant_a` und `hydrant_b`: zwei zusätzliche Unterflurhydranten mit Hinweisschild an den Hydrantenplätzen der Karte.
+
 ## 0.5.2
 
 - Einsätze ohne freie Kräfte verfallen nicht mehr sofort: Sie bleiben offen (`wartet: true`, mit Grund), werden zu jeder vollen Minute und direkt nach jedem Kauf neu alarmiert und verfallen erst, wenn ihre Frist abläuft. Wer spät alarmiert wird, kommt entsprechend später an (das kostet wie bisher Sterne).
