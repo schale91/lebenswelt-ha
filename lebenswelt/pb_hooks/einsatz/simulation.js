@@ -1100,7 +1100,9 @@ function plane(R, s, e, alarm, umwelt) {
     if (wasser.faktor) merke("wasser", wasser.faktor, wasser.text)
   }
   const wasserMin = wasser ? wasser.sekunden / 60 : 0
-  if (art.wachstum && verzugMin + wasserMin > 0) merke("ausbreitung", 1 + art.wachstum * (verzugMin + wasserMin), wasserMin ? "Feuer hat sich bis zum Eintreffen und bis zur Wasserversorgung ausgebreitet" : "Feuer hat sich bis zum Eintreffen ausgebreitet")
+  // Nach der ursprünglichen Frist breitet sich das Feuer nicht weiter aus (abgebrannt)
+  const ausbreitungMin = Math.min(verzugMin, art.ablauf_min) + wasserMin
+  if (art.wachstum && ausbreitungMin > 0) merke("ausbreitung", 1 + art.wachstum * ausbreitungMin, wasserMin ? "Feuer hat sich bis zum Eintreffen und bis zur Wasserversorgung ausgebreitet" : "Feuer hat sich bis zum Eintreffen ausgebreitet")
   const th = String(art.stichwort || "").indexOf("TH") === 0
   merke("ausruestung", bester.te.arbeit * (th ? bester.te.arbeit_th : 1), "persönliche Ausrüstung")
   if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
@@ -1302,6 +1304,14 @@ function bedingungFaktor(art, t, wetter) {
   return b.sonst_faktor === undefined ? 1 : b.sonst_faktor
 }
 
+/** Verfallszeitpunkt: lange Frist (R.VERFALL), Folgeeinsätze für die Dauer des Auslösers höchstens bis zu dessen Ende. */
+function verfallVon(R, art, t, folgeVon) {
+  const kurz = t + art.ablauf_min * MIN
+  if (!R.VERFALL) return kurz
+  if (folgeVon && art.dauer_wie_ausloeser && folgeVon.ende) return Math.max(kurz, Math.min(t + R.VERFALL.frist_min * MIN, folgeVon.ende))
+  return Math.max(kurz, t + R.VERFALL.frist_min * MIN)
+}
+
 function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const art = R.EINSATZARTEN[id]
   s.zaehler += 1
@@ -1315,7 +1325,7 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     art: id,
     ort,
     meldung: t,
-    verfall: t + art.ablauf_min * MIN,
+    verfall: verfallVon(R, art, t, folgeVon),
     status: "gemeldet",
     wetter: umwelt(t),
     plan: null,
@@ -1655,16 +1665,19 @@ function aufraeumen(s, t) {
 }
 
 /** Nächstes Ereignis bis `bis`: {t, typ, id}. Reihenfolge bei Gleichstand: Ende, Eintreffen, Meldung; dann nach ID. */
-function naechstesEreignis(s, bis, vorher) {
+function naechstesEreignis(R, s, bis, vorher) {
   let best = null
   const nimm = (t, typ, rang, id) => {
     if (t > bis) return
     if (!best || t < best.t || (t === best.t && (rang < best.rang || (rang === best.rang && id < best.id)))) best = { t, typ, rang, id }
   }
-  let wartet = false
+  // Raster für das erneute Alarmieren: jede Minute, nach der ursprünglichen Frist der Einsatzart gröber
+  let raster = 0
   for (const e of s.laufend) {
     if (e.wartet) {
-      wartet = true
+      const art = R.EINSATZARTEN[e.art]
+      const r = R.VERFALL && vorher >= e.meldung + art.ablauf_min * MIN ? R.VERFALL.raster_min * MIN : MIN
+      if (!raster || r < raster) raster = r
       nimm(e.verfall, "verfall", 0, e.id)
     } else if (e.status === "verfallen") nimm(e.ende, "ende", 0, e.id)
     else if (!e.folgen_erzeugt) nimm(e.plan.eintreffen, "eintreffen", 1, e.id)
@@ -1675,7 +1688,7 @@ function naechstesEreignis(s, bis, vorher) {
   for (const [tag, d] of Object.entries(s.tage || {})) if (!d.abgerechnet) nimm(tagesende(tag), "tag", 4, tag)
   if (s.training_naechster) nimm(s.training_naechster, "training", 6, "")
   // Solange ein Einsatz wartet: zu jeder vollen Minute neu alarmieren (festes Raster, damit Teilrechnungen gleich bleiben)
-  if (wartet) nimm(Math.floor(vorher / MIN) * MIN + MIN, "warten", 5, "")
+  if (raster) nimm(Math.floor(vorher / raster) * raster + raster, "warten", 5, "")
   return best
 }
 
@@ -1694,7 +1707,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   let schutz = 0
   let vorher = s.bis
   for (;;) {
-    const ev = naechstesEreignis(s, bis, vorher)
+    const ev = naechstesEreignis(R, s, bis, vorher)
     if (!ev) break
     vorher = ev.t
     if (++schutz > 200000) throw new Error("Simulation: zu viele Ereignisse")
@@ -1712,7 +1725,9 @@ function fortschreiben(stand, bis, umwelt, R) {
       }
       // Baustellen-Einsätze nur, solange eine passende Baustelle läuft
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
-      if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
+      // Wartet schon ein Einsatz dieser Art auf Kräfte, kommt kein zweiter dazu
+      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id)
+      if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f) && !wartetSchon) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
     } else if (ev.typ === "warten") {
       versucheWartende(R, s, ev.t, wetter)
@@ -2051,5 +2066,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

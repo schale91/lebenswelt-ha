@@ -19,13 +19,13 @@ function kaufe(s, auftrag, t = T0, sofort = true) {
 }
 
 /** Katze am Baum beim Feuerwehrhaus zum Zeitpunkt t auslösen und bis zum Ende fortschreiben. */
-function katze(s, t) {
+function katze(s, t, dauer = 2 * STD) {
   const x = JSON.parse(JSON.stringify(s))
   for (const a of Object.values(x.einsatzarten)) a.naechster = t + 1e12
   x.training_naechster = t + 1e12
   x.bis = Math.max(x.bis, t)
   const e = S._intern.erzeuge(R, x, "tier_katze", t, trocken, null, "baum_feuerwehr")
-  const fertig = S.fortschreiben(x, t + 2 * STD, trocken, R)
+  const fertig = S.fortschreiben(x, t + dauer, trocken, R)
   return fertig.abgeschlossen.find((a) => a.id === e.id) || fertig.laufend.find((a) => a.id === e.id)
 }
 
@@ -56,9 +56,11 @@ test("Ohne Angabe zieht wie bisher eine immer verfügbare Feuerwehrkraft ein", (
 
 test("Wer auswärts arbeitet, fehlt werktags in der Arbeitszeit, abends ist er da", () => {
   const s = mitHaus({ org: "feuerwehr", beruf: "auswaerts" })
-  const tags = katze(s, T0 + MIN)
-  assert.equal(tags.status, "verfallen")
-  assert.match(tags.grund, /Keine Einsatzkraft/)
+  // Werktags um 10 Uhr ist niemand da: Der Einsatz wartet bis zum Feierabend und bringt dann nur noch einen Stern
+  const tags = katze(s, T0 + MIN, 12 * STD)
+  assert.equal(tags.status, "abgeschlossen")
+  assert.ok(tags.alarm_spaeter_s >= 6 * 3600, "erst nach Feierabend: " + tags.alarm_spaeter_s)
+  assert.equal(tags.bewertung.sterne, 1)
   assert.equal(katze(s, FEIERABEND).status, "abgeschlossen")
   // Samstag 10 Uhr: keine Arbeitszeit
   assert.equal(katze(s, T0 + 4 * 24 * STD).status, "abgeschlossen")
@@ -106,6 +108,8 @@ test("Polizist im Dorf tritt in die Feuerwehr ein: Grundausbildung, danach auße
   assert.ok(q.lehrgang_laeuft && q.lehrgang_laeuft.id === "tm1")
   assert.equal(S._intern.einsatzbereitFuer(R, q, "feuerwehr", T0 + MIN), false, "während der Grundausbildung nicht")
   const nachher = T0 + 20 * STD
+  // Keine Einsätze dazwischen, damit niemand gerade unterwegs ist
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
   s = S.fortschreiben(s, nachher, trocken, R)
   const r = s.personal[0]
   assert.ok(r.lehrgaenge.tm1, "Grundausbildung abgeschlossen")

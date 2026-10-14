@@ -167,7 +167,7 @@ function meldeNeue(app, besitzer, neu, jetzt) {
       const art = R.EINSATZARTEN[e.art] || {}
       const wer = art.org === "polizei" ? "Polizei" : "Feuerwehr"
       const ort = (R.ORTE[e.ort] && R.ORTE[e.ort].name) || ""
-      p.sende(app, besitzer, { titel: `Einsatz: ${art.stichwort || e.art}`, text: `${wer} alarmiert${ort ? " · " + ort : ""}. Schau zu, wie es läuft.`, kanal: "einsatz", id: e.id, ttl_s: Math.max(60, Math.round((e.verfall - jetzt) / 1000)) })
+      p.sende(app, besitzer, { titel: `Einsatz: ${art.stichwort || e.art}`, text: `${wer} alarmiert${ort ? " · " + ort : ""}. Schau zu, wie es läuft.`, kanal: "einsatz", id: e.id, ttl_s: Math.max(60, Math.round(((e.ende || e.verfall) - jetzt) / 1000)) })
     }
   } catch (err) {
     console.log("Einsatzspiel: Push fehlgeschlagen", err)

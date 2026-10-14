@@ -2192,11 +2192,24 @@ const STERNE = {
     { ueber: 0.3, abzug: 1 },
     { ueber: 0.6, abzug: 2 },
     { ueber: 1, abzug: 3 },
+    { ueber: 5, abzug: 4 }, // sehr spät (etwa nach langem Warten auf Kräfte): nur noch ein Stern
   ],
   psa_unzureichend: 0.5,
   schaden_hoch: 1, // Brand ist stark angewachsen (wachstum · Verzug > 1)
   runden: "halbe", // halbe Sterne erlaubt
   freischaltung_standard: 3,
+}
+
+/**
+ * Verfall (Spielwerte): Einsätze bleiben lange offen. Wer spät kommt, bekommt wenig Sterne, aber der Einsatz ist nicht verloren.
+ * frist_min: so lange wartet ein Einsatz mindestens auf Kräfte; gilt, wenn ablauf_min der Einsatzart kürzer ist.
+ * raster_min: nach Ablauf von ablauf_min wird ein wartender Einsatz nur noch in diesem Raster neu alarmiert (nach Käufen sofort).
+ * Folgeeinsätze, die so lange laufen wie ihr Auslöser (Absichern, Verkehr regeln), verfallen spätestens mit dessen Ende.
+ * Ein Feuer breitet sich nach ablauf_min nicht weiter aus (abgebrannt, dann nur noch Nachlöschen).
+ */
+const VERFALL = {
+  frist_min: 24 * 60,
+  raster_min: 5,
 }
 
 /**
@@ -2293,6 +2306,7 @@ const ZEITEN = {
 }
 
 module.exports = {
+  VERFALL,
   VERSION,
   PREISFAKTOR,
   PREIS_MINIMUM,

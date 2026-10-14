@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.17.0
+
+- Einsatzspiel: Einsätze verfallen nicht mehr nach wenigen Minuten. Sie warten bis zu einem Tag auf Kräfte (`VERFALL.frist_min`) und werden alarmiert, sobald jemand frei ist oder das fehlende Gerät gekauft wurde. Wer spät kommt, bekommt wenig Sterne: Ab der sechsfachen Zielzeit bleibt ein Stern (neue Stufe in `STERNE.einsatzende`).
+- Solange ein Einsatz einer Art wartet, kommt kein zweiter derselben Art dazu. Nach der ursprünglichen Frist wird nur noch alle fünf Minuten neu alarmiert (nach Käufen sofort).
+- Folgeeinsätze, die so lange laufen wie ihr Auslöser (Absperren, Ausleuchten, Behandlungsplatz), verfallen spätestens mit dessen Ende.
+- Ein Feuer breitet sich nach der ursprünglichen Frist nicht weiter aus, die Arbeit vor Ort wächst also nicht ins Endlose.
+- Push-Benachrichtigungen zu Einsätzen gelten bis zum Einsatzende.
+
 ## 0.16.0
 
 - Einsatzspiel, alle zusammen (ab Level 30): Sechs Großlagen (`grosslage`), die nicht gekauft werden, sondern ab dem Level selten von selbst kommen: Elbhochwasser, Sturm im ganzen Dorf, Busunfall mit vielen Verletzten, Bombenfund mit Evakuierung (bei Erdarbeiten an einer Baustelle), Scheunenbrand mit Stromausfall, Dorffest-Wochenende. Die Leitstelle alarmiert alle beteiligten Dienste gleichzeitig, das THW kommt wie sonst auf Anforderung. Jede Person ist nie in zwei Einsätzen zugleich.

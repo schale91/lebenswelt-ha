@@ -33,10 +33,10 @@ Freischaltung ◄── Sterne ◄── Bewertung ◄── Arbeit vor Ort (ode
 
 | Schritt | Was passiert |
 |---|---|
-| 1 | Du kaufst die Einsatzart **Katze auf Baum** (50 Münzen). Ab jetzt sitzt etwa einmal pro Stunde eine Katze in einem Baum. Kommt innerhalb von 5 Minuten niemand, verfällt der Einsatz („Die Katze ist allein heruntergeklettert“). |
-| 2 | Ohne Feuerwehr verfällt jeder Einsatz. Das Protokoll zeigt: „Keine Einsatzkraft verfügbar“. |
+| 1 | Du kaufst die Einsatzart **Katze auf Baum** (50 Münzen). Ab jetzt sitzt etwa einmal pro Stunde eine Katze in einem Baum. Kommt innerhalb von 5 Minuten niemand, gibt es nur noch wenige Sterne. Erst wenn einen Tag lang niemand kommt, verfällt der Einsatz („Die Katze ist allein heruntergeklettert“). |
+| 2 | Ohne Feuerwehr wartet der Einsatz einen Tag und verfällt dann. Das Protokoll zeigt: „Keine Einsatzkraft verfügbar“. Solange eine Katze wartet, kommt keine zweite dazu. |
 | 3 | Du kaufst einen **Bauplatz mit Haus**. Dort zieht eine Einsatzkraft ein, mit abgeschlossener Grundausbildung (Truppmann Teil 1), Grund-PSA und zu Fuß. Ob Feuerwehrfrau oder Feuerwehrmann, legst du beim Einzug selbst fest. |
-| 4 | Die Einsatzkraft läuft bei Alarm zum Unterstand am Dorfplatz. Ohne Leiter kann sie nichts tun, der Einsatz verfällt („Leiter fehlt“). |
+| 4 | Die Einsatzkraft läuft bei Alarm zum Unterstand am Dorfplatz. Ohne Leiter kann sie nichts tun, der Einsatz wartet („Leiter fehlt“). Wird die Leiter gekauft, rückt sie noch aus, mit wenig Sternen. |
 | 5 | Du kaufst eine **Klappleiter** oder zwei **Steckleiterteile**. Jetzt klappt die Rettung, aber höchstens mit 3 Sternen, weil niemand die Leiter sichert (FwDV 10). |
 | 6 | Ein zweites Haus, ein Fahrrad, ein Handzugwagen, Tierschutzhandschuhe und eine Transportbox bringen dich auf 5 Sterne. Ab 3 Sternen ist der **Mülltonnenbrand** freigeschaltet. |
 
@@ -48,7 +48,7 @@ Jede Einsatzart wird freigeschaltet, wenn die vorige gut genug lief (Sterne in K
 
 **Feuerwehr**
 
-- Katze auf Baum (Start, stündlich, Verfall 5 min)
+- Katze auf Baum (Start, stündlich, Frist 5 min, danach wenig Sterne)
   - Mülltonnenbrand (3★)
     - **Heckenbrand** (3★, alle 3 h, 10 min Löschzeit, breitet sich aus)
       - Wasser im Keller (3★, häufiger bei Regen)
