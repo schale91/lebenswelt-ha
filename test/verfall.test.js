@@ -88,3 +88,16 @@ test("30 Tage ohne Einsatzkräfte: immer nur eine wartende Katze, schnell gerech
   assert.ok(nach.laufend.filter((e) => e.wartet).length <= 1)
   assert.ok(nach.abgeschlossen.length >= 25 && nach.abgeschlossen.length <= 31, String(nach.abgeschlossen.length))
 })
+
+test("Kein zweiter Einsatz derselben Art an einem Ort, an dem noch einer läuft", () => {
+  let s = S.neuerStand(R, T0, 11)
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const orte = R.EINSATZARTEN.tier_katze.orte
+  // An allen Bäumen bis auf einen sitzt schon eine Katze: Die nächste kommt an den freien Baum
+  for (const o of orte.slice(0, -1)) S._intern.erzeuge(R, s, "tier_katze", T0, trocken, null, o)
+  for (let i = 0; i < 5; i++) {
+    const x = JSON.parse(JSON.stringify(s))
+    const e = S._intern.erzeuge(R, x, "tier_katze", T0 + MIN * (i + 1), trocken, null)
+    assert.equal(e.ort, orte[orte.length - 1])
+  }
+})

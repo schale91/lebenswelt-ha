@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.18.0
+
+- Einsatzspiel, Weg zum Gerätehaus: Zu Fuß und mit dem Rad geht es über den Gehweg entlang der Straßen (`fussroute`), abgekürzt wird nur am Anfang und am Ende über Hof oder Platz, höchstens `ZEITEN.abkuerzung_max` (30 Einheiten, etwa 90 m). Mit dem Auto über die Straße (`strassenroute`), nicht mehr quer durch Gärten. Auch der Trupp zu Fuß zur Einsatzstelle nimmt den Gehweg.
+- Hindernisse direkt am Weg vom Haus (`hindernisseAmWeg`, `BAU.verkehr.weg_radius`): Baustellen in lauten Phasen und Pannen oder Unfälle auf der Straße. Zu Fuß und mit dem Rad wird davor gewartet (`zu_fuss_s`), mit dem Auto vorsichtig vorbeigefahren (`fahrzeug_s`).
+- Der Plan jeder Einsatzkraft enthält ihren Weg (`weg`: Start, Verkehrsmittel, los, da, Halt an Hindernissen), damit die App ihn genau so zeigt.
+- Kein zweiter Einsatz derselben Art an einem Ort, an dem gerade noch einer läuft (keine zweite Katze im selben Baum).
+
 ## 0.17.0
 
 - Einsatzspiel: Einsätze verfallen nicht mehr nach wenigen Minuten. Sie warten bis zu einem Tag auf Kräfte (`VERFALL.frist_min`) und werden alarmiert, sobald jemand frei ist oder das fehlende Gerät gekauft wurde. Wer spät kommt, bekommt wenig Sterne: Ab der sechsfachen Zielzeit bleibt ein Stern (neue Stufe in `STERNE.einsatzende`).

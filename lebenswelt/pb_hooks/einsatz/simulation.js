@@ -12,7 +12,6 @@ const MIN = 60 * 1000
 const STD = 60 * MIN
 const TRAGEN_SLOTS_JE_PERSON = 2 // spielwert: was eine Einsatzkraft zu Fuß aus dem Lager mitnehmen kann
 const POLIZEI_REAKTION_S = 30 // spielwert: Streife an der Dienststelle bricht auf
-const LUFTLINIE_FAKTOR = 1.3 // zu Fuß und mit dem Rad über Wege und Gärten
 const ZU_FUSS_POLIZEI_MS = 1.4
 const VERGEBLICH_MS = 10 * MIN // spielwert: wer umsonst zum Gerätehaus kam, ist so lange gebunden
 
@@ -116,17 +115,35 @@ function netz(R) {
   k.forEach((n, i) => (idx[n.id] = i))
   const n = k.length
   const d = []
+  // nx[i][j]: nächster Knoten auf dem kürzesten Weg von i nach j (für die Route, nicht nur die Länge)
+  const nx = []
   for (let i = 0; i < n; i++) {
     d.push([])
-    for (let j = 0; j < n; j++) d[i].push(i === j ? 0 : Infinity)
+    nx.push([])
+    for (let j = 0; j < n; j++) {
+      d[i].push(i === j ? 0 : Infinity)
+      nx[i].push(i === j ? j : -1)
+    }
   }
   const kanten = R.STRASSEN.kanten.map((e) => ({ a: idx[e.von], b: idx[e.nach], l: e.laenge }))
   for (const e of kanten) {
-    d[e.a][e.b] = Math.min(d[e.a][e.b], e.l)
-    d[e.b][e.a] = Math.min(d[e.b][e.a], e.l)
+    if (e.l < d[e.a][e.b]) {
+      d[e.a][e.b] = e.l
+      nx[e.a][e.b] = e.b
+    }
+    if (e.l < d[e.b][e.a]) {
+      d[e.b][e.a] = e.l
+      nx[e.b][e.a] = e.a
+    }
   }
-  for (let m = 0; m < n; m++) for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (d[i][m] + d[m][j] < d[i][j]) d[i][j] = d[i][m] + d[m][j]
-  netzCache = { quelle: R.STRASSEN, knoten: k, kanten, d }
+  for (let m = 0; m < n; m++)
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++)
+        if (d[i][m] + d[m][j] < d[i][j]) {
+          d[i][j] = d[i][m] + d[m][j]
+          nx[i][j] = nx[i][m]
+        }
+  netzCache = { quelle: R.STRASSEN, knoten: k, kanten, d, nx }
   return netzCache
 }
 
@@ -162,13 +179,89 @@ function strassenweg(R, p, q) {
   return a.ab + innen + b.ab
 }
 
+/** Dieselbe Route als Punktfolge: Zufahrt, Straße (Knoten), Abfahrt. Die App zeichnet die Wege danach. */
+function strassenroute(R, p, q) {
+  const N = netz(R)
+  const a = projektion(N, p)
+  const b = projektion(N, q)
+  const ea = N.kanten[a.kante]
+  const eb = N.kanten[b.kante]
+  const auf = (e, t) => ({ x: N.knoten[e.a].x + (N.knoten[e.b].x - N.knoten[e.a].x) * t, z: N.knoten[e.a].z + (N.knoten[e.b].z - N.knoten[e.a].z) * t })
+  const pa = auf(ea, a.t)
+  const pb = auf(eb, b.t)
+  if (a.kante === b.kante) return ohneDoppelte([p, pa, pb, q])
+  let best = null
+  let bestL = Infinity
+  for (const [ka, da] of [[ea.a, a.t * ea.l], [ea.b, (1 - a.t) * ea.l]])
+    for (const [kb, db] of [[eb.a, b.t * eb.l], [eb.b, (1 - b.t) * eb.l]]) {
+      const l = da + N.d[ka][kb] + db
+      if (l < bestL) {
+        bestL = l
+        best = [ka, kb]
+      }
+    }
+  const mitte = []
+  for (let k = best[0]; k >= 0; k = k === best[1] ? -1 : N.nx[k][best[1]]) mitte.push({ x: N.knoten[k].x, z: N.knoten[k].z })
+  return ohneDoppelte([p, pa].concat(mitte).concat([pb, q]))
+}
+
+/** Aufeinanderfolgende gleiche Punkte entfernen. */
+function ohneDoppelte(punkte) {
+  return punkte.filter((x, i) => i === 0 || luftlinie(x, punkte[i - 1]) > 0.01)
+}
+
 function luftlinie(p, q) {
   return Math.hypot(p.x - q.x, p.z - q.z)
 }
 
-/** Weg zu Fuß oder mit dem Rad: über Wege und Gärten, höchstens so lang wie über die Straße. */
+/** Abstand eines Punkts zu einer Linie aus Punkten. */
+function abstandZurLinie(p, linie) {
+  let best = Infinity
+  for (let i = 1; i < linie.length; i++) {
+    const a = linie[i - 1]
+    const b = linie[i]
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz || 1)))
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.z - (a.z + t * dz)))
+  }
+  return best
+}
+
+function linienLaenge(punkte) {
+  let l = 0
+  for (let i = 1; i < punkte.length; i++) l += luftlinie(punkte[i - 1], punkte[i])
+  return l
+}
+
+/**
+ * Weg zu Fuß und mit dem Rad: auf dem Gehweg entlang der Straßen. Nur am Anfang und am Ende darf über Hof, Platz oder
+ * Garten abgekürzt werden, höchstens ZEITEN.abkuerzung_max (z. B. vom Gehweg über den Hof zum Feuerwehrhaus).
+ */
+function fussroute(R, p, q) {
+  const nah = (R.ZEITEN && R.ZEITEN.abkuerzung_max) || 0
+  if (luftlinie(p, q) <= nah) return [p, q]
+  let best = strassenroute(R, p, q)
+  let bestL = linienLaenge(best)
+  const N = netz(R)
+  const vorn = N.knoten.filter((k) => luftlinie(p, k) <= nah)
+  const hinten = N.knoten.filter((k) => luftlinie(q, k) <= nah)
+  const pruefe = (route) => {
+    const l = linienLaenge(route)
+    if (l < bestL - 0.01) {
+      best = route
+      bestL = l
+    }
+  }
+  for (const k of hinten) pruefe(ohneDoppelte(strassenroute(R, p, k).concat([q])))
+  for (const k of vorn) pruefe(ohneDoppelte([p].concat(strassenroute(R, k, q))))
+  for (const a of vorn) for (const b of hinten) pruefe(ohneDoppelte([p].concat(strassenroute(R, a, b)).concat([q])))
+  return best
+}
+
+/** Länge des Wegs zu Fuß oder mit dem Rad (fussroute). */
 function fussweg(R, p, q) {
-  return Math.min(strassenweg(R, p, q), luftlinie(p, q) * LUFTLINIE_FAKTOR)
+  return linienLaenge(fussroute(R, p, q))
 }
 
 function punktVon(R, stand, ort) {
@@ -735,6 +828,29 @@ function baustellenAmWeg(R, s, punkte, t) {
   })
 }
 
+/**
+ * Hindernisse direkt an einer Route (Punktfolge): Baustellen in lauten Phasen und offene Einsätze, die die Straße
+ * sperren (Panne, Unfall). Zu Fuß und mit dem Rad wird davor gewartet, mit dem Auto vorsichtig vorbeigefahren.
+ * Am Ziel selbst zählt nichts (eine Baustelle am Gerätehaus hat ihren eigenen Behelfsbetrieb).
+ */
+function hindernisseAmWeg(R, s, route, t) {
+  const r = R.BAU.verkehr.weg_radius || 12
+  const ziel = route[route.length - 1]
+  const aus = []
+  const nimm = (p, name) => {
+    if (p && luftlinie(p, ziel) > 4 && abstandZurLinie(p, route) <= r) aus.push({ x: p.x, z: p.z, name })
+  }
+  for (const b of s.baustellen || []) {
+    const ph = bauPhase(R, b, t)
+    if (ph && ph.laut) nimm(b.ort, "Baustelle")
+  }
+  for (const x of s.laufend) {
+    const a = R.EINSATZARTEN[x.art]
+    if (a && a.sperrt && x.meldung <= t && t < (x.ende || x.verfall)) nimm(punktVon(R, s, x.ort), a.name)
+  }
+  return aus
+}
+
 /** Neue Baustelle anlegen; die Baufirma hat R.BAU.parallel_max Kolonnen, weitere Aufträge warten. */
 function beginneBau(R, s, jetzt, b) {
   bauFelder(s)
@@ -852,7 +968,12 @@ function licht(R, bestand, leute, trupp) {
   return Math.min(1, l)
 }
 
-function feuerwehrBereit(R, s, p, alarm, wetter) {
+/**
+ * Weg einer Einsatzkraft von zu Hause (in der Arbeitszeit vom Arbeitsplatz) zum Gerätehaus: zu Fuß und mit dem Rad
+ * auf dem Gehweg, mit dem Auto auf der Straße. Gewählt wird, was am schnellsten ist. Liefert die Zeitpunkte für die
+ * Darstellung: los (aus dem Haus), da (am Gerätehaus), halt (Hindernisse am Weg mit Wartezeit), umgezogen.
+ */
+function heimweg(R, s, p, alarm, wetter) {
   const haus = s.haeuser.find((h) => h.id === p.haus)
   const beruf = R.BERUFE[p.beruf] || {}
   const ag = beruf.arbeitgeber && R.ARBEITGEBER[p.arbeitgeber]
@@ -862,8 +983,20 @@ function feuerwehrBereit(R, s, p, alarm, wetter) {
   const al = R.ALARMIERUNG[(haus && haus.alarmierung) || "sirene"]
   const reaktion = Math.max(5, al.reaktion_s + ausbauEffekt(R, s, "reaktion_s"))
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
-  const m = fussweg(R, start, R.ORTE.feuerwehrhaus) * R.METER_JE_EINHEIT
+  const ziel = R.ORTE.feuerwehrhaus
+  const unterwegs = luftlinie(start, ziel) > 1
+  // Zu Fuß und mit dem Rad auf dem Gehweg (mit kurzen Abkürzungen), mit dem Auto über die Straße
+  const routen = {}
+  const routeFuer = (art) => {
+    const k = art === "auto" ? "strasse" : "fuss"
+    if (!routen[k]) {
+      const punkte = !unterwegs ? [start, ziel] : k === "strasse" ? strassenroute(R, start, ziel) : fussroute(R, start, ziel)
+      routen[k] = { m: linienLaenge(punkte) * R.METER_JE_EINHEIT, hindernisse: unterwegs ? hindernisseAmWeg(R, s, punkte, alarm) : [] }
+    }
+    return routen[k]
+  }
   let beste = Infinity
+  let wahl = null
   for (const art of (haus && haus.ausbau.length ? haus.ausbau : []).concat(["zu_fuss"])) {
     const a = R.HAUS_AUSBAU[art]
     if (!a || !a.tempo_ms) continue
@@ -872,12 +1005,34 @@ function feuerwehrBereit(R, s, p, alarm, wetter) {
     if (art === "fahrrad" || art === "ebike") extra += ausbauEffekt(R, s, "fahrrad_extra_s")
     if (vonArbeit) extra += beruf.extra_s || 0
     const ft = art === "auto" ? 1 : fitnessTempo(R, p)
-    beste = Math.min(beste, m / (a.tempo_ms * wf * ft) + Math.max(0, extra))
+    const warten_s = art === "auto" ? R.BAU.verkehr.fahrzeug_s : R.BAU.verkehr.zu_fuss_s
+    const rt = routeFuer(art)
+    const zeit = rt.m / (a.tempo_ms * wf * ft) + Math.max(0, extra) + rt.hindernisse.length * warten_s
+    if (zeit < beste) {
+      beste = zeit
+      wahl = { art, extra: Math.max(0, extra), warten_s, hindernisse: rt.hindernisse }
+    }
   }
   const stufe = R.GEBAEUDE.geraetehaus[s.gebaeude.geraetehaus]
   const behelf = behelfAktiv(R, s, "geraetehaus", alarm) ? R.BAU.behelf.umziehen_s : 0
   const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s") + psaEffekt(R, p, "feuerwehr").umziehen_s + behelf)
-  return alarm + Math.round((reaktion + beste + umziehen) * 1000)
+  const umgezogen = alarm + Math.round((reaktion + beste + umziehen) * 1000)
+  if (!unterwegs) return { umgezogen, weg: null }
+  const los = alarm + Math.round((reaktion + wahl.extra) * 1000)
+  return {
+    umgezogen,
+    weg: {
+      von: { x: start.x, z: start.z },
+      mittel: wahl.art,
+      los,
+      da: alarm + Math.round((reaktion + beste) * 1000),
+      halt: wahl.hindernisse.map((h) => ({ x: h.x, z: h.z, s: wahl.warten_s, name: h.name })),
+    },
+  }
+}
+
+function feuerwehrBereit(R, s, p, alarm, wetter) {
+  return heimweg(R, s, p, alarm, wetter).umgezogen
 }
 
 function hatRueckmeldung(R, s, p) {
@@ -945,7 +1100,11 @@ function plane(R, s, e, alarm, umwelt) {
         ? R.WACHDIENST.reaktion_s
         : ((R.ORGANISATIONEN && R.ORGANISATIONEN[org] && R.ORGANISATIONEN[org].reaktion_s) || 120) + (behelfAktiv(R, s, geb, alarm) ? R.BAU.behelf.reaktion_s : 0)
   const bereit = personen
-    .map((p) => ({ p, t: org === "feuerwehr" ? feuerwehrBereit(R, s, p, alarm, wetter) : alarm + reaktionS(p) * 1000 }))
+    .map((p) => {
+      if (org !== "feuerwehr") return { p, t: alarm + reaktionS(p) * 1000 }
+      const h = heimweg(R, s, p, alarm, wetter)
+      return { p, t: h.umgezogen, weg: h.weg }
+    })
     .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : 1))
 
   const fahrzeuge = s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org && frei(f, alarm))
@@ -1135,7 +1294,8 @@ function plane(R, s, e, alarm, umwelt) {
         .filter((b) => !imTrupp[b.p.id] && !hatRueckmeldung(R, s, b.p))
         .map((b) => ({ id: b.p.id, bis: b.t + VERGEBLICH_MS }))
     : []
-  const personenPlan = bester.trupp.map((b) => ({ id: b.p.id, umgezogen: b.t }))
+  // Der Weg zum Gerätehaus (für die Darstellung: Gehweg, Fahrrad, Auto, Halt an Hindernissen)
+  const personenPlan = bester.trupp.map((b) => (b.weg ? { id: b.p.id, umgezogen: b.t, weg: b.weg } : { id: b.p.id, umgezogen: b.t }))
   const fahrzeugePlan = bester.auswahl.map((f) => f.id)
   if (notarzt && notarzt.fahrzeug) {
     personenPlan.push({ id: notarzt.fahrer, umgezogen: alarm })
@@ -1316,9 +1476,11 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const art = R.EINSATZARTEN[id]
   s.zaehler += 1
   const r = zufall(s.zufall + ":" + id + ":ort:" + s.zaehler)
-  // Nur Orte außerhalb der Schutzzonen, außer die Art ist harmlos; gibt es keinen, bleibt die ganze Liste
-  const frei = (art.orte || []).filter((o) => ortErlaubt(R, s, art, o))
-  const auswahl = frei.length ? frei : art.orte
+  // Nur Orte außerhalb der Schutzzonen, außer die Art ist harmlos; gibt es keinen, bleibt die ganze Liste.
+  // Wo gerade ein Einsatz derselben Art läuft (die Katze sitzt noch im Baum), entsteht kein zweiter.
+  const erlaubt = (art.orte || []).filter((o) => ortErlaubt(R, s, art, o))
+  const frei = erlaubt.filter((o) => !ortBesetzt(s, id, o))
+  const auswahl = frei.length ? frei : erlaubt.length ? erlaubt : art.orte
   const ort = ortFest || (folgeVon ? folgeVon.ort : auswahl[Math.floor(r() * auswahl.length)])
   const e = {
     id: "e_" + t + "_" + id + "_" + s.zaehler,
@@ -1402,6 +1564,11 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     }
   }
   return e
+}
+
+/** Läuft an diesem Ort gerade ein Einsatz dieser Art (gemeldet, wartend, alarmiert, vor Ort)? */
+function ortBesetzt(s, art, ort) {
+  return s.laufend.some((x) => x.art === art && x.ort === ort && x.status !== "verfallen" && x.status !== "abgeschlossen")
 }
 
 /** Wartende Einsätze erneut alarmieren (wenn inzwischen jemand frei ist oder etwas gekauft wurde). */
@@ -1726,7 +1893,8 @@ function fortschreiben(stand, bis, umwelt, R) {
       // Baustellen-Einsätze nur, solange eine passende Baustelle läuft
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
       // Wartet schon ein Einsatz dieser Art auf Kräfte, kommt kein zweiter dazu
-      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id)
+      // Ebenso, wenn an allen Orten der Art gerade schon einer läuft
+      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id) || (!art.baustelle && (art.orte || []).length > 0 && art.orte.every((o) => ortBesetzt(s, ev.id, o)))
       if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f) && !wartetSchon) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
     } else if (ev.typ === "warten") {
@@ -2066,5 +2234,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
