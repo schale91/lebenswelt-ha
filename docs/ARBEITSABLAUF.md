@@ -10,7 +10,7 @@ So kommt eine Änderung an der Lebenswelt bis auf Handy und PC. Die Anleitung li
 | 1. Ändern und prüfen | Claude | in `app/`: `npx tsc -b` und `npm test` | `node --test test/*.test.js`, `node --check` für geänderte Hooks und Migrationen |
 | 2. Pull Request anlegen und zusammenführen | Claude | Ziel `claude/code-readiness-check-40jtgv` | Ziel `main` |
 | 3. Bauen bzw. bereitstellen | automatisch | GitHub Action „App-Paket“ baut und legt das Paket auf den Zweig `app-paket` | Home Assistant sieht die neue Version im App-Store |
-| 4. Einspielen | Claude oder du | Datenbank-App lädt das Paket alle 10 Minuten herunter; in der App „Update verfügbar · Installieren“ tippen | Update der „Lebenswelt Datenbank“ in Home Assistant, vorher mit Sicherung |
+| 4. Einspielen | Claude oder du | Datenbank-App lädt das Paket alle 10 Minuten herunter; Claude installiert es, sonst in der App „Update verfügbar · Installieren“ tippen | Update der „Lebenswelt Datenbank“ in Home Assistant, vorher mit Sicherung |
 
 Die Regel, dass Claude Pull Requests ohne Rückfrage zusammenführt, steht in der `CLAUDE.md` im Hauptzweig beider Repos.
 
@@ -45,6 +45,7 @@ Claude erledigt das über den Connector „Homeassistent MCP“ (`ha_manage_app`
 
 - Die Datenbank-App sieht alle 10 Minuten nach einem neuen App-Paket (Option `app_token` muss gesetzt sein).
 - In der App erscheint „Update verfügbar · Installieren“. Erst dieser Tipp spielt die neue Version ein.
+- Claude kann das ebenfalls: Über den Connector „Homeassistent MCP“ fragt `ha_manage_app` (Proxy, `GET /api/lebenswelt/app-paket`) den Stand ab. Ist `verfuegbar` neuer als `installiert`, spielt `POST /api/lebenswelt/app-paket/installieren` die Version ein. Danach die App einmal neu laden.
 
 ## Wenn etwas schiefgeht
 
