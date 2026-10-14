@@ -754,6 +754,9 @@ const AUSBAU = {
   atemschutzwerkstatt: { gebaeude: "geraetehaus", name: "Atemschutzwerkstatt", preis: 12000, effekt: { atemschutz_pflege_faktor: 0.4 }, bauzeit_h: 24, ab_stufe: 3 },
   funkraum: { gebaeude: "geraetehaus", name: "Funkraum", preis: 3000, effekt: { fuehrung: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 2 },
   uebungshof: { gebaeude: "geraetehaus", name: "Übungshof", preis: 8000, effekt: { lehrgang_faktor: 0.8 }, bauzeit_h: 24, ab_stufe: 3 },
+  // Zusätzliche Unterflurhydranten an den Plätzen aus HYDRANT_PLAETZE (Index), mit Hinweisschild nach DIN 4066
+  hydrant_a: { gebaeude: "ort", name: "Unterflurhydrant mit Hinweisschild (Platz 1)", preis: 2500, effekt: { hydrant_platz: 0 }, bauzeit_h: 8, ab_stufe: 0, quelle: "nbrandschg", hinweis: "verkürzt den Weg zur Wasserversorgung bei Bränden in der Nähe" },
+  hydrant_b: { gebaeude: "ort", name: "Unterflurhydrant mit Hinweisschild (Platz 2)", preis: 2500, effekt: { hydrant_platz: 1 }, bauzeit_h: 8, ab_stufe: 0, quelle: "nbrandschg", hinweis: "verkürzt den Weg zur Wasserversorgung bei Bränden in der Nähe" },
   hydrantennetz: { gebaeude: "ort", name: "Hydrantennetz im Dorf erneuern", preis: 15000, effekt: { hydrant_l_min: 1600 }, bauzeit_h: 72, ab_stufe: 0, quelle: "nbrandschg", hinweis: "Grundversorgung mit Löschwasser ist Aufgabe der Gemeinde" },
   sirene_neu: { gebaeude: "ort", name: "Elektronische Sirene", preis: 2000, effekt: { reaktion_s: -15 }, bauzeit_h: 4, klein: true, ab_stufe: 0 },
   wache_kueche: { gebaeude: "dienststelle", name: "Sozialraum", preis: 1500, effekt: { schicht: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 1 },
@@ -1276,6 +1279,24 @@ const PERSONAL = {
  */
 const SCHUTZZONEN = []
 
+/**
+ * Löschwasser. Unterflurhydranten (Standrohr nötig) und offene Gewässer (Pumpe, mindestens zwei A-Saugschläuche und
+ * Saugkorb). Die Lage gehört zur Karte: Hier stehen Werte für die erfundene Karte, die private Karte ersetzt sie
+ * (Felder hydranten, hydrant_plaetze, gewaesser). Überflurhydranten gibt es nicht.
+ */
+const HYDRANTEN = [
+  { id: "h1", x: -40, z: -12 },
+  { id: "h2", x: 2, z: 30 },
+  { id: "h3", x: 12, z: 64 },
+]
+/** Plätze für zusätzliche Hydranten (Ausbau hydrant_a, hydrant_b). */
+const HYDRANT_PLAETZE = [
+  { id: "hp1", x: 55, z: -24 },
+  { id: "hp2", x: -34, z: 44 },
+]
+/** Offene Gewässer als Linie, an der angesaugt werden kann. */
+const GEWAESSER = [{ id: "elbe", name: "der Elbe", punkte: [[-200, -50], [200, -50]] }]
+
 /** Zeiten der Simulation, die nicht an Orten hängen (spielwert). */
 const ZEITEN = {
   ausruecken_s: 45, // vom Erreichen der Mindeststärke bis zur Abfahrt
@@ -1293,6 +1314,12 @@ const ZEITEN = {
   nacht_arbeit: 1.25, // Arbeit im Dunkeln ohne Licht
   nacht_zu_fuss: 1.15, // zu Fuß im Dunkeln ohne Licht
   stolpern_wetter: { trocken: 1, hitze: 1, sturm: 1.5, nass: 2, schnee: 3, glaette: 4 },
+  // Löschwasser: Leitung verlegen (Schläuche auslegen und kuppeln), Standrohr setzen, Saugleitung kuppeln und ansaugen
+  leitung_m_s: 1.2,
+  wasser_hydrant_s: 60,
+  wasser_ansaugen_s: 150,
+  nur_tankwasser: 1.4, // Tank reicht nicht, Wasser muss nachgeholt werden
+  ohne_wasser: 2, // nichts in Reichweite, nur was gerade da ist
 }
 
 module.exports = {
@@ -1306,6 +1333,9 @@ module.exports = {
   BAUPLAETZE,
   NEUBAUGEBIETE,
   SCHUTZZONEN,
+  HYDRANTEN,
+  HYDRANT_PLAETZE,
+  GEWAESSER,
   WETTER,
   ALARMIERUNG,
   HAUS_AUSBAU,

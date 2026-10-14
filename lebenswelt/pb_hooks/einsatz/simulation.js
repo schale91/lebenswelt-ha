@@ -306,13 +306,92 @@ function merkmale(R, fahrzeuge) {
   const m = {}
   for (const f of fahrzeuge) {
     const typ = R.FAHRZEUGE[f.typ]
-    if (typ.wasser_l) m.fahrzeug_wasser = (m.fahrzeug_wasser || 0) + 1
+    if (typ.wasser_l) {
+      m.fahrzeug_wasser = (m.fahrzeug_wasser || 0) + 1
+      m.fahrzeug_tank_l = (m.fahrzeug_tank_l || 0) + typ.wasser_l
+    }
+    if (typ.pumpe_l_min) m.fahrzeug_pumpe = 1
     if (f.typ === "dlak") m.dlak_fahrzeug = 1
     if (f.typ === "elw1") m.elw_fahrzeug = 1
     if (f.typ === "tlf3000") m.tlf_fahrzeug = 1
     if (f.typ === "mzb") m.boot_fahrzeug = 1
   }
   return m
+}
+
+// ---------- Löschwasser ----------
+
+/** Hydranten im Ort: feste aus der Karte plus gekaufte an den Hydrantenplätzen. */
+function hydrantenVon(R, s) {
+  const liste = (R.HYDRANTEN || []).slice()
+  for (const id of s.ausbau || []) {
+    const e = R.AUSBAU[id] && R.AUSBAU[id].effekt
+    const platz = e && e.hydrant_platz !== undefined && (R.HYDRANT_PLAETZE || [])[e.hydrant_platz]
+    if (platz) liste.push(platz)
+  }
+  return liste
+}
+
+/** Nächster Punkt auf einem Linienzug. */
+function naechsterPunkt(p, punkte) {
+  let best = { x: punkte[0][0], z: punkte[0][1] }
+  let bestD = Infinity
+  for (let i = 1; i < punkte.length; i++) {
+    const [ax, az] = punkte[i - 1]
+    const [bx, bz] = punkte[i]
+    const dx = bx - ax
+    const dz = bz - az
+    const l2 = dx * dx + dz * dz || 1
+    const u = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.z - az) * dz) / l2))
+    const q = { x: ax + u * dx, z: az + u * dz }
+    const d = Math.hypot(q.x - p.x, q.z - p.z)
+    if (d < bestD) {
+      bestD = d
+      best = q
+    }
+  }
+  return best
+}
+
+/**
+ * Wasserversorgung für einen Brand mit Strahlrohren. Gewählt wird die schnellste Quelle: Hydrant (mit Standrohr) oder
+ * offenes Gewässer (Pumpe, zwei A-Saugschläuche, Saugkorb), sofern die B- und C-Schläuche bis dorthin reichen.
+ * Mit Wasser im Tank wird sofort gelöscht und die Versorgung parallel aufgebaut; Verzug entsteht erst, wenn der Tank
+ * vorher leer ist. Gibt {quelle, x, z, meter, sekunden (Verzug), faktor, text} zurück.
+ */
+function wasserversorgung(R, s, ort, b, loeschLMin) {
+  const Z = R.ZEITEN
+  const m = R.METER_JE_EINHEIT
+  let schlauch = 0
+  for (const [id, n] of Object.entries(b)) {
+    const g = R.GERAETE[id]
+    if (g && g.kategorie === "schlauch" && g.effekt && (g.effekt.groesse === "B" || g.effekt.groesse === "C")) schlauch += g.effekt.laenge_m * n
+  }
+  const wege = []
+  if (b.standrohr) {
+    for (const h of hydrantenVon(R, s)) {
+      const meter = Math.hypot(h.x - ort.x, h.z - ort.z) * m
+      if (meter <= schlauch) wege.push({ quelle: "hydrant", x: h.x, z: h.z, meter: Math.round(meter), aufbau: Z.wasser_hydrant_s + meter / Z.leitung_m_s, text: "Hydrant in " + Math.round(meter) + " m" })
+    }
+  }
+  const pumpe = b.fahrzeug_pumpe || Object.keys(b).some((id) => b[id] > 0 && R.GERAETE[id] && R.GERAETE[id].kategorie === "pumpe" && R.GERAETE[id].effekt && R.GERAETE[id].effekt.pumpe_l_min)
+  if (pumpe && (b.a_saugschlauch || 0) >= 2 && b.saugkorb) {
+    for (const g of R.GEWAESSER || []) {
+      if (!g.punkte || g.punkte.length < 2) continue
+      const p = naechsterPunkt(ort, g.punkte)
+      const meter = Math.hypot(p.x - ort.x, p.z - ort.z) * m
+      if (meter <= schlauch) wege.push({ quelle: "gewaesser", x: p.x, z: p.z, meter: Math.round(meter), aufbau: Z.wasser_ansaugen_s + meter / Z.leitung_m_s, text: "Wasser aus " + g.name + " in " + Math.round(meter) + " m" })
+    }
+  }
+  wege.sort((x, y) => x.aufbau - y.aufbau)
+  const tankS = b.fahrzeug_tank_l && loeschLMin > 0 ? (b.fahrzeug_tank_l / loeschLMin) * 60 : 0
+  const w = wege[0]
+  if (w) {
+    const sekunden = Math.round(Math.max(0, w.aufbau - tankS))
+    return { quelle: w.quelle, x: w.x, z: w.z, meter: w.meter, sekunden, text: w.text + (tankS && sekunden < w.aufbau ? ", bis dahin aus dem Tank" : "") }
+  }
+  if (tankS) return { quelle: "tank", sekunden: 0, faktor: Z.nur_tankwasser, text: "nur Tankwasser, keine Wasserversorgung in Reichweite" }
+  return { quelle: "keine", sekunden: 0, faktor: Z.ohne_wasser, text: "kein Löschwasser in Reichweite" }
 }
 
 // ---------- Zeiten der Einsatzkräfte ----------
@@ -718,12 +797,20 @@ function plane(R, s, e, alarm, umwelt) {
     const text = rohre.length > 1 && !bester.bestand.verteiler ? "nur ein Strahlrohr, kein Verteiler" : "Löschleistung " + loesch + " l/min"
     merke("loeschen", Math.max(0.7, Math.min(2.5, Math.sqrt(200 / loesch))), text)
   }
-  if (art.wachstum && verzugMin > 0) merke("ausbreitung", 1 + art.wachstum * verzugMin, "Feuer hat sich bis zum Eintreffen ausgebreitet")
+  // Löschwasser: Ohne Strahlrohre (Löscher, Kübelspritze) braucht es keine Versorgung
+  let wasser = null
+  if (art.wachstum && rohre.length && loesch > 0) {
+    wasser = wasserversorgung(R, s, ort, bester.bestand, loesch)
+    if (wasser.sekunden) faktoren.push({ grund: "wasser", sekunden: wasser.sekunden, text: "Wasserversorgung: " + wasser.text })
+    if (wasser.faktor) merke("wasser", wasser.faktor, wasser.text)
+  }
+  const wasserMin = wasser ? wasser.sekunden / 60 : 0
+  if (art.wachstum && verzugMin + wasserMin > 0) merke("ausbreitung", 1 + art.wachstum * (verzugMin + wasserMin), wasserMin ? "Feuer hat sich bis zum Eintreffen und bis zur Wasserversorgung ausgebreitet" : "Feuer hat sich bis zum Eintreffen ausgebreitet")
   const th = String(art.stichwort || "").indexOf("TH") === 0
   merke("ausruestung", bester.te.arbeit * (th ? bester.te.arbeit_th : 1), "persönliche Ausrüstung")
   if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
   const arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
-  const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN)
+  const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN) + Math.round(wasserMin * MIN)
   const zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
   // Ohne Rückmeldung kommen alle Alarmierten zum Gerätehaus, auch wer nicht mehr gebraucht wird
   const imTrupp = {}
@@ -748,6 +835,7 @@ function plane(R, s, e, alarm, umwelt) {
       zurueck,
       einsatzbereit: zurueck + (bester.motor.length ? R.ZEITEN.einsatzbereit_s * 1000 : 0),
       verzug_min: Math.round(verzugMin * 10) / 10,
+      wasser: wasser ? (wasser.x === undefined ? { quelle: wasser.quelle, sekunden: wasser.sekunden } : { quelle: wasser.quelle, x: wasser.x, z: wasser.z, meter: wasser.meter, sekunden: wasser.sekunden }) : null,
       faktoren,
       gesperrt: sperren,
       vergeblich,
@@ -1280,7 +1368,9 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (imBau(s, "ausbau", id)) return fehler("Wird schon gebaut.")
     if (a.gebaeude !== "ort" && s.gebaeude[a.gebaeude] < a.ab_stufe) return fehler("Das Gebäude ist dafür noch zu klein.")
     roh = a.preis
-    const wo = a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus
+    const platz = a.effekt && a.effekt.hydrant_platz !== undefined && (R.HYDRANT_PLAETZE || [])[a.effekt.hydrant_platz]
+    if (a.effekt && a.effekt.hydrant_platz !== undefined && !platz) return fehler("Für diesen Hydranten gibt es auf der Karte keinen Platz.")
+    const wo = platz || (a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus)
     beginneBau(R, s, jetzt, { art: "ausbau", ziel: id, name: a.name, ort: { x: wo.x, z: wo.z }, bauzeit_h: a.bauzeit_h || 1, klein: Boolean(a.klein) })
   } else if (art === "neubaugebiet") {
     const nb = R.NEUBAUGEBIETE.find((n) => n.id === id)
@@ -1338,5 +1428,5 @@ module.exports = {
   ortszeit,
   preis,
   // für Tests
-  _intern: { ortErlaubt, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
