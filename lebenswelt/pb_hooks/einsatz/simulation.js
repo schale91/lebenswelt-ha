@@ -562,8 +562,8 @@ function bauFelder(s) {
     s.version = 2
   }
   if (s.level === undefined) s.level = 0
-  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft", "wachstation"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
-  for (const o of ["werkstatt", "bauhof", "rettungsdienst", "drk", "dlrg"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
+  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft", "wachstation", "thw_unterkunft"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
+  for (const o of ["werkstatt", "bauhof", "rettungsdienst", "drk", "dlrg", "thw"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
 }
 
 /** Gebäude einer Organisation (geraetehaus, dienststelle, werkstatt, bauhof). */
@@ -1446,9 +1446,25 @@ function folgen(R, s, e, umwelt) {
     }
     // Kein dramatischer Folgeeinsatz in einer Schutzzone
     if (!ortErlaubt(R, s, fa, e.ort)) continue
+    // Ausleuchten nur, wenn es dunkel ist
+    if (fa.nur_dunkel && !dunkel(R, t)) continue
     const f = erzeuge(R, s, id, t, umwelt, e)
+    // Nachforderung (THW): ohne Führungskraft vor Ort wird später angefordert
+    if (fa.nachforderung && f.plan && f.status === "alarmiert" && R.NACHFORDERUNG) {
+      const leute = e.plan.personen.map((x) => s.personal.find((q) => q.id === x.id)).filter(Boolean)
+      if (!leute.some((p) => R.NACHFORDERUNG.fuehrung.some((l) => hatLehrgang(p, l, t)))) verzoegere(R, s, f, R.NACHFORDERUNG.verzug_min * MIN, "Nachforderung verzögert: keine Gruppen- oder Zugführung vor Ort")
+    }
     if (partner) e.gemeinsam = partnerStand(f)
   }
+}
+
+/** Einen alarmierten Einsatz um ms verschieben (spätere Anforderung); Kräfte und Fahrzeuge bleiben entsprechend länger gebunden. */
+function verzoegere(R, s, f, ms, text) {
+  const pl = f.plan
+  for (const k of ["abfahrt", "eintreffen", "arbeit_ende", "zurueck", "einsatzbereit"]) if (pl[k]) pl[k] += ms
+  pl.faktoren = (pl.faktoren || []).concat([{ grund: "nachforderung", sekunden: Math.round(ms / 1000), text }])
+  f.ende = pl.arbeit_ende
+  belege(R, s, f, pl.einsatzbereit)
 }
 
 /** Was der Ausloeser über seinen Partner bei einem gemeinsamen Einsatz weiß. */
@@ -2007,5 +2023,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

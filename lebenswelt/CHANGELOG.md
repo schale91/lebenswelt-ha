@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.15.0
+
+- Einsatzspiel, THW-Ortsverband (ab Level 27, `ORGANISATIONEN.thw`): Mitgliedschaft für Bewohner als zweite Organisation (Grundausbildung), Lehrgänge Motorsäge, Kraftfahrer, Elektrofachkraft und Gruppenführung, Unterkunft in vier Stufen (Stufe 0 als Lagerraum in der Scheune, Stufe 3 mit Übungsgelände), MTW, Gerätekraftwagen, Radlader, Geräte der Bergungsgruppe und der Fachgruppen (Netzersatzanlage, Großpumpe, Sandsack-Füllanlage). Ohne eigene Helfer kommt der Ortsverband der Kreisstadt.
+- Das THW hat keine eigenen Einsätze, es kommt nur auf Anforderung (`nachforderung`, § 1 THWG): Gebäude abstützen nach Scheunenbrand und Brand im Leerstand, Ausleuchten bei Scheunenbrand, Deichverteidigung und Verkehrsunfall mit mehreren Verletzten (nur nachts, `nur_dunkel`), Großpumpen und Sandsäcke am Deich, Sturmschaden räumen, Notstrom beim neuen Feuerwehreinsatz „Stromausfall im Ortsteil“.
+- Nachforderung (`NACHFORDERUNG`): Ohne Gruppen- oder Zugführung vor Ort wird zehn Minuten später angefordert, das steht im Protokoll.
+
 ## 0.14.0
 
 - Einsatzspiel, DLRG-Ortsgruppe (ab Level 24, `ORGANISATIONEN.dlrg`): Mitgliedschaft für Bewohner als zweite Organisation mit Rettungsschwimmabzeichen Bronze, das Fitness 40 verlangt (`fitness_min`); Silber ab Fitness 55, Strömungsretter ab 65, dazu Wasserretter, Bootsführer und Wachführer. Wachstation in vier Stufen (Sonnenschirm, Wachturm, Station mit Bootshaus, Steg und Funkraum), Gerätewagen mit Bootstrailer, MTW, Boote und Wasserrettungsgerät. Ohne Mitglieder kommt der Wasserrettungszug des Landkreises.
