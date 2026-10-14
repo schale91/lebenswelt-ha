@@ -9,7 +9,7 @@ Stand 14.10.2026, zweite Fassung mit deinen Entscheidungen (Abschnitt 23). Werte
 ## 0. Kurzfassung
 
 1. **Sieben neue Dienste** kommen ins Dorf: Rettungsdienst, DRK mit Sanitäts- und Betreuungsdienst, DLRG mit Wasserrettung, Technisches Hilfswerk, Werkstatt mit Abschleppdienst, Bauhof mit Winterdienst und ein Sportverein mit Sportplatz in der südöstlichen Ecke.
-2. **Freischaltung nach dem Level der Lebenswelt, alles in gut einem Jahr erreichbar:** Sportplatz ab Level 5, Zusammenarbeit von Feuerwehr und Polizei ab 8, Werkstatt und Bauhof ab 12, **Rettungswache ab 16**, DRK ab 20, DLRG ab 24, THW ab 27, **alle zusammen ab 30**. Vorher gibt es den Dienst nicht, und **gemeinsame Einsätze mit ihm erscheinen erst ab diesem Level** (Abschnitt 14.3).
+2. **Freischaltung nach dem Level der Lebenswelt, alles in knapp anderthalb Jahren erreichbar:** Sportplatz ab Level 5, Zusammenarbeit von Feuerwehr und Polizei ab 8, Werkstatt und Bauhof ab 12, **Rettungswache ab 16**, DRK ab 20, DLRG ab 24, THW ab 27, **alle zusammen ab 30**. Vorher gibt es den Dienst nicht, und **gemeinsame Einsätze mit ihm erscheinen erst ab diesem Level** (Abschnitt 14.3).
 3. **Grundversorgung von außen ab der Freischaltung:** Ab seinem Level ist ein Dienst sofort da, aber von außerhalb und langsam (RTW der Nachbarwache, Abschleppdienst aus der Stadt). Jeder Kauf macht ihn schneller oder besser.
 4. **Dorfbewohner statt Einsatzkräfte:** Wer in ein Haus zieht, ist Bewohnerin oder Bewohner mit Beruf, Fitness und **bis zu zwei ehrenamtlichen Mitgliedschaften** plus Sportverein. **Rettungsdienstler und Polizisten, die im Dorf wohnen, können in der Feuerwehr sein** und rücken außerhalb ihres Dienstes mit aus. Eine Person ist nie in zwei Einsätzen zugleich.
 5. **Arbeitsplätze im Dorf** (Rettungswache, Werkstatt, Bauhof, Tierarztpraxis, Platzwart) machen Bewohner tagsüber verfügbar. Das ist die Antwort auf das reale Problem der Tagesalarmsicherheit freiwilliger Feuerwehren (beschlossen).
@@ -18,7 +18,7 @@ Stand 14.10.2026, zweite Fassung mit deinen Entscheidungen (Abschnitt 23). Werte
 8. **Drei Ebenen zum Leveln:** Person (Qualifikation, Erfahrung, Abzeichen), Organisation (Gebäudestufe) und das Level der Lebenswelt, das die Dienste freischaltet.
 9. **Jeder Kauf wirkt, und das wird vorher gezeigt:** Die Simulation ist deterministisch. Vor dem Kauf rechnet der Server die letzten Einsätze mit dem neuen Teil nach und zeigt, was es gebracht hätte („Katze im Mittel 4:50 statt 5:30 Minuten, +0,5 Sterne“).
 10. **Über 40 Baustellen** mit eigenen Bauphasen, darunter jahreszeitabhängige wie das Anwachsen des Rasens.
-11. **Preisfaktor bleibt 0,05.** Freigeschaltet ist alles nach gut einem Jahr, ausgebaut wird über viele Jahre. Jeder Dienst arbeitet ab seinem Level mit der Grundversorgung von außen (Abschnitt 19).
+11. **Preisfaktor bleibt 0,05.** Freigeschaltet ist alles nach knapp anderthalb Jahren, ausgebaut wird über viele Jahre. Jeder Dienst arbeitet ab seinem Level mit der Grundversorgung von außen (Abschnitt 19).
 12. **Im Spiel stirbt niemand** (beschlossen).
 
 ---
@@ -29,8 +29,8 @@ Einige Punkte halte ich für riskant oder habe ich mit dir entschieden. Ich schr
 
 | Punkt | Problem | Lösung |
 |---|---|---|
-| **Wann was kommt** | Die erste Fassung (Rettungswache ab 30, alle zusammen ab 70) hätte nach der Levelkurve der App (`100 · n^1,4` XP je Level) bei rund 300 XP am Tag gut zehn Jahre bis zum Ende gebraucht. | Entschieden: alles früher. Alle Dienste sind in gut einem Jahr freigeschaltet, alle drei bis vier Monate kommt einer dazu (Abschnitt 14.3). Die Grenzen stehen im Regelwerk und lassen sich verschieben. |
-| **Wirtschaft** | Die neuen Dienste kosten bei `PREISFAKTOR = 0,05` rund 55 000 Münzen. Freigeschaltet ist alles nach gut einem Jahr, ganz ausgebaut nach etwa zehn Jahren. | Bleibt bei 0,05 (Entscheidung). Freischalten heißt nicht fertig: Jeder Dienst arbeitet ab seinem Level mit der Grundversorgung von außen, und jeder Kauf macht ihn besser. Zusätzlich gilt die **Preisleiter** aus Abschnitt 16 (Abschnitt 19). |
+| **Wann was kommt** | Die erste Fassung (Rettungswache ab 30, alle zusammen ab 70) hätte nach der Levelkurve der App (`100 · n^1,4` XP je Level) bei rund 300 XP am Tag gut zehn Jahre bis zum Ende gebraucht. | Entschieden: alles früher. Alle Dienste sind in knapp anderthalb Jahren freigeschaltet, alle drei bis vier Monate kommt einer dazu (Abschnitt 14.3). Die Grenzen stehen im Regelwerk und lassen sich verschieben. |
+| **Wirtschaft** | Die neuen Dienste kosten bei `PREISFAKTOR = 0,05` rund 55 000 Münzen. Freigeschaltet ist alles nach knapp anderthalb Jahren, ganz ausgebaut nach etwa zehn Jahren. | Bleibt bei 0,05 (Entscheidung). Freischalten heißt nicht fertig: Jeder Dienst arbeitet ab seinem Level mit der Grundversorgung von außen, und jeder Kauf macht ihn besser. Zusätzlich gilt die **Preisleiter** aus Abschnitt 16 (Abschnitt 19). |
 | **Komplexität** | Sieben Dienste auf einmal würden die App überladen. | Gelöst durch die Freischaltung nach Level. Alles wird automatisch disponiert, es gibt nichts zu steuern. |
 | **Rettungsdienst ist hauptamtlich** | Im echten Leben fährt den RTW kein Ehrenamtlicher von zu Hause aus los. Träger sind Landkreise und kreisfreie Städte, die Wache ist im Schichtdienst besetzt. | Rettungswache mit **Stellen und Schichten** (wie die Polizei-Dienststelle). Bewohner können dort **beruflich** arbeiten und zusätzlich in der Feuerwehr sein. |
 | **Tagesalarmsicherheit** | Wenn Bewohner tagsüber auswärts arbeiten, ist die Feuerwehr werktags schwächer. | Beschlossen: kommt. Bestehende Einsatzkräfte behalten „arbeitet im Dorf“, nur Neuzugänge wählen einen Beruf (Abschnitt 3.4). |
@@ -410,7 +410,7 @@ Einsätze am Sportplatz gibt es erst mit dem passenden Dienst: Sportverletzung a
 
 ### 12.3 Fitness
 
-Jede Person hat Fitness von 0 bis 100. Beim Einzug liegt sie je nach Alter zwischen 35 und 70 (Spielwert).
+Jede Person hat Fitness von 0 bis 100. Beim Einzug liegt sie bei 50, dann wirkt sie neutral (umgesetzt so, damit niemand schlechter startet als heute; Spielwert).
 
 | Wirkung | Formel (Spielwert) |
 |---|---|
@@ -419,7 +419,7 @@ Jede Person hat Fitness von 0 bis 100. Beim Einzug liegt sie je nach Alter zwisc
 | Ausdauer bei langen Einsätzen | Ab 90 min wird die Arbeit langsamer, mit hoher Fitness weniger (bis 20 %) |
 | Atemschutz | Luftverbrauch sinkt mit Fitness, die Zeit unter Atemschutz je Flasche steigt (× 0,8 bis 1,2) |
 | Tragen (Tragestuhl, Trage, Sandsäcke) | schneller |
-| Voraussetzung | Atemschutz ab 50, Rettungsschwimmer Bronze ab 40, Silber ab 55, Strömungsretter ab 65 |
+| Voraussetzung | Rettungsschwimmer Silber ab 55, Strömungsretter ab 65 (kommen mit der DLRG). Eine Schwelle für Atemschutz entfällt, weil alle mit 50 starten. |
 
 **Training:** Mitglieder des Sportvereins trainieren automatisch zweimal pro Woche abends, Feuerwehr und Hilfsorganisationen haben zusätzlich einen Dienstsport-Termin. Wer im Einsatz ist, verpasst das Training, sonst nichts. Ohne Sportplatz joggen sie über die Straßen, das bringt weniger. Ohne Training sinkt die Fitness sehr langsam bis zum Ausgangswert, nie darunter.
 
@@ -571,19 +571,19 @@ Die Gebäudestufe ist das Level der Organisation. Sie bestimmt Stellplätze, Lag
 
 ### 14.3 Freischaltung nach Level
 
-Die Dienste hängen am **Level der Lebenswelt** (XP aus dem Alltag, Kurve `100 · n^1,4`, siehe Konzept der App). XP gehen nie verloren, ein freigeschalteter Dienst bleibt also für immer. Alles ist in gut einem Jahr erreichbar, und alle drei bis vier Monate kommt etwas Neues. Zeiten bei rund 300 XP am Tag (bei 250 XP etwa ein Fünftel länger):
+Die Dienste hängen am **Level der Lebenswelt** (XP aus dem Alltag, Kurve `100 · n^1,4`, siehe Konzept der App). XP gehen nie verloren, ein freigeschalteter Dienst bleibt also für immer. Alles ist in knapp anderthalb Jahren erreichbar, und alle drei bis vier Monate kommt etwas Neues. Zeiten bei rund 300 XP am Tag (bei 250 XP etwa ein Fünftel länger):
 
 | Level | ungefähr nach | Freigeschaltet | Gemeinsame Einsätze |
 |---|---|---|---|
 | 1 | sofort | Feuerwehr und Polizei wie heute, Bewohner mit Beruf, Feuerwehr und Polizei als Mitgliedschaften | Folgeeinsätze wie heute |
-| 5 | 1 Woche | Sportverein, Sportplatz Stufen 0 bis 3 | keine |
-| 8 | 2,5 Wochen | Zusammenarbeit von Feuerwehr und Polizei | 13.5 |
-| 12 | 7 Wochen | Werkstatt und Abschleppdienst, Bauhof, Tierarztpraxis, Jägerschaft, Sportplatz Stufen 4 und 5 | mit Abschleppdienst und Bauhof |
-| **16** | **3 Monate** | **Rettungswache**, AED, Leitstellen-Verbesserungen, Landestelle, dritte Baukolonne | 13.6 |
-| 20 | 6 Monate | DRK, Familienhaus, Sportplatz Stufe 6 | mit DRK |
-| 24 | 9 Monate | DLRG, Sportplatz Stufe 7 | mit DLRG |
-| 27 | 1 Jahr | THW, Lehrrettungswache, Sportplatz Stufe 8 | mit THW |
-| **30** | **15 Monate** | **alle zusammen** | Großlagen 13.7 |
+| 5 | gut 1 Woche | Sportverein, Sportplatz Stufen 0 bis 3 | keine |
+| 8 | 3,5 Wochen | Zusammenarbeit von Feuerwehr und Polizei | 13.5 |
+| 12 | 2 Monate | Werkstatt und Abschleppdienst, Bauhof, Tierarztpraxis, Jägerschaft, Sportplatz Stufen 4 und 5 | mit Abschleppdienst und Bauhof |
+| **16** | **knapp 4 Monate** | **Rettungswache**, AED, Leitstellen-Verbesserungen, Landestelle, dritte Baukolonne | 13.6 |
+| 20 | 6,5 Monate | DRK, Familienhaus, Sportplatz Stufe 6 | mit DRK |
+| 24 | 10 Monate | DLRG, Sportplatz Stufe 7 | mit DLRG |
+| 27 | 13 Monate | THW, Lehrrettungswache, Sportplatz Stufe 8 | mit THW |
+| **30** | **17 Monate** | **alle zusammen** | Großlagen 13.7 |
 
 Bisher war dafür eine Dorfstufe nach Einwohnerzahl vorgesehen. Sie entfällt: Ein Level ist einfacher zu verstehen und belohnt den Alltag, um den es in der App eigentlich geht.
 
@@ -754,7 +754,7 @@ Hubschrauberlandung, Abschleppen, Streufahrt mit Teilchen, Pumpen mit Wasserstra
 | THW | 27 | 220 000 | 11 000 |
 | **Summe** | | **1 100 000** | **55 000** |
 
-**Was das heißt:** Nach gut einem Jahr ist alles freigeschaltet, gekauft ist dann aber erst ein kleiner Teil. Bei 30 Münzen am Tag kommen im Jahr knapp 11 000 Münzen zusammen. Feuerwehr und Polizei (rund 60 000) und die neuen Dienste (55 000) zusammen reichen also für rund zehn Jahre Ausbau. Das ist so gewollt: Ab dem ersten Jahr kann man frei wählen, welchen Dienst man als Nächstes stärkt, und die Empfehlungen (16.3) zeigen, wo ein Kauf am meisten bringt. Wichtig bleibt die Preisleiter (16.5): Alle ein bis drei Tage soll ein wirksamer Kauf möglich sein.
+**Was das heißt:** Nach knapp anderthalb Jahren ist alles freigeschaltet, gekauft ist dann aber erst ein kleiner Teil. Bei 30 Münzen am Tag kommen im Jahr knapp 11 000 Münzen zusammen. Feuerwehr und Polizei (rund 60 000) und die neuen Dienste (55 000) zusammen reichen also für rund zehn Jahre Ausbau. Das ist so gewollt: Ab dem ersten Jahr kann man frei wählen, welchen Dienst man als Nächstes stärkt, und die Empfehlungen (16.3) zeigen, wo ein Kauf am meisten bringt. Wichtig bleibt die Preisleiter (16.5): Alle ein bis drei Tage soll ein wirksamer Kauf möglich sein.
 
 Wenn dir zehn Jahre Ausbau zu lang werden, ist der Hebel der Preisfaktor, nicht die Level-Grenzen.
 
@@ -762,7 +762,7 @@ Wenn dir zehn Jahre Ausbau zu lang werden, ist der Hebel der Preisfaktor, nicht 
 
 ## 20. Umsetzung in Etappen
 
-Gebaut wird in der Reihenfolge der Level. Da alles in gut einem Jahr erreichbar ist, sollte jede Etappe fertig sein, bevor ihr Level erreicht ist. Die ersten Stufen (Level 5 und 8) kommen nach ein bis drei Wochen, deshalb zuerst D1 bis D3. Ist ein Level schon erreicht, wenn eine Etappe fertig wird, ist der Dienst mit dem Update sofort freigeschaltet. Jede Etappe endet wie bisher mit Tests, Build, Screenshots und Installation.
+Gebaut wird in der Reihenfolge der Level. Da alles in knapp anderthalb Jahren erreichbar ist, sollte jede Etappe fertig sein, bevor ihr Level erreicht ist. Die ersten Stufen (Level 5 und 8) kommen nach ein bis vier Wochen, deshalb zuerst D1 bis D3. Ist ein Level schon erreicht, wenn eine Etappe fertig wird, ist der Dienst mit dem Update sofort freigeschaltet. Jede Etappe endet wie bisher mit Tests, Build, Screenshots und Installation.
 
 | Etappe | Level | Inhalt | Abnahme |
 |---|---|---|---|
@@ -803,7 +803,7 @@ Gebaut wird in der Reihenfolge der Level. Da alles in gut einem Jahr erreichbar 
 
 **Entschieden am 14.10.2026:**
 
-1. Freischaltung nach Level der Lebenswelt, alles in gut einem Jahr erreichbar: Rettungswache ab 16, alle zusammen ab 30, dazwischen wie in 14.3 (zweite Änderung am selben Tag, vorher 30 und 70). Gemeinsame Einsätze erst, wenn alle Beteiligten freigeschaltet sind.
+1. Freischaltung nach Level der Lebenswelt, alles in knapp anderthalb Jahren erreichbar: Rettungswache ab 16, alle zusammen ab 30, dazwischen wie in 14.3 (zweite Änderung am selben Tag, vorher 30 und 70). Gemeinsame Einsätze erst, wenn alle Beteiligten freigeschaltet sind.
 2. `PREISFAKTOR` bleibt 0,05.
 3. Rettungsdienstler und Polizisten, die im Dorf wohnen, können in der Feuerwehr sein.
 4. Gemeinsame Einsätze mit der Polizei und mit allen zusammen.
@@ -812,10 +812,32 @@ Gebaut wird in der Reihenfolge der Level. Da alles in gut einem Jahr erreichbar 
 7. Echte Namen (DRK, DLRG), ohne rotes Kreuz und ohne Logos.
 8. Im Spiel stirbt niemand.
 
-**Noch offen:**
+9. Die Abstände der Level bleiben so (Sportplatz 5, Feuerwehr und Polizei 8, Werkstatt und Bauhof 12, Rettungswache 16, DRK 20, DLRG 24, THW 27, alle zusammen 30).
+10. Der Shop-Bolzplatz g5 bleibt als Kinder-Bolzplatz bestehen.
 
-1. Passen die Abstände (Sportplatz 5, Feuerwehr und Polizei 8, Werkstatt und Bauhof 12, Rettungswache 16, DRK 20, DLRG 24, THW 27, alle zusammen 30)?
-2. Bolzplatz g5 bleibt als Kinder-Bolzplatz bestehen. Einverstanden?
+Offen ist derzeit nichts.
+
+---
+
+## 25. Stand der Umsetzung (14.10.2026)
+
+**Umgesetzt: D1 Bewohner und Level, D2 Sportplatz.** Add-on Version 0.7.0 (`lebenswelt-ha`), Frontend im Repository `Claude`, Ordner `app/`.
+
+- **Server** (`simulation.js`, `regelwerk.js`, `dienst.js`): Bewohner mit Beruf (`BERUFE`, `ARBEITGEBER`, `ARBEITSZEIT`), Schichtplan der Polizei (`SCHICHTEN`), Mitgliedschaften (`MITGLIEDSCHAFTEN`: Feuerwehr für Polizei mit Haus, Sportverein), Level aus dem Spielstand (`level` im Stand, nur steigend), `FREISCHALTUNG_LEVEL`, Sportplatz als Gebäude mit neun Stufen und eigenen Bauphasen für den Rasen, Training als Ereignis, Fitness wirkt auf Weg, Tempo zu Fuß und Arbeit. Stand Version 2, alte Stände werden übernommen und rechnen gleich.
+- **Tests:** `node --test test/*.test.js` (48 Tests, davon 17 neu in `test/bewohner.test.js`), `node werkzeuge/pruefe-regelwerk.js` prüft die neuen Blöcke. Kaufen in der PocketBase-Laufzeit (0.40.4) geprüft.
+- **Frontend:** Beim Einzug wird gewählt, wer kommt (Feuerwehr mit Arbeit im Dorf oder pendelnd, Polizei im Schichtdienst). Polizei mit Haus kann in die Feuerwehr eintreten. Reiter „Sportplatz“ im Store mit Level-Sperre und fehlenden XP. Sportplatz in der Südostecke mit allen Stufen, Rasen wächst während der Baustelle an, Training dienstags und donnerstags, samstags Fußball, Flutlicht bei Dunkelheit. Kontrolle: `?pruefstand=sportplatz`.
+
+**Abweichungen vom Konzept:**
+
+- Die Stufen des Sportplatzes zählen ab 1 (Brachfläche = Stufe 1), im Konzept ab 0.
+- Fitness startet für alle bei 50 statt zufällig zwischen 35 und 70. So wird niemand durch die Neuerung langsamer.
+- Arbeitgeber gibt es schon von Anfang an: Markt (2 Stellen), Grundschule (2), Hof am Ortsrand (1), Bibliothek (1), dazu der Platzwart ab dem Vereinsheim. Ohne sie hätte jeder Neuzugang bis Level 12 pendeln müssen.
+- Polizei an der Dienststelle bleibt für Polizei-Einsätze immer verfügbar (wie bisher). Der Schichtplan bestimmt nur, wann eine Polizistin oder ein Polizist für die Feuerwehr da ist.
+- Die Zeiten bis zu einem Level in 14.3 sind gegenüber der zweiten Fassung berichtigt (dort war die Levelkurve um ein Level verschoben gerechnet).
+
+**Damit es auf dem Handy ankommt:** Das Add-on 0.7.0 in Home Assistant aktualisieren. Das App-Paket baut die Pipeline nur vom Zweig `claude/code-readiness-check-40jtgv`; der Stand liegt auf `claude/jolly-allen-zfccim` und muss dorthin übernommen werden.
+
+**Als Nächstes:** D3 Zusammenarbeit von Feuerwehr und Polizei (Level 8).
 
 ---
 
