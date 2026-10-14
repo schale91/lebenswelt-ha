@@ -6,7 +6,7 @@ Die Lebenswelt bleibt in erster Linie eine App für den Alltag. Was du dort erle
 
 Die Daten (Einsatzarten, Geräte, Fahrzeuge, Lehrgänge, Regeln) stehen im Regelwerk [`lebenswelt/pb_hooks/einsatz/regelwerk.js`](../../lebenswelt/pb_hooks/einsatz/regelwerk.js). Ob die Verweise darin zusammenpassen, prüft `node werkzeuge/pruefe-regelwerk.js --baum`.
 
-Die Erweiterung um Rettungsdienst, Hilfsorganisation, Wasserrettung, THW, Werkstatt mit Abschleppdienst, Bauhof, Dorfbewohner mit mehreren Mitgliedschaften und den Sportplatz steht in [DORFDIENSTE.md](DORFDIENSTE.md) (Entwurf zur Entscheidung).
+Die Erweiterung um Rettungsdienst, Hilfsorganisation, Wasserrettung, THW, Werkstatt mit Abschleppdienst, Bauhof, Dorfbewohner mit mehreren Mitgliedschaften und den Sportplatz steht in [DORFDIENSTE.md](DORFDIENSTE.md). Die neuen Dienste werden nach dem Level der Lebenswelt freigeschaltet (Rettungswache ab Level 30, alle zusammen ab Level 70), gemeinsame Einsätze erscheinen erst danach.
 
 ## Grundsätze
 
