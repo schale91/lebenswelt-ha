@@ -1103,7 +1103,7 @@ const EINSATZARTEN = {
     org: "feuerwehr", name: "Mülltonnenbrand", stichwort: "B klein", preis: 120,
     freischaltung: { nach: "tier_katze", sterne: 3 },
     orte: ["muelltonnen"], intervall_min: 120, ablauf_min: 8, arbeit_min: 4, ziel_eintreffen_min: 6, wachstum: 0.08,
-    mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }]] },
+    mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] }, // auch Schnellangriff aus dem Tank
     optimal: { personen: 2, geraete: [[{ schaumloescher: 1 }, { d_strahlrohr: 1, d_schlauch: 2, standrohr: 1 }, { cm_strahlrohr: 1, c_schlauch_15: 2, standrohr: 1 }]] },
     psa: { helm: 1, handschuhe: 1 },
     text: "Am Markt brennt eine Mülltonne, Rauch zieht über den Platz.",
@@ -1970,7 +1970,7 @@ const EINSATZARTEN = {
     freischaltung: { nach: "b_muelltonne", sterne: 4 },
     orte: ["muelltonnen", "festplatz", "schule"], intervall_min: 1440, ablauf_min: 8, arbeit_min: 5, ziel_eintreffen_min: 6, wachstum: 0.08,
     bedingung: { stunden: [21, 22, 23, 0, 1, 2, 3], faktor: 2, sonst_faktor: 0.3 },
-    mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }]] },
+    mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] }, // auch Schnellangriff aus dem Tank
     optimal: { personen: 2, geraete: [[{ schaumloescher: 1 }, { cm_strahlrohr: 1, c_schlauch_15: 2, standrohr: 1 }]] },
     psa: { helm: 1, handschuhe: 1 },
     folge: ["p_brandermittlung"], gemeinsam: { ziel_min: 15 },
@@ -2031,7 +2031,7 @@ const EINSATZARTEN = {
     freischaltung: { nach: "b_hecke", sterne: 3 },
     orte: ["muelltonnen", "hecke_nachbar", "festplatz"], intervall_min: 60, ablauf_min: 10, arbeit_min: 6, ziel_eintreffen_min: 8, wachstum: 0.1,
     bedingung: { daten: ["12-31", "01-01"], stunden: [22, 23, 0, 1, 2], faktor: 1, sonst_faktor: 0 },
-    mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }]] },
+    mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] }, // auch Schnellangriff aus dem Tank
     optimal: { personen: 2, geraete: [[{ schaumloescher: 1 }, { cm_strahlrohr: 1, c_schlauch_15: 2, standrohr: 1 }], [{ beleuchtung: 1 }]] },
     psa: { helm: 1, handschuhe: 1 },
     folge: ["p_silvester"], gemeinsam: { ziel_min: 12 },
@@ -2220,13 +2220,14 @@ const STERNE = {
 /**
  * Verfall (Spielwerte): Einsätze bleiben lange offen. Wer spät kommt, bekommt wenig Sterne, aber der Einsatz ist nicht verloren.
  * frist_min: so lange wartet ein Einsatz mindestens auf Kräfte; gilt, wenn ablauf_min der Einsatzart kürzer ist.
- * raster_min: nach Ablauf von ablauf_min wird ein wartender Einsatz nur noch in diesem Raster neu alarmiert (nach Käufen sofort).
+ * raster_min: nach Ablauf von ablauf_min wird ein wartender Einsatz nur noch in diesem Raster neu alarmiert; sofort nach Käufen
+ *   und sobald eine Person, ein Fahrzeug oder Gerät wieder frei wird.
  * Folgeeinsätze, die so lange laufen wie ihr Auslöser (Absichern, Verkehr regeln), verfallen spätestens mit dessen Ende.
  * Ein Feuer breitet sich nach ablauf_min nicht weiter aus (abgebrannt, dann nur noch Nachlöschen).
  */
 const VERFALL = {
   frist_min: 24 * 60,
-  raster_min: 5,
+  raster_min: 15,
 }
 
 /**
@@ -2300,6 +2301,7 @@ const GEWAESSER = [{ id: "elbe", name: "der Elbe", punkte: [[-200, -50], [200, -
 /** Zeiten der Simulation, die nicht an Orten hängen (spielwert). */
 const ZEITEN = {
   abkuerzung_max: 30, // spielwert: zu Fuß und mit dem Rad am Anfang und Ende über Hof oder Platz (Einheiten, etwa 90 m)
+  heimweg_tempo: 0.7, // spielwert: nach dem Einsatz ohne Eile zurück nach Hause (Anteil am Tempo zum Alarm)
   ausruecken_s: 45, // vom Erreichen der Mindeststärke bis zur Abfahrt
   warten_auf_staerke_max_s: 180, // danach rückt aus, wer da ist, sofern Mindeststärke erreicht
   rueckfahrt_faktor: 1.3, // ohne Sonderrechte langsamer zurück

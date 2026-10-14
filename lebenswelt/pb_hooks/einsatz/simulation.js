@@ -162,8 +162,29 @@ function projektion(N, p) {
   return best
 }
 
+/**
+ * Wege ändern sich nur mit der Karte: Ergebnis je Art, Start und Ziel merken. Der Speicher hängt am Wegenetz und
+ * verschwindet mit ihm, wenn eine andere Karte kommt.
+ */
+function gemerkt(R, art, p, q, rechne) {
+  const N = netz(R)
+  if (!N.merk) N.merk = new Map()
+  const k = art + "|" + p.x + "," + p.z + "|" + q.x + "," + q.z
+  let v = N.merk.get(k)
+  if (v === undefined) {
+    v = rechne()
+    if (N.merk.size > 50000) N.merk.clear()
+    N.merk.set(k, v)
+  }
+  return v
+}
+
 /** Weg über das Straßennetz in Welteinheiten (mit Zufahrt als Luftlinie). */
 function strassenweg(R, p, q) {
+  return gemerkt(R, "weg", p, q, () => strassenwegRoh(R, p, q))
+}
+
+function strassenwegRoh(R, p, q) {
   const N = netz(R)
   const a = projektion(N, p)
   const b = projektion(N, q)
@@ -181,6 +202,10 @@ function strassenweg(R, p, q) {
 
 /** Dieselbe Route als Punktfolge: Zufahrt, Straße (Knoten), Abfahrt. Die App zeichnet die Wege danach. */
 function strassenroute(R, p, q) {
+  return gemerkt(R, "route", p, q, () => strassenrouteRoh(R, p, q))
+}
+
+function strassenrouteRoh(R, p, q) {
   const N = netz(R)
   const a = projektion(N, p)
   const b = projektion(N, q)
@@ -239,6 +264,10 @@ function linienLaenge(punkte) {
  * Garten abgekürzt werden, höchstens ZEITEN.abkuerzung_max (z. B. vom Gehweg über den Hof zum Feuerwehrhaus).
  */
 function fussroute(R, p, q) {
+  return gemerkt(R, "fuss", p, q, () => fussrouteRoh(R, p, q))
+}
+
+function fussrouteRoh(R, p, q) {
   const nah = (R.ZEITEN && R.ZEITEN.abkuerzung_max) || 0
   if (luftlinie(p, q) <= nah) return [p, q]
   let best = strassenroute(R, p, q)
@@ -261,7 +290,7 @@ function fussroute(R, p, q) {
 
 /** Länge des Wegs zu Fuß oder mit dem Rad (fussroute). */
 function fussweg(R, p, q) {
-  return linienLaenge(fussroute(R, p, q))
+  return gemerkt(R, "fussweg", p, q, () => linienLaenge(fussroute(R, p, q)))
 }
 
 /** Alle Orte einer Einsatzart: die festen (orte) und die Zufallsorte ihrer Gruppen aus der Karte (ort_gruppen). */
@@ -514,7 +543,7 @@ function bestandVon(s, wo, liste, t) {
 }
 
 function addiere(ziel, quelle) {
-  for (const [k, v] of Object.entries(quelle)) ziel[k] = (ziel[k] || 0) + v
+  for (const k in quelle) ziel[k] = (ziel[k] || 0) + quelle[k]
   return ziel
 }
 
@@ -548,6 +577,14 @@ function fehlendeQualifikation(q, personen, t) {
   return fehlt
 }
 
+/** Merkmale aus MERKMALE, die ein Fahrzeugtyp mitbringt (je Regelwerk einmal gerechnet). */
+let merkmalCache = null
+function merkmaleVonTyp(R, typ) {
+  if (!merkmalCache || merkmalCache.quelle !== R.MERKMALE) merkmalCache = { quelle: R.MERKMALE, je: {} }
+  if (!merkmalCache.je[typ]) merkmalCache.je[typ] = Object.entries(R.MERKMALE || {}).filter(([, mk]) => mk.aus && mk.aus.fahrzeug && mk.aus.fahrzeug.indexOf(typ) >= 0).map(([id]) => id)
+  return merkmalCache.je[typ]
+}
+
 /** Merkmale, die aus Fahrzeugen und Lage folgen. */
 function merkmale(R, fahrzeuge) {
   const m = {}
@@ -563,7 +600,7 @@ function merkmale(R, fahrzeuge) {
     if (f.typ === "tlf3000") m.tlf_fahrzeug = 1
     if (f.typ === "mzb") m.boot_fahrzeug = 1
     // weitere Merkmale aus MERKMALE (z. B. Rettungswagen)
-    for (const [id, mk] of Object.entries(R.MERKMALE || {})) if (mk.aus && mk.aus.fahrzeug && mk.aus.fahrzeug.indexOf(f.typ) >= 0 && !m[id]) m[id] = 1
+    for (const id of merkmaleVonTyp(R, f.typ)) m[id] = 1
   }
   return m
 }
@@ -1001,7 +1038,10 @@ function heimweg(R, s, p, alarm, wetter) {
   const ag = beruf.arbeitgeber && R.ARBEITGEBER[p.arbeitgeber]
   // In der Arbeitszeit kommt, wer im Dorf arbeitet, vom Arbeitsplatz und muss erst die Arbeit unterbrechen
   const vonArbeit = Boolean(ag && R.ORTE[ag.ort] && inArbeitszeit(R, alarm))
-  const start = vonArbeit ? R.ORTE[ag.ort] : haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
+  let start = vonArbeit ? R.ORTE[ag.ort] : haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
+  // Noch auf dem Heimweg vom letzten Einsatz: dreht um und kommt von dort, mit dem Rad oder Auto, auf dem sie oder er sitzt
+  const rueck = !vonArbeit && haus ? aufDemHeimweg(R, s, p, alarm) : null
+  if (rueck) start = rueck.punkt
   const al = R.ALARMIERUNG[(haus && haus.alarmierung) || "sirene"]
   const reaktion = Math.max(5, al.reaktion_s + ausbauEffekt(R, s, "reaktion_s"))
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
@@ -1019,10 +1059,10 @@ function heimweg(R, s, p, alarm, wetter) {
   }
   let beste = Infinity
   let wahl = null
-  for (const art of (haus && haus.ausbau.length ? haus.ausbau : []).concat(["zu_fuss"])) {
+  for (const art of rueck ? [rueck.mittel] : (haus && haus.ausbau.length ? haus.ausbau : []).concat(["zu_fuss"])) {
     const a = R.HAUS_AUSBAU[art]
     if (!a || !a.tempo_ms) continue
-    let extra = a.extra_s || 0
+    let extra = rueck ? 0 : a.extra_s || 0
     if (art === "auto") extra += ausbauEffekt(R, s, "auto_extra_s")
     if (art === "fahrrad" || art === "ebike") extra += ausbauEffekt(R, s, "fahrrad_extra_s")
     if (vonArbeit) extra += beruf.extra_s || 0
@@ -1051,6 +1091,40 @@ function heimweg(R, s, p, alarm, wetter) {
       halt: wahl.hindernisse.map((h) => ({ x: h.x, z: h.z, s: wahl.warten_s, name: h.name })),
     },
   }
+}
+
+/** Punkt auf einer Linie im Abstand d vom Anfang. */
+function punktAufLinie(punkte, d) {
+  let rest = Math.max(0, d)
+  for (let i = 1; i < punkte.length; i++) {
+    const l = luftlinie(punkte[i - 1], punkte[i])
+    if (rest <= l) {
+      const u = l ? rest / l : 0
+      return { x: punkte[i - 1].x + (punkte[i].x - punkte[i - 1].x) * u, z: punkte[i - 1].z + (punkte[i].z - punkte[i - 1].z) * u }
+    }
+    rest -= l
+  }
+  const z = punkte[punkte.length - 1]
+  return { x: z.x, z: z.z }
+}
+
+/**
+ * Wer nach einem Einsatz vom Gerätehaus heimgeht (p.zurueck_fw), ist eine Weile unterwegs: ohne Eile
+ * (ZEITEN.heimweg_tempo) mit dem Verkehrsmittel, mit dem er kam. Liefert Punkt und Verkehrsmittel zum Zeitpunkt t oder
+ * null, wenn die Person schon daheim ist. Die App zeigt denselben Weg.
+ */
+function aufDemHeimweg(R, s, p, t) {
+  const z = p.zurueck_fw
+  const haus = s.haeuser.find((h) => h.id === p.haus)
+  if (!z || !haus || t < z.ab) return null
+  const fw = R.ORTE.feuerwehrhaus
+  const daheim = bauplatz(R, haus.bauplatz)
+  const a = R.HAUS_AUSBAU[z.mittel] || R.HAUS_AUSBAU.zu_fuss
+  const punkte = z.mittel === "auto" ? strassenroute(R, fw, daheim) : fussroute(R, fw, daheim)
+  const L = linienLaenge(punkte)
+  const dauer = ((L * R.METER_JE_EINHEIT) / (a.tempo_ms * ((R.ZEITEN && R.ZEITEN.heimweg_tempo) || 0.7))) * 1000
+  if (t >= z.ab + dauer) return null
+  return { mittel: R.HAUS_AUSBAU[z.mittel] ? z.mittel : "zu_fuss", punkt: punktAufLinie(punkte, (L * (t - z.ab)) / dauer), anteil: (t - z.ab) / dauer }
 }
 
 function feuerwehrBereit(R, s, p, alarm, wetter) {
@@ -1138,9 +1212,93 @@ function plane(R, s, e, alarm, umwelt) {
   const amWeg = baustellenAmWeg(R, s, [basis, ort], alarm).concat(sperrungenAmWeg(R, s, [basis, ort], alarm, e.id)).slice(0, 2)
   const mind = art.mindestens || {}
   const opt = art.optimal || {}
+  // Vorprüfung: Fehlt Gerät sogar mit allen freien Fahrzeugen und dem ganzen Lager, hilft keine Auswahl (spart die
+  // Suche über alle Kombinationen, etwa wenn ein Einsatz einen Tag lang auf das Ölbindemittel wartet)
+  if ((mind.geraete || []).length) {
+    const alles = {}
+    for (const f of fahrzeuge) addiere(alles, bestandVon(s, f.id, f.beladung, alarm))
+    addiere(alles, merkmale(R, fahrzeuge.filter((f) => !R.FAHRZEUGE[f.typ].gezogen && !R.FAHRZEUGE[f.typ].anhaenger && R.FAHRZEUGE[f.typ].tempo_kmh > 6)))
+    addiere(alles, lager)
+    const fehlt = fehlendeGruppen(mind.geraete, alles)
+    if (fehlt.length) return externerPlan(R, s, e, alarm) || { grund: "Es fehlt: " + gruppenText(R, fehlt[0]) + "." }
+  }
 
   let bester = null
   let naechsterGrund = null
+  // Arbeit vor Ort je Kandidat. Jeder Faktor wird mit Grund vermerkt, damit das Protokoll erklärt, was Zeit gekostet hat.
+  function arbeitFuer(k) {
+    const vorhanden = k.leute.length
+    const verzugMin = Math.max(0, (k.eintreffen - e.meldung) / MIN)
+    const faktoren = []
+    const merke = (grund, faktor, text) => {
+      if (Math.abs(faktor - 1) >= 0.01) faktoren.push({ grund, faktor: Math.round(faktor * 100) / 100, text })
+    }
+    if (k.fussFaktor > 1.01) merke("zu_fuss", k.fussFaktor, "Weg zu Fuß: Stiefel, Wetter und Licht")
+    if (k.bauVerzug) faktoren.push({ grund: "baustelle", sekunden: Math.round(k.bauVerzug / 1000), text: "Hindernis an der Strecke (" + amWeg.map((b) => b.name).join(", ") + ")" })
+    if (behelfAus) faktoren.push({ grund: "behelf", sekunden: behelfAus + R.BAU.behelf.umziehen_s, text: "Behelfsbetrieb wegen Umbau am Gerätehaus" })
+    merke("personen", Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5), vorhanden + " von optimal " + (opt.personen || vorhanden) + " Einsatzkräften")
+    const fehltOpt = fehlendeGruppen(opt.geraete, k.bestand)
+    const fehltOptQ = fehlendeQualifikation(opt.qualifikation, k.leute, alarm)
+    if (fehltOpt.length + fehltOptQ.length)
+      merke(
+        "geraete",
+        1 + R.ZEITEN.fehlendes_geraet_arbeit * (fehltOpt.length + fehltOptQ.length),
+        "ohne " + fehltOpt.map((g) => gruppenText(R, g)).concat(fehltOptQ.map(([id]) => R.LEHRGAENGE[id].name)).join("; "),
+      )
+    const sperren = []
+    for (const r of art.regeln || []) {
+      const regel = R.REGELN[r]
+      if (regel.sperrt && !regelErfuellt(R, s, regel, k, e, alarm)) {
+        sperren.push(r)
+        merke(r, 1.5, regel.name + " fehlt, nur Außenangriff")
+      }
+    }
+    // Löschleistung: ohne Verteiler nur ein Strahlrohr, mit Verteiler bis zu drei, je Rohr ein Trupp
+    const rohreMoeglich = Math.min(k.bestand.verteiler ? R.ZEITEN.verteiler_abgaenge : 1, Math.max(1, Math.floor(vorhanden / R.ZEITEN.personen_je_rohr)))
+    const rohre = []
+    const sonstige = []
+    for (const [id, n] of Object.entries(k.bestand)) {
+      const g = R.GERAETE[id]
+      if (!g || !g.effekt || !g.effekt.loeschen_l_min) continue
+      for (let i = 0; i < n; i++) (g.kategorie === "strahlrohr" ? rohre : sonstige).push(g.effekt.loeschen_l_min)
+    }
+    rohre.sort((x, y) => y - x)
+    sonstige.sort((x, y) => y - x)
+    const loesch = rohre.slice(0, rohreMoeglich).reduce((n, x) => n + x, 0) + sonstige.slice(0, Math.max(0, vorhanden - Math.min(rohre.length, rohreMoeglich))).reduce((n, x) => n + x, 0)
+    if (art.wachstum && loesch > 0) {
+      const text = rohre.length > 1 && !k.bestand.verteiler ? "nur ein Strahlrohr, kein Verteiler" : "Löschleistung " + loesch + " l/min"
+      merke("loeschen", Math.max(0.7, Math.min(2.5, Math.sqrt(200 / loesch))), text)
+    }
+    // Löschwasser: Ohne Strahlrohre (Löscher, Kübelspritze) braucht es keine Versorgung
+    let wasser = null
+    if (art.wachstum && rohre.length && loesch > 0) {
+      wasser = wasserversorgung(R, s, ort, k.bestand, loesch)
+      if (wasser.sekunden) faktoren.push({ grund: "wasser", sekunden: wasser.sekunden, text: "Wasserversorgung: " + wasser.text })
+      if (wasser.faktor) merke("wasser", wasser.faktor, wasser.text)
+    }
+    const wasserMin = wasser ? wasser.sekunden / 60 : 0
+    // Nach der ursprünglichen Frist breitet sich das Feuer nicht weiter aus (abgebrannt)
+    const ausbreitungMin = Math.min(verzugMin, art.ablauf_min) + wasserMin
+    if (art.wachstum && ausbreitungMin > 0) merke("ausbreitung", 1 + art.wachstum * ausbreitungMin, wasserMin ? "Feuer hat sich bis zum Eintreffen und bis zur Wasserversorgung ausgebreitet" : "Feuer hat sich bis zum Eintreffen ausgebreitet")
+    const th = String(art.stichwort || "").indexOf("TH") === 0
+    merke("ausruestung", k.te.arbeit * (th ? k.te.arbeit_th : 1), "persönliche Ausrüstung")
+    if (dunkel(R, k.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, k.bestand, vorhanden, k.te)), "Dunkelheit")
+    let arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
+    // Lange Einsätze: Mit Verpflegung durch das DRK (Feldküche und Feldkoch frei) geht die Arbeit danach schneller
+    const Rt = R.RETTUNG
+    if (Rt && Rt.verpflegung_ab_min && arbeit > Rt.verpflegung_ab_min && org !== "drk" && drkVerpflegung(R, s, alarm, k.leute)) {
+      const vorher = arbeit
+      arbeit = Rt.verpflegung_ab_min + (arbeit - Rt.verpflegung_ab_min) * Rt.verpflegung_faktor
+      faktoren.push({ grund: "verpflegung", faktor: Math.round((arbeit / vorher) * 100) / 100, text: "Verpflegung durch das DRK" })
+    }
+    const arbeitEnde = k.eintreffen + Math.round(arbeit * MIN) + Math.round(wasserMin * MIN)
+    return { faktoren, sperren, wasser, wasserMin, verzugMin, arbeitEnde }
+  }
+
+  // Beladung je Fahrzeug nur einmal je Planung (ohne Geräte in der Pflege)
+  const beladungen = {}
+  const kandidaten = []
+  const beladungFrei = (f) => beladungen[f.id] || (beladungen[f.id] = bestandVon(s, f.id, f.beladung, alarm))
   for (const auswahl of teilmengen(fahrzeuge, 4)) {
     const motor = auswahl.filter((f) => !R.FAHRZEUGE[f.typ].gezogen && !R.FAHRZEUGE[f.typ].anhaenger && R.FAHRZEUGE[f.typ].tempo_kmh > 6)
     // Anhänger nur mit Zugfahrzeug
@@ -1179,7 +1337,7 @@ function plane(R, s, e, alarm, umwelt) {
     }
     // Geräte
     const bestand = {}
-    for (const f of auswahl) addiere(bestand, bestandVon(s, f.id, f.beladung, alarm))
+    for (const f of auswahl) addiere(bestand, beladungFrei(f))
     addiere(bestand, merkmale(R, motor))
     const mit = zuFuss ? tragen(R, art, lager, bestand, leute.length) : {}
     addiere(bestand, mit)
@@ -1213,15 +1371,27 @@ function plane(R, s, e, alarm, umwelt) {
     const fahrzeit = Math.round(((weg * R.METER_JE_EINHEIT) / (tempo * wf)) * zf * fussFaktor * 1000) + bauVerzug
     const eintreffen = abfahrt + fahrzeit
     const kandidat = { auswahl, motor, trupp, leute, bestand, mit, abfahrt, fahrzeit, eintreffen, te, fussFaktor, bauVerzug }
-    const punkte = (k) => [k.auswahl.length, -fehlendeGruppen(opt.geraete, k.bestand).length * 0 - Math.min(k.leute.length, opt.personen || 0), k.eintreffen]
-    if (!bester) bester = kandidat
-    else {
-      const a = punkte(kandidat)
+    kandidat.arbeit = arbeitFuer(kandidat)
+    kandidaten.push(kandidat)
+  }
+  // Wie eine Leitstelle: was am frühesten fertig ist. Liegen mehrere Auswahlen gleichauf (1 Minute oder 8 % der Dauer),
+  // die mit weniger Fahrzeugen, dann mit mehr Leuten bis zur optimalen Stärke, dann die frühere.
+  if (kandidaten.length) {
+    let frueh = Infinity
+    for (const k of kandidaten) frueh = Math.min(frueh, k.arbeit.arbeitEnde)
+    const toleranz = Math.max(MIN, (frueh - alarm) * 0.08)
+    const punkte = (k) => [k.auswahl.length, -Math.min(k.leute.length, opt.personen || 0), k.arbeit.arbeitEnde]
+    for (const k of kandidaten) {
+      if (k.arbeit.arbeitEnde > frueh + toleranz) continue
+      if (!bester) {
+        bester = k
+        continue
+      }
+      const a = punkte(k)
       const b = punkte(bester)
-      // weniger Fahrzeuge zuerst, dann mehr Leute bis optimal, dann früher da
       for (let i = 0; i < a.length; i++) {
         if (a[i] < b[i]) {
-          bester = kandidat
+          bester = k
           break
         }
         if (a[i] > b[i]) break
@@ -1230,72 +1400,7 @@ function plane(R, s, e, alarm, umwelt) {
   }
   if (!bester) return externerPlan(R, s, e, alarm) || { grund: naechsterGrund || "Keine passende Ausrüstung." }
 
-  // Arbeit vor Ort. Jeder Faktor wird mit Grund vermerkt, damit das Protokoll erklärt, was Zeit gekostet hat.
-  const vorhanden = bester.leute.length
-  const verzugMin = Math.max(0, (bester.eintreffen - e.meldung) / MIN)
-  const faktoren = []
-  const merke = (grund, faktor, text) => {
-    if (Math.abs(faktor - 1) >= 0.01) faktoren.push({ grund, faktor: Math.round(faktor * 100) / 100, text })
-  }
-  if (bester.fussFaktor > 1.01) merke("zu_fuss", bester.fussFaktor, "Weg zu Fuß: Stiefel, Wetter und Licht")
-  if (bester.bauVerzug) faktoren.push({ grund: "baustelle", sekunden: Math.round(bester.bauVerzug / 1000), text: "Hindernis an der Strecke (" + amWeg.map((b) => b.name).join(", ") + ")" })
-  if (behelfAus) faktoren.push({ grund: "behelf", sekunden: behelfAus + R.BAU.behelf.umziehen_s, text: "Behelfsbetrieb wegen Umbau am Gerätehaus" })
-  merke("personen", Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5), vorhanden + " von optimal " + (opt.personen || vorhanden) + " Einsatzkräften")
-  const fehltOpt = fehlendeGruppen(opt.geraete, bester.bestand)
-  const fehltOptQ = fehlendeQualifikation(opt.qualifikation, bester.leute, alarm)
-  if (fehltOpt.length + fehltOptQ.length)
-    merke(
-      "geraete",
-      1 + R.ZEITEN.fehlendes_geraet_arbeit * (fehltOpt.length + fehltOptQ.length),
-      "ohne " + fehltOpt.map((g) => gruppenText(R, g)).concat(fehltOptQ.map(([id]) => R.LEHRGAENGE[id].name)).join("; "),
-    )
-  const sperren = []
-  for (const r of art.regeln || []) {
-    const regel = R.REGELN[r]
-    if (regel.sperrt && !regelErfuellt(R, s, regel, bester, e, alarm)) {
-      sperren.push(r)
-      merke(r, 1.5, regel.name + " fehlt, nur Außenangriff")
-    }
-  }
-  // Löschleistung: ohne Verteiler nur ein Strahlrohr, mit Verteiler bis zu drei, je Rohr ein Trupp
-  const rohreMoeglich = Math.min(bester.bestand.verteiler ? R.ZEITEN.verteiler_abgaenge : 1, Math.max(1, Math.floor(vorhanden / R.ZEITEN.personen_je_rohr)))
-  const rohre = []
-  const sonstige = []
-  for (const [id, n] of Object.entries(bester.bestand)) {
-    const g = R.GERAETE[id]
-    if (!g || !g.effekt || !g.effekt.loeschen_l_min) continue
-    for (let i = 0; i < n; i++) (g.kategorie === "strahlrohr" ? rohre : sonstige).push(g.effekt.loeschen_l_min)
-  }
-  rohre.sort((x, y) => y - x)
-  sonstige.sort((x, y) => y - x)
-  const loesch = rohre.slice(0, rohreMoeglich).reduce((n, x) => n + x, 0) + sonstige.slice(0, Math.max(0, vorhanden - Math.min(rohre.length, rohreMoeglich))).reduce((n, x) => n + x, 0)
-  if (art.wachstum && loesch > 0) {
-    const text = rohre.length > 1 && !bester.bestand.verteiler ? "nur ein Strahlrohr, kein Verteiler" : "Löschleistung " + loesch + " l/min"
-    merke("loeschen", Math.max(0.7, Math.min(2.5, Math.sqrt(200 / loesch))), text)
-  }
-  // Löschwasser: Ohne Strahlrohre (Löscher, Kübelspritze) braucht es keine Versorgung
-  let wasser = null
-  if (art.wachstum && rohre.length && loesch > 0) {
-    wasser = wasserversorgung(R, s, ort, bester.bestand, loesch)
-    if (wasser.sekunden) faktoren.push({ grund: "wasser", sekunden: wasser.sekunden, text: "Wasserversorgung: " + wasser.text })
-    if (wasser.faktor) merke("wasser", wasser.faktor, wasser.text)
-  }
-  const wasserMin = wasser ? wasser.sekunden / 60 : 0
-  // Nach der ursprünglichen Frist breitet sich das Feuer nicht weiter aus (abgebrannt)
-  const ausbreitungMin = Math.min(verzugMin, art.ablauf_min) + wasserMin
-  if (art.wachstum && ausbreitungMin > 0) merke("ausbreitung", 1 + art.wachstum * ausbreitungMin, wasserMin ? "Feuer hat sich bis zum Eintreffen und bis zur Wasserversorgung ausgebreitet" : "Feuer hat sich bis zum Eintreffen ausgebreitet")
-  const th = String(art.stichwort || "").indexOf("TH") === 0
-  merke("ausruestung", bester.te.arbeit * (th ? bester.te.arbeit_th : 1), "persönliche Ausrüstung")
-  if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
-  let arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
-  // Lange Einsätze: Mit Verpflegung durch das DRK (Feldküche und Feldkoch frei) geht die Arbeit danach schneller
-  const Rt = R.RETTUNG
-  if (Rt && Rt.verpflegung_ab_min && arbeit > Rt.verpflegung_ab_min && org !== "drk" && drkVerpflegung(R, s, alarm, bester.leute)) {
-    const vorher = arbeit
-    arbeit = Rt.verpflegung_ab_min + (arbeit - Rt.verpflegung_ab_min) * Rt.verpflegung_faktor
-    faktoren.push({ grund: "verpflegung", faktor: Math.round((arbeit / vorher) * 100) / 100, text: "Verpflegung durch das DRK" })
-  }
-  const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN) + Math.round(wasserMin * MIN)
+  const { faktoren, sperren, wasser, wasserMin, verzugMin, arbeitEnde } = bester.arbeit
   let zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
   // Rettungsdienst: Transport ins Krankenhaus, Übergabe, Rückfahrt, danach Wiederherstellung
   let transport = null
@@ -1314,7 +1419,7 @@ function plane(R, s, e, alarm, umwelt) {
   const vergeblich = org === "feuerwehr"
     ? bereit
         .filter((b) => !imTrupp[b.p.id] && !hatRueckmeldung(R, s, b.p))
-        .map((b) => ({ id: b.p.id, bis: b.t + VERGEBLICH_MS }))
+        .map((b) => (b.weg ? { id: b.p.id, bis: b.t + VERGEBLICH_MS, mittel: b.weg.mittel } : { id: b.p.id, bis: b.t + VERGEBLICH_MS }))
     : []
   // Der Weg zum Gerätehaus (für die Darstellung: Gehweg, Fahrrad, Auto, Halt an Hindernissen)
   const personenPlan = bester.trupp.map((b) => (b.weg ? { id: b.p.id, umgezogen: b.t, weg: b.weg } : { id: b.p.id, umgezogen: b.t }))
@@ -1426,15 +1531,18 @@ function bewerte(R, s, e) {
   const abzuege = []
   const ziehe = (grund, sterne, text) => abzuege.push({ grund, sterne, text })
   // Zeit bis zum Einsatzende gegen das Ziel der Einsatzart; die Faktoren aus der Planung erklären, was gedauert hat
-  const dauerMin = (pl.arbeit_ende - e.meldung) / MIN
-  const ziel = zielEnde(art)
+  // Folgeeinsätze, die so lange laufen wie ihr Auslöser (Absperren, Ausleuchten), zählen mit ihrem Eintreffen: Wie
+  // lange der Brand dauert, liegt nicht an ihnen
+  const nachEintreffen = Boolean(art.dauer_wie_ausloeser && pl.eintreffen)
+  const dauerMin = ((nachEintreffen ? pl.eintreffen : pl.arbeit_ende) - e.meldung) / MIN
+  const ziel = nachEintreffen ? art.ziel_eintreffen_min : zielEnde(art)
   const anteil = dauerMin / ziel - 1
   let ab = 0
   for (const stufe of R.STERNE.einsatzende) if (anteil > stufe.ueber && stufe.abzug > ab) ab = stufe.abzug
   if (ab) {
     const bremsen = (pl.faktoren || []).filter((f) => f.faktor > 1 || f.sekunden > 0).sort((x, y) => (y.faktor || 1) - (x.faktor || 1))
     const warum = bremsen.length ? " Länger dauerte es durch: " + bremsen.map((f) => f.text + (f.sekunden ? " (+" + f.sekunden + " s)" : " (+" + Math.round((f.faktor - 1) * 100) + " %)")).join(", ") + "." : ""
-    ziehe("einsatzende", ab, "Einsatz beendet nach " + komma(dauerMin) + " Minuten, Ziel waren " + komma(ziel) + "." + warum)
+    ziehe("einsatzende", ab, (nachEintreffen ? "Eingetroffen nach " : "Einsatz beendet nach ") + komma(dauerMin) + " Minuten, Ziel waren " + komma(ziel) + "." + warum)
   }
   if (art.psa) {
     const tabelle = art.org === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR
@@ -1563,7 +1671,7 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   }
   s.laufend.push(e)
   // Helfer vor Ort des DRK parallel zum Rettungsdienst (Leitstelle): überbrückt die Zeit bis zum RTW
-  if (art.patient && art.patient !== "gruen" && (e.status === "alarmiert" || e.wartet) && ausbauEffekt(R, s, "hvo_parallel") > 0 && orgFrei(R, s, "drk") && R.EINSATZARTEN.drk_hvo_parallel && ortErlaubt(R, s, R.EINSATZARTEN.drk_hvo_parallel, e.ort)) {
+  if (art.patient && art.patient !== "gruen" && (e.status === "alarmiert" || e.wartet) && ausbauEffekt(R, s, "hvo_parallel") > 0 && orgFrei(R, s, "drk") && R.EINSATZARTEN.drk_hvo_parallel && ortErlaubt(R, s, R.EINSATZARTEN.drk_hvo_parallel, e.ort) && hvoLohnt(R, s, e, t, umwelt)) {
     const h = erzeuge(R, s, "drk_hvo_parallel", t, umwelt, e)
     if (h.plan && h.plan.eintreffen && h.status === "alarmiert" && !h.plan.extern && (!e.erste_hilfe || h.plan.eintreffen < e.erste_hilfe)) e.erste_hilfe = h.plan.eintreffen
   }
@@ -1594,6 +1702,18 @@ function ortBesetzt(s, art, ort) {
   return s.laufend.some((x) => x.art === art && x.ort === ort && x.status !== "verfallen" && x.status !== "abgeschlossen")
 }
 
+/**
+ * Lohnt der Helfer vor Ort? Nur mit eigenen Helferinnen und Helfern, die vor dem Rettungsdienst da sind; ein Helfer von
+ * außerhalb, der erst nach dem RTW kommt, wird nicht alarmiert (Probeplanung ohne Folgen für den Stand).
+ */
+function hvoLohnt(R, s, e, t, umwelt) {
+  const probe = { id: "probe", art: "drk_hvo_parallel", ort: e.ort, meldung: t, verfall: t + R.EINSATZARTEN.drk_hvo_parallel.ablauf_min * MIN, wetter: umwelt(t), status: "gemeldet", plan: null }
+  const r = plane(R, s, probe, t, umwelt)
+  if (!r.plan || r.plan.extern || !r.plan.eintreffen) return false
+  const rtw = e.plan && e.plan.eintreffen
+  return !rtw || r.plan.eintreffen < rtw
+}
+
 /** Wartende Einsätze erneut alarmieren (wenn inzwischen jemand frei ist oder etwas gekauft wurde). */
 function versucheWartende(R, s, t, umwelt) {
   for (const e of s.laufend) {
@@ -1619,13 +1739,26 @@ function versucheWartende(R, s, t, umwelt) {
 }
 
 function belege(R, s, e, bis) {
+  // Feuerwehr: Danach geht es vom Gerätehaus nach Hause, mit dem Verkehrsmittel, mit dem man kam (heimweg)
+  const fw = R.EINSATZARTEN[e.art] && R.EINSATZARTEN[e.art].org === "feuerwehr"
+  const merkeHeim = (p, ab, mittel) => {
+    if (!fw) return
+    const m = mittel || (p.zurueck_fw && p.zurueck_fw.mittel) || "zu_fuss"
+    if (!p.zurueck_fw || ab >= p.zurueck_fw.ab) p.zurueck_fw = { ab, mittel: m }
+  }
   for (const v of e.plan.vergeblich || []) {
     const p = s.personal.find((q) => q.id === v.id)
-    if (p) p.belegt_bis = Math.max(p.belegt_bis || 0, v.bis)
+    if (p) {
+      p.belegt_bis = Math.max(p.belegt_bis || 0, v.bis)
+      merkeHeim(p, v.bis, v.mittel)
+    }
   }
   for (const x of e.plan.personen) {
     const p = s.personal.find((q) => q.id === x.id)
-    if (p) p.belegt_bis = Math.max(p.belegt_bis || 0, bis)
+    if (p) {
+      p.belegt_bis = Math.max(p.belegt_bis || 0, bis)
+      merkeHeim(p, bis, x.weg && x.weg.mittel)
+    }
   }
   for (const id of e.plan.fahrzeuge) {
     const f = s.fahrzeuge.find((q) => q.id === id)
@@ -1861,7 +1994,8 @@ function naechstesEreignis(R, s, bis, vorher) {
     if (t > bis) return
     if (!best || t < best.t || (t === best.t && (rang < best.rang || (rang === best.rang && id < best.id)))) best = { t, typ, rang, id }
   }
-  // Raster für das erneute Alarmieren: jede Minute, nach der ursprünglichen Frist der Einsatzart gröber
+  // Raster für das erneute Alarmieren: jede Minute, nach der ursprünglichen Frist der Einsatzart gröber; dazu sofort,
+  // wenn eine Person oder ein Fahrzeug wieder frei wird oder Gerät aus der Pflege kommt
   let raster = 0
   for (const e of s.laufend) {
     if (e.wartet) {
@@ -1878,7 +2012,9 @@ function naechstesEreignis(R, s, bis, vorher) {
   for (const [tag, d] of Object.entries(s.tage || {})) if (!d.abgerechnet) nimm(tagesende(tag), "tag", 4, tag)
   if (s.training_naechster) nimm(s.training_naechster, "training", 6, "")
   // Solange ein Einsatz wartet: zu jeder vollen Minute neu alarmieren (festes Raster, damit Teilrechnungen gleich bleiben)
-  if (raster) nimm(Math.floor(vorher / raster) * raster + raster, "warten", 5, "")
+  if (raster) {
+    nimm(Math.floor(vorher / raster) * raster + raster, "warten", 5, "")
+  }
   return best
 }
 
@@ -2259,5 +2395,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

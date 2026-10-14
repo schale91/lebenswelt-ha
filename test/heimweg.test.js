@@ -110,3 +110,29 @@ test("Mit dem Auto über die Straße, nicht über den Hof", () => {
   const fahrt = (h.weg.da - h.weg.los) / 1000
   assert.ok(Math.abs(fahrt - (l(S._intern.strassenroute(R, start, R.ORTE.feuerwehrhaus)) * R.METER_JE_EINHEIT) / R.HAUS_AUSBAU.auto.tempo_ms) < 1)
 })
+
+test("Nach dem Einsatz geht es heim; ein neuer Alarm unterwegs: umdrehen statt von zu Hause kommen", () => {
+  let s = dorf(["fahrrad"])
+  s = kaufe(s, { art: "geraet", id: "klappleiter" })
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  s.training_naechster = T0 + 1e12
+  s.bis = T0
+  const e = S._intern.erzeuge(R, s, "tier_katze", T0, trocken, null, "baum_feuerwehr")
+  assert.ok(e.plan, e.grund)
+  const p = s.personal[0]
+  assert.equal(p.zurueck_fw.ab, e.plan.einsatzbereit)
+  assert.equal(p.zurueck_fw.mittel, e.plan.personen[0].weg.mittel)
+  const daheim = S._intern.heimweg(R, s, p, e.plan.einsatzbereit + 3 * STD, "trocken")
+  // Gleich nach dem Einsatz noch am Gerätehaus: kein Weg, schnell wieder umgezogen
+  const gleich = S._intern.heimweg(R, s, p, e.plan.einsatzbereit + 1000, "trocken")
+  assert.ok(gleich.umgezogen - (e.plan.einsatzbereit + 1000) < daheim.umgezogen - (e.plan.einsatzbereit + 3 * STD))
+  // Auf halbem Weg: dreht mit dem Rad um, startet zwischen Gerätehaus und Haus
+  const unterwegs = S._intern.aufDemHeimweg(R, s, p, e.plan.einsatzbereit + 30000)
+  assert.ok(unterwegs && unterwegs.anteil > 0 && unterwegs.anteil < 1, JSON.stringify(unterwegs))
+  const halb = S._intern.heimweg(R, s, p, e.plan.einsatzbereit + 30000, "trocken")
+  assert.equal(halb.weg.mittel, p.zurueck_fw.mittel)
+  assert.deepEqual(halb.weg.von, unterwegs.punkt)
+  // Später ist sie daheim
+  assert.equal(S._intern.aufDemHeimweg(R, s, p, e.plan.einsatzbereit + 3 * STD), null)
+  assert.deepEqual(daheim.weg.von, { x: -68, z: 23 })
+})
