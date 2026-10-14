@@ -201,10 +201,11 @@ for (const [id, e] of Object.entries(arten)) {
   quelle(ort, e.quelle)
   if (!R.ORGANISATIONEN[e.org]) f(`${ort}: org ungültig`)
   if (!e.folge_nur) {
-    if (!(e.preis > 0) && !e.baustelle) f(`${ort}: preis fehlt`)
+    if (!(e.preis > 0) && !e.baustelle && !e.grosslage) f(`${ort}: preis fehlt`)
     if (!(e.intervall_min > 0)) f(`${ort}: intervall_min fehlt`)
     if (!(e.orte && e.orte.length)) f(`${ort}: orte fehlen`)
-    if (!e.start && !e.start_polizei && !e.start_level && !e.freischaltung && !e.baustelle) f(`${ort}: weder Start noch Freischaltung`)
+    if (!e.start && !e.start_polizei && !e.start_level && !e.freischaltung && !e.baustelle && !e.grosslage) f(`${ort}: weder Start noch Freischaltung`)
+    if (e.grosslage && !(e.ab_level > 0)) f(`${ort}: Großlage ohne ab_level`)
     if (e.baustelle && e.phasen) for (const ph of e.phasen) if (!R.BAU.phasen.concat(R.BAU.phasen_klein).some((x) => x.id === ph)) f(`${ort}: unbekannte Bauphase "${ph}"`)
   }
   for (const o of e.orte || []) if (!R.ORTE[o] && !(o === "baustelle" && e.baustelle)) f(`${ort}: unbekannter Ort "${o}"`)
@@ -248,7 +249,7 @@ for (const [id, r] of Object.entries(R.REGELN)) {
 }
 
 // Freischaltbaum: kreisfrei, jede kaufbare Art ist von einem Start aus erreichbar
-const kaufbar = Object.keys(arten).filter((k) => !arten[k].folge_nur && !arten[k].baustelle)
+const kaufbar = Object.keys(arten).filter((k) => !arten[k].folge_nur && !arten[k].baustelle && !arten[k].grosslage)
 kreisfrei("Freischaltbaum", kaufbar, (k) => (arten[k].freischaltung ? [arten[k].freischaltung.nach] : []))
 const erreichbar = new Set(kaufbar.filter((k) => arten[k].start || arten[k].start_polizei || arten[k].start_level))
 let neu = true

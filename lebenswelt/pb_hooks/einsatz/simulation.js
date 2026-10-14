@@ -578,8 +578,10 @@ function orgFrei(R, s, org) {
 }
 
 /** Einsatzarten mit start_level werden mit dem Level kaufbar (der erste Einsatz einer neuen Organisation). */
-function levelFreischalten(R, s) {
+function levelFreischalten(R, s, jetzt) {
   for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.start_level && levelReicht(s, a.start_level) && s.freigeschaltet.indexOf(id) < 0) s.freigeschaltet.push(id)
+  // Großlagen werden nicht gekauft: ab ihrem Level kommen sie von selbst (die an Baustellen hängen mit der Baustelle)
+  if (jetzt) for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.grosslage && !a.baustelle && levelReicht(s, a.ab_level) && !s.einsatzarten[id]) aktiviereArt(R, s, id, jetzt)
 }
 
 /** Standort einer Organisation: Ort der aktuellen Gebäudestufe (z. B. RTW-Stellplatz am Feuerwehrhaus) oder GEBAEUDE_ORT. */
@@ -749,7 +751,7 @@ function beginneBau(R, s, jetzt, b) {
   delete neu.bauzeit_h
   s.baustellen.push(neu)
   // Baustellen-Einsätze werden mit der ersten Baustelle aktiv
-  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.baustelle && !s.einsatzarten[id]) aktiviereArt(R, s, id, start)
+  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.baustelle && !s.einsatzarten[id] && levelReicht(s, a.ab_level)) aktiviereArt(R, s, id, start)
   return neu
 }
 
@@ -1370,8 +1372,18 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     const h = erzeuge(R, s, "drk_hvo_parallel", t, umwelt, e)
     if (h.plan && h.plan.eintreffen && h.status === "alarmiert" && !h.plan.extern && (!e.erste_hilfe || h.plan.eintreffen < e.erste_hilfe)) e.erste_hilfe = h.plan.eintreffen
   }
+  // Großlage: Die Leitstelle alarmiert alle Teile gleichzeitig, Nachforderungen kommen wie sonst beim Eintreffen
+  if (art.grosslage && e.status === "alarmiert" && !folgeVon) {
+    e.folgen_sofort = []
+    for (const id of art.folge || []) {
+      if (!R.EINSATZARTEN[id] || R.EINSATZARTEN[id].nachforderung || e.folgen_sofort.indexOf(id) >= 0) continue
+      const anzahl = (art.folge || []).filter((x) => x === id).length
+      e.folgen_sofort.push(id)
+      for (let i = 0; i < anzahl; i++) teil(R, s, e, id, t, umwelt)
+    }
+  }
   // Strukturierte Notrufabfrage: Der Rettungsdienst wird gleich mit alarmiert, nicht erst beim Eintreffen nachgefordert
-  if (e.status === "alarmiert" && !folgeVon && art.org !== "rettungsdienst" && ausbauEffekt(R, s, "notrufabfrage") > 0) {
+  if (e.status === "alarmiert" && !folgeVon && !art.grosslage && art.org !== "rettungsdienst" && ausbauEffekt(R, s, "notrufabfrage") > 0) {
     for (const id of art.folge || []) {
       const fa = R.EINSATZARTEN[id]
       if (!fa || fa.org !== "rettungsdienst" || !orgFrei(R, s, fa.org) || !ortErlaubt(R, s, fa, e.ort)) continue
@@ -1432,30 +1444,40 @@ function folgen(R, s, e, umwelt) {
     if (r() >= art.zufall.fehlalarm) ids.push(art.zufall.folge_bei_echt)
   }
   for (const id of ids) {
-    const fa = R.EINSATZARTEN[id]
-    if (!fa) continue
     if (e.folgen_sofort && e.folgen_sofort.indexOf(id) >= 0) continue
-    // Organisationen, die erst mit einem Level kommen (Werkstatt, Bauhof), gibt es vorher nicht
-    if (!orgFrei(R, s, fa.org)) continue
-    const extern = R.EXTERN && R.EXTERN[fa.org] && levelReicht(s, R.EXTERN[fa.org].ab_level)
-    const partner = art.gemeinsam && fa.org === "polizei"
-    // Nur, wenn die andere Organisation jemanden hat oder von außen kommt (sonst entsteht der Folgeeinsatz nicht)
-    if (!extern && !s.personal.some((p) => istMitglied(p, fa.org))) {
-      if (partner) e.gemeinsam = { art: id, fehlt: "An der Dienststelle arbeitet noch niemand." }
-      continue
-    }
-    // Kein dramatischer Folgeeinsatz in einer Schutzzone
-    if (!ortErlaubt(R, s, fa, e.ort)) continue
-    // Ausleuchten nur, wenn es dunkel ist
-    if (fa.nur_dunkel && !dunkel(R, t)) continue
-    const f = erzeuge(R, s, id, t, umwelt, e)
-    // Nachforderung (THW): ohne Führungskraft vor Ort wird später angefordert
-    if (fa.nachforderung && f.plan && f.status === "alarmiert" && R.NACHFORDERUNG) {
-      const leute = e.plan.personen.map((x) => s.personal.find((q) => q.id === x.id)).filter(Boolean)
-      if (!leute.some((p) => R.NACHFORDERUNG.fuehrung.some((l) => hatLehrgang(p, l, t)))) verzoegere(R, s, f, R.NACHFORDERUNG.verzug_min * MIN, "Nachforderung verzögert: keine Gruppen- oder Zugführung vor Ort")
-    }
-    if (partner) e.gemeinsam = partnerStand(f)
+    teil(R, s, e, id, t, umwelt)
   }
+}
+
+/**
+ * Einen Teil (Folgeeinsatz) zu e erzeugen, wenn die Organisation schon im Spiel ist und jemand kommen kann.
+ * Gibt den neuen Einsatz zurück oder null.
+ */
+function teil(R, s, e, id, t, umwelt) {
+  const art = R.EINSATZARTEN[e.art]
+  const fa = R.EINSATZARTEN[id]
+  if (!fa) return null
+  // Organisationen, die erst mit einem Level kommen (Werkstatt, Bauhof, ...), gibt es vorher nicht
+  if (!orgFrei(R, s, fa.org)) return null
+  const extern = R.EXTERN && R.EXTERN[fa.org] && levelReicht(s, R.EXTERN[fa.org].ab_level)
+  const partner = art.gemeinsam && fa.org === "polizei" && !(e.gemeinsam && e.gemeinsam.partner)
+  // Nur, wenn die andere Organisation jemanden hat oder von außen kommt (sonst entsteht der Folgeeinsatz nicht)
+  if (!extern && !s.personal.some((p) => istMitglied(p, fa.org))) {
+    if (partner) e.gemeinsam = { art: id, fehlt: "An der Dienststelle arbeitet noch niemand." }
+    return null
+  }
+  // Kein dramatischer Folgeeinsatz in einer Schutzzone
+  if (!ortErlaubt(R, s, fa, e.ort)) return null
+  // Ausleuchten nur, wenn es dunkel ist
+  if (fa.nur_dunkel && !dunkel(R, t)) return null
+  const f = erzeuge(R, s, id, t, umwelt, e)
+  // Nachforderung (THW): ohne Führungskraft vor Ort wird später angefordert
+  if (fa.nachforderung && f.plan && f.status === "alarmiert" && R.NACHFORDERUNG && e.plan) {
+    const leute = e.plan.personen.map((x) => s.personal.find((q) => q.id === x.id)).filter(Boolean)
+    if (!leute.some((p) => R.NACHFORDERUNG.fuehrung.some((l) => hatLehrgang(p, l, t)))) verzoegere(R, s, f, R.NACHFORDERUNG.verzug_min * MIN, "Nachforderung verzögert: keine Gruppen- oder Zugführung vor Ort")
+  }
+  if (partner) e.gemeinsam = partnerStand(f)
+  return f
 }
 
 /** Einen alarmierten Einsatz um ms verschieben (spätere Anforderung); Kräfte und Fahrzeuge bleiben entsprechend länger gebunden. */
@@ -1667,7 +1689,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)
-  levelFreischalten(R, s)
+  levelFreischalten(R, s, s.bis)
   if (!s.training_naechster && R.FITNESS) s.training_naechster = naechstesTraining(R, s.bis)
   let schutz = 0
   let vorher = s.bis
@@ -1682,7 +1704,12 @@ function fortschreiben(stand, bis, umwelt, R) {
       const st = s.einsatzarten[ev.id]
       st.nr += 1
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
-      const f = bedingungFaktor(art, ev.t, wetter(ev.t))
+      let f = levelReicht(s, art.ab_level) ? bedingungFaktor(art, ev.t, wetter(ev.t)) : 0
+      // Großlagen kommen öfter, wenn die Zusammenarbeit gut ist
+      if (art.grosslage && R.GROSSLAGE) {
+        const z = s.zusammenarbeit || []
+        f *= z.length ? R.GROSSLAGE.faktor_basis + (R.GROSSLAGE.faktor_je_stern * z.reduce((n, x) => n + x.sterne, 0)) / z.length : R.GROSSLAGE.ohne_zusammenarbeit
+      }
       // Baustellen-Einsätze nur, solange eine passende Baustelle läuft
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
       if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
@@ -1812,7 +1839,7 @@ function pruefeBewohner(R, s, roh) {
 function kaufe(stand, auftrag, jetzt, R) {
   const s = kopie(stand)
   bauFelder(s)
-  levelFreischalten(R, s)
+  levelFreischalten(R, s, jetzt)
   const art = auftrag.art
   const id = auftrag.id
   const anzahl = Math.max(1, Math.floor(auftrag.anzahl || 1))
@@ -1824,6 +1851,7 @@ function kaufe(stand, auftrag, jetzt, R) {
   if (art === "einsatzart") {
     const a = R.EINSATZARTEN[id]
     if (!a || a.folge_nur) return fehler("Diese Einsatzart gibt es nicht zu kaufen.")
+    if (a.grosslage) return fehler("Großlagen werden nicht gekauft, sie kommen ab Level " + a.ab_level + " von selbst.")
     if (s.einsatzarten[id]) return fehler("Schon gekauft.")
     if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet.")
     if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
@@ -2023,5 +2051,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

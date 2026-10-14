@@ -1643,6 +1643,87 @@ const EINSATZARTEN = {
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }], [{ vakuummatratze: 1 }, { spineboard: 1 }]] },
     text: "Eine schwer verletzte oder lebensbedrohlich erkrankte Person braucht Rettungsdienst und Notarzt.",
   },
+  // ---------- Alle zusammen: Großlagen (ab Level 30, Konzept DORFDIENSTE.md 13.7) ----------
+  // grosslage: wird nicht gekauft, kommt ab dem Level von selbst, selten. Die Leitstelle alarmiert alle Teile zugleich
+  // (außer Nachforderungen wie das THW). Wie oft, hängt an der Zusammenarbeit der letzten gemeinsamen Einsätze.
+  gl_hochwasser: {
+    org: "feuerwehr", name: "Großlage Elbhochwasser", stichwort: "Großlage Hochwasser", preis: 0, ab_level: 30, grosslage: true,
+    orte: ["deich"], intervall_min: 20160, ablauf_min: 90, arbeit_min: 300, ziel_eintreffen_min: 20,
+    bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.05 },
+    mindestens: { personen: 9, qualifikation: { gf: 1 }, geraete: [[{ sandsack: 10 }]] },
+    optimal: { personen: 20, qualifikation: { zf: 1 }, geraete: [[{ elw_fahrzeug: 1 }], [{ beleuchtung: 2 }], [{ sandsack: 30 }]] },
+    regeln: ["einheitsfuehrer", "eigenschutz_wasser"],
+    folge: ["p_raeumung", "dlrg_hochwasser", "drk_verpflegung", "drk_betreuung", "rd_versorgung", "bh_absperrung", "thw_pumpen", "thw_ausleuchten"],
+    gemeinsam: { ziel_min: 20 },
+    text: "Die Elbe steigt über das mittlere Hochwasser. Deich verteidigen, Häuser räumen, Menschen mit Booten holen, alle versorgen.",
+    verfallen_text: "Kräfte aus dem ganzen Landkreis haben übernommen.",
+  },
+  gl_sturm: {
+    org: "feuerwehr", name: "Großlage Sturm im ganzen Dorf", stichwort: "Großlage Sturm", preis: 0, ab_level: 30, grosslage: true,
+    orte: ["hauptstrasse_ost", "kreuzung", "hauptstrasse_west"], intervall_min: 10080, ablauf_min: 60, arbeit_min: 180, ziel_eintreffen_min: 15,
+    bedingung: { wetter: ["sturm"], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 6, qualifikation: { motorsaege: 1 }, geraete: [[{ motorsaege: 1 }]] },
+    optimal: { personen: 12, qualifikation: { gf: 1 }, geraete: [[{ motorsaege: 2 }], [{ beleuchtung: 1 }], [{ leitkegel: 2 }]] },
+    psa: { helm: 2 },
+    regeln: ["verkehrsabsicherung", "einheitsfuehrer"],
+    folge: ["p_strassensperre", "rd_versorgung", "drk_verpflegung", "bh_absperrung", "ab_bergung", "thw_raeumen"],
+    gemeinsam: { ziel_min: 15 },
+    text: "Ein Orkan zieht über das Dorf: Bäume auf mehreren Straßen, Dächer beschädigt, Autos getroffen.",
+    verfallen_text: "Die Nachbarwehren haben die Straßen erst am nächsten Tag frei bekommen.",
+  },
+  gl_busunfall: {
+    org: "feuerwehr", name: "Großlage Busunfall mit vielen Verletzten", stichwort: "Großlage MANV", preis: 0, ab_level: 30, grosslage: true,
+    orte: ["kreuzung", "hauptstrasse_ost"], intervall_min: 20160, ablauf_min: 20, arbeit_min: 90, ziel_eintreffen_min: 10,
+    bedingung: { wetter: ["glaette", "schnee", "nass"], faktor: 1, sonst_faktor: 0.3 },
+    mindestens: { personen: 9, qualifikation: { th: 2 }, geraete: [[{ rettungssatz: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
+    optimal: { personen: 18, qualifikation: { zf: 1, erste_hilfe: 4 }, geraete: [[{ elw_fahrzeug: 1 }], [{ notfallrucksack: 2 }], [{ beleuchtung: 2 }]] },
+    regeln: ["einheitsfuehrer", "brandschutz_sicherstellen", "verkehrsabsicherung"],
+    folge: ["p_vollsperrung", "rd_notarzt", "rd_notarzt", "rd_versorgung", "drk_behandlungsplatz", "drk_betreuung", "ab_bergung", "thw_ausleuchten"],
+    gemeinsam: { ziel_min: 10 },
+    text: "Ein Linienbus ist auf glatter Straße umgekippt. Viele Verletzte, Sichtung nach rot, gelb und grün.",
+    verfallen_text: "Rettungskräfte aus dem ganzen Kreis haben übernommen.",
+  },
+  gl_bombe: {
+    org: "feuerwehr", name: "Großlage Bombenfund mit Evakuierung", stichwort: "Großlage Kampfmittel", preis: 0, ab_level: 30, grosslage: true, baustelle: true, phasen: ["erdarbeiten"],
+    orte: ["baustelle"], intervall_min: 4320, ablauf_min: 60, arbeit_min: 240, ziel_eintreffen_min: 20,
+    mindestens: { personen: 6, qualifikation: { gf: 1 } },
+    optimal: { personen: 12, geraete: [[{ elw_fahrzeug: 1 }], [{ leitkegel: 2 }]] },
+    regeln: ["einheitsfuehrer"],
+    folge: ["p_raeumung", "drk_betreuung", "rd_versorgung", "bh_absperrung", "thw_ausleuchten"],
+    gemeinsam: { ziel_min: 15 },
+    text: "Bei den Erdarbeiten liegt eine Fliegerbombe im Boden. Der Kampfmittelbeseitigungsdienst entschärft erst, wenn der Gefahrenbereich geräumt ist.",
+    verfallen_text: "Kräfte aus dem Landkreis haben geräumt, die Entschärfung verzögerte sich um Stunden.",
+  },
+  gl_grossbrand: {
+    org: "feuerwehr", name: "Großlage Scheunenbrand mit Stromausfall", stichwort: "Großlage Brand", preis: 0, ab_level: 30, grosslage: true,
+    orte: ["scheune"], intervall_min: 20160, ablauf_min: 15, arbeit_min: 240, ziel_eintreffen_min: 10,
+    bedingung: { wetter: ["hitze"], faktor: 1, sonst_faktor: 0.1 },
+    mindestens: { personen: 9, qualifikation: { gf: 1 }, geraete: [[{ pressluftatmer: 2 }], [{ fahrzeug_wasser: 1 }]] },
+    optimal: { personen: 20, qualifikation: { zf: 1 }, geraete: [[{ elw_fahrzeug: 1 }], [{ dlak_fahrzeug: 1 }], [{ beleuchtung: 2 }]] },
+    regeln: ["einheitsfuehrer"],
+    folge: ["p_absperrung", "rd_versorgung", "drk_verpflegung", "thw_strom", "thw_abstuetzen", "thw_ausleuchten"],
+    gemeinsam: { ziel_min: 15 },
+    text: "Nach Tagen ohne Regen brennt die große Scheune lichterloh, die Freileitung ist gerissen, der Ortsteil hat keinen Strom.",
+    verfallen_text: "Nachbarwehren haben den Brand gelöscht, die Scheune brannte nieder.",
+  },
+  gl_dorffest: {
+    org: "feuerwehr", name: "Dorffest-Wochenende", stichwort: "Großlage Fest", preis: 0, ab_level: 30, grosslage: true, harmlos: true,
+    orte: ["festplatz"], intervall_min: 120, ablauf_min: 120, arbeit_min: 480, ziel_eintreffen_min: 60,
+    bedingung: { wochentage: [6], stunden: [12], monate: [8], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2 },
+    optimal: { personen: 4, geraete: [[{ pulverloescher: 2 }]] },
+    folge: ["p_verkehrsregelung", "drk_sanwache", "ab_umsetzen"],
+    gemeinsam: { ziel_min: 30 },
+    text: "Das ganze Dorf feiert. Brandsicherheitswache, Verkehr, Sanitätsdienst, Wache an der Badestelle und ein Abschleppwagen für Falschparker.",
+    verfallen_text: "Das Fest lief ohne Brandsicherheitswache.",
+  },
+  drk_behandlungsplatz: {
+    org: "drk", name: "Behandlungsplatz bei vielen Verletzten", stichwort: "MANV", folge_nur: true, dauer_wie_ausloeser: true,
+    ablauf_min: 60, arbeit_min: 0, ziel_eintreffen_min: 30,
+    mindestens: { personen: 4, qualifikation: { sanitaetshelfer: 4 }, geraete: [[{ sanitaetszelt: 1 }]] },
+    optimal: { personen: 8, qualifikation: { drk_gruppenfuehrer: 1 }, geraete: [[{ notfallrucksack: 2 }], [{ betreuungsset: 1 }]] },
+    text: "Das DRK baut einen Behandlungsplatz auf, sichtet die Verletzten und versorgt sie bis zum Transport.",
+  },
   // ---------- THW (ab Level 27, Konzept DORFDIENSTE.md Abschnitt 8) ----------
   // Nur auf Anforderung (nachforderung): Ohne Gruppen- oder Zugführer der Feuerwehr vor Ort dauert die Anforderung länger.
   thw_abstuetzen: {
@@ -2143,6 +2224,9 @@ const RETTUNG = {
   patient: { rot: [10, 18], gelb: [15, 30], gruen: [45, 120] },
 }
 
+/** Großlagen: wie oft, je nach Zusammenarbeit (Durchschnitt der letzten gemeinsamen Einsätze, 1 bis 5 Sterne). */
+const GROSSLAGE = { faktor_basis: 0.5, faktor_je_stern: 0.1, ohne_zusammenarbeit: 0.8 } // spielwert
+
 /** Nachforderung (THW): ohne Gruppen- oder Zugführer der Feuerwehr vor Ort wird später angefordert (Konzept 13.2). */
 const NACHFORDERUNG = { fuehrung: ["gf", "zf", "verbandsfuehrer", "wachfuehrer"], verzug_min: 10 } // spielwert
 
@@ -2231,6 +2315,7 @@ module.exports = {
   RETTUNG,
   WACHDIENST,
   NACHFORDERUNG,
+  GROSSLAGE,
   ARBEITSZEIT,
   BERUFE,
   SCHICHTEN,

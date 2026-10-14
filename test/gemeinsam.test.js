@@ -52,7 +52,7 @@ test("Jeder gemeinsame Einsatz hat einen Polizei-Teil, der nur als Folge entsteh
   const gemeinsam = Object.entries(R.EINSATZARTEN).filter(([, a]) => a.gemeinsam)
   assert.equal(gemeinsam.filter(([, a]) => a.ab_level === R.FREISCHALTUNG_LEVEL.zusammenarbeit).length, 8)
   for (const [id, a] of gemeinsam) {
-    assert.ok([R.FREISCHALTUNG_LEVEL.zusammenarbeit, R.FREISCHALTUNG_LEVEL.rettungsdienst].includes(a.ab_level), id)
+    assert.ok([R.FREISCHALTUNG_LEVEL.zusammenarbeit, R.FREISCHALTUNG_LEVEL.rettungsdienst, R.FREISCHALTUNG_LEVEL.alle].includes(a.ab_level), id)
     const partner = R.EINSATZARTEN[a.folge[0]]
     assert.ok(partner && partner.folge_nur && partner.org === "polizei", id)
   }
