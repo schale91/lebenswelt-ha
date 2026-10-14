@@ -1,11 +1,21 @@
 # Änderungen
 
+## 0.10.0
+
+- Einsatzspiel, Werkstatt mit Abschleppdienst und Bauhof (ab Level 12, `FREISCHALTUNG_LEVEL.werkstatt` und `.bauhof`, neue Organisationen in `ORGANISATIONEN`). Gebäude `werkstatt` und `bauhof` in vier Ausbaustufen (Stufe 0: kein Betrieb im Dorf), Personal über `kaufen` mit `art: "personal"` (`id: "werkstatt"` bzw. `"bauhof"`, begrenzt durch `personal_max`), eigene Geräte, Fahrzeuge (gelbes Rundumlicht, keine Sonderrechte: `ohne_sonderrechte`) und Lehrgänge. Arbeitgeber im Dorf: Kfz-Werkstatt und Bauhof.
+- Grundversorgung von außen (`EXTERN`): Ohne eigenen Betrieb kommen der Abschleppdienst aus der Stadt (35 min) und die Straßenmeisterei (60 min), höchstens 3 Sterne. Im Plan steht dann `extern`.
+- Einsätze: Panne, PKW im Graben, LKW bei Glätte, Bergung nach Unfall, Falschparker umsetzen, Glätte streuen, Ast auf dem Gehweg, Fahrbahn nachreinigen, Absperrung bei Sturmschaden. `start_level` schaltet eine Einsatzart ohne Vorgänger ab dem Level frei. `sperrt`: Solange der Einsatz offen ist, kostet die Stelle Einsatzfahrten in der Nähe Zeit.
+- Folgeeinsätze nur, wenn die Organisation freigeschaltet ist: Unfall und Sachschaden führen zur Bergung, Ölspur und Unfallflucht zur Reinigung durch den Bauhof, Baum auf der Straße zur Absperrung, Falschparker zum Umsetzen.
+- Winterdienst: Nach dem Streuen gilt bei Glätte und Schnee eine Weile der Reibwert für Nässe (`gestreut_bis` im Stand).
+- Besen und Schaufel gibt es jetzt für alle Organisationen.
+
 ## 0.9.0
 
 - Einsatzspiel, gemeinsame Einsätze von Feuerwehr und Polizei (ab Level 8, `FREISCHALTUNG_LEVEL.zusammenarbeit`): Kind im Auto eingeschlossen, Rinder auf der Straße, Mülltonnenbrand in Serie, Ölspur nach Unfallflucht, Gasgeruch mit Räumung der Häuser, LKW verliert Gefahrgut, Brand in leerstehendem Haus, Silvesternacht. Jeder hat einen Polizei-Teil als Folgeeinsatz (Halter ermitteln, Straße sperren, Brandermittlung, Fahndung, Räumung, Vollsperrung, Sachbeschädigung).
 - Einsatzarten mit `ab_level` sind erst ab diesem Level kaufbar.
 - Bewertung der Zusammenarbeit (`bewertung.zusammenarbeit`, 1 bis 5 Sterne, zählt nicht in die Sterne des Einsatzes): Wie schnell war die Polizei nach der Feuerwehr da (Ziel `gemeinsam.ziel_min`)? Die letzten 20 stehen im Stand unter `zusammenarbeit`. Der Auslöser kennt seinen Partner (`gemeinsam`).
 - `bedingung.daten` (MM-TT) für Einsätze an bestimmten Tagen, zum Beispiel Silvester.
+
 ## 0.8.0
 
 - Einsatzspiel, Dorfbewohner: Wer in ein Haus zieht, hat einen Beruf. `kaufen` mit `art: "bauplatz"` (und bei der Einliegerwohnung) nimmt `bewohner: {org, beruf, arbeitgeber}` an. Feuerwehr: `beruf: "dorf"` mit einem Arbeitgeber im Dorf (`ARBEITGEBER`, begrenzte Stellen) kommt in der Arbeitszeit vom Arbeitsplatz und braucht 60 s mehr; `beruf: "auswaerts"` fehlt werktags von 7 bis 17 Uhr. Polizei: wohnt im Dorf, Schichtdienst an der Dienststelle, zählt zu deren Personal. Wer schon da war, bleibt „wie bisher“ (`beruf: "frei"`). Ohne `bewohner` gilt das auch für neue Häuser (ältere App-Versionen).

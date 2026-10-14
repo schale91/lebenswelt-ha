@@ -839,7 +839,9 @@ Offen ist derzeit nichts.
 
 **Umgesetzt: D3 Zusammenarbeit von Feuerwehr und Polizei** (Add-on 0.9.0). Die acht Einsätze aus 13.5 mit je einem Polizei-Teil, Bewertung der Zusammenarbeit im Protokoll und als Durchschnitt in der Bilanz. Vereinfacht gegenüber dem Konzept: Die „Serie“ von Mülltonnenbränden ist eine eigene Einsatzart, die nachts häufiger kommt, mit Brandermittlung der Polizei; dass die Polizei die Serie durch Ermittlung beendet, ist noch nicht umgesetzt. Freigeschaltet wird jede Art wie bisher über einen Vorgänger (eine Art, nicht zwei). Tests in `test/gemeinsam.test.js`.
 
-**Als Nächstes:** D4 Werkstatt mit Abschleppdienst und Bauhof (Level 12).
+**Umgesetzt: D4 Werkstatt mit Abschleppdienst und Bauhof** (Add-on 0.10.0). Beide Betriebe mit vier Ausbaustufen, Personal, Geräten, Fahrzeugen ohne Sonderrechte und den Einsätzen aus den Abschnitten 9 und 10. Ohne eigenen Betrieb übernimmt die Grundversorgung von außen (Abschleppdienst aus der Stadt, Straßenmeisterei) mit langer Anfahrt und höchstens 3 Sternen. Folgeeinsätze verbinden Feuerwehr und Polizei mit beiden Betrieben (Bergung nach Unfall, Reinigung nach Ölspur, Absperrung nach Sturmschaden, Umsetzen von Falschparkern). Streuen wirkt auf die Fahrzeiten: Gestreut gilt bei Glätte der Reibwert für Nässe. Vereinfacht: Das Personal wohnt auswärts und hat Rufbereitschaft rund um die Uhr; Mechaniker im Dorf, die zugleich in der Feuerwehr sind, gibt es über den Arbeitgeber Kfz-Werkstatt bei den Häusern. Tests in `test/werkstatt.test.js`.
+
+**Als Nächstes:** D5 Rettungsdienst (Level 16).
 
 ---
 

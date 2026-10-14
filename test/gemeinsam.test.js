@@ -53,7 +53,6 @@ test("Jeder gemeinsame Einsatz hat einen Polizei-Teil, der nur als Folge entsteh
   assert.equal(gemeinsam.length, 8)
   for (const [id, a] of gemeinsam) {
     assert.equal(a.ab_level, R.FREISCHALTUNG_LEVEL.zusammenarbeit, id)
-    assert.equal(a.folge.length, 1, id)
     const partner = R.EINSATZARTEN[a.folge[0]]
     assert.ok(partner && partner.folge_nur && partner.org === "polizei", id)
   }
