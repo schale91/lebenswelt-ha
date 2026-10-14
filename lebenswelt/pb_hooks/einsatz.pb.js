@@ -91,6 +91,21 @@ routerAdd("POST", "/api/lebenswelt/einsatz/personal", (e) => {
   return e.json(200, { ok: true, person: p })
 })
 
+// Einsatz sofort auslösen (zum Ausprobieren); ohne "art" eine zufällige gekaufte Einsatzart
+routerAdd("POST", "/api/lebenswelt/einsatz/sofort", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  const body = e.requestInfo().body || {}
+  const jetzt = Date.now()
+  const a = d.aktuell(e.app, ich.id, jetzt)
+  const r = d.S.sofort(a.stand, body.art ? String(body.art) : null, jetzt, () => a.wetter, d.R)
+  if (r.fehler) return e.json(400, { fehler: r.fehler })
+  d.speichere(e.app, ich.id, r.stand)
+  return e.json(200, { ok: true, einsatz: r.einsatz, stand: r.stand })
+})
+
 // Minutentakt: Einsätze entstehen und verfallen auch, wenn die App zu ist
 cronAdd("einsatz", "* * * * *", () => {
   const d = require(`${__hooks}/einsatz/dienst.js`)

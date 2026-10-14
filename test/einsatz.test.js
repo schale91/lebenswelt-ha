@@ -77,8 +77,13 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
   const { e, stand } = katze(s)
   assert.equal(e.status, "abgeschlossen", e.grund)
   assert.equal(e.bewertung.sterne, 5, JSON.stringify(e.bewertung.abzuege))
-  assert.ok(stand.freigeschaltet.includes("b_muelltonne"))
-  assert.ok(!stand.einsatzarten.b_muelltonne, "freigeschaltet heißt noch nicht gekauft")
+  // Freigeschaltet wird erst bei der Tagesabrechnung um Mitternacht
+  assert.ok(!stand.freigeschaltet.includes("b_muelltonne"), "nicht sofort")
+  const nachts = S.fortschreiben(stand, S._intern.tagesende(e.tag) + MIN, trocken, R)
+  assert.ok(nachts.freigeschaltet.includes("b_muelltonne"))
+  assert.ok(!nachts.einsatzarten.b_muelltonne, "freigeschaltet heißt noch nicht gekauft")
+  const d = nachts.tage[e.tag]
+  assert.ok(d.abgerechnet && d.durchschnitt >= 4.5 && d.xp > 0, JSON.stringify(d))
 })
 
 test("Der Baum am Markt ist zu Fuß vom Feuerwehrhaus nicht in 5 Minuten zu schaffen", () => {
@@ -331,4 +336,34 @@ test("Bauen: Baustellen-Einsätze entstehen nur, solange gebaut wird", () => {
     assert.ok(e.meldung >= b.start && e.meldung < b.ende + (nachher.bauchronik[0].verzug_ms || 0), "nur während des Baus")
     assert.equal(e.ort, "baustelle:" + b.id)
   }
+})
+
+test("Tagesbilanz: Durchschnitt aller Einsätze des Tages, verfallene zählen mit 0 Sternen", () => {
+  const s = S.neuerStand(R, T0, 31)
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const tag = S._intern.tagVon(T0)
+  s.tage = { [tag]: { anzahl: 3, sterne: 4 + 3 + 0, erfolgreich: 2, arten: ["tier_katze"], abgerechnet: false } }
+  const nachts = S.fortschreiben(s, S._intern.tagesende(tag) + MIN, trocken, R)
+  const d = nachts.tage[tag]
+  assert.equal(d.durchschnitt, 2.3)
+  assert.ok(!nachts.freigeschaltet.includes("b_muelltonne"), "2,3 Sterne reichen nicht für 3")
+  assert.ok(d.xp > 0 && d.xp <= 150)
+})
+
+test("Tagesende liegt um Mitternacht Ortszeit, auch an der Zeitumstellung", () => {
+  assert.equal(new Date(S._intern.tagesende("2026-10-14")).toISOString(), "2026-10-14T22:00:00.000Z")
+  assert.equal(new Date(S._intern.tagesende("2026-12-01")).toISOString(), "2026-12-01T23:00:00.000Z")
+  assert.equal(new Date(S._intern.tagesende("2026-10-24")).toISOString(), "2026-10-24T22:00:00.000Z")
+  assert.equal(new Date(S._intern.tagesende("2026-10-25")).toISOString(), "2026-10-25T23:00:00.000Z")
+  assert.equal(S._intern.tagVon(Date.parse("2026-10-14T22:30:00Z")), "2026-10-15")
+})
+
+test("Einsatz sofort: nur gekaufte Arten, sonst eine zufällige gekaufte", () => {
+  const s = S.neuerStand(R, T0, 32)
+  assert.ok(S.sofort(s, "b_hecke", T0 + MIN, trocken, R).fehler)
+  const r = S.sofort(s, null, T0 + MIN, trocken, R)
+  assert.ok(!r.fehler, r.fehler)
+  assert.equal(r.einsatz.art, "tier_katze")
+  assert.ok(r.einsatz.sofort)
+  assert.ok(r.stand.laufend.some((e) => e.id === r.einsatz.id))
 })

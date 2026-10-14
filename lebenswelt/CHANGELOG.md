@@ -6,6 +6,7 @@
 - Neue Optionen `app_quelle` und `app_token`, Zugriff auf den Konfigurationsordner von Home Assistant (nur für diese Ordner genutzt).
 - Routen `/api/lebenswelt/app-paket` (Stand, Nachsehen) und `/api/lebenswelt/app-paket/installieren`.
 - Android-App: Liegt sie im Paket (`lebenswelt.apk`), kommt sie mit in den App-Ordner.
+- Einsatzspiel: Tagesbilanz. Jeder Einsatz bekommt weiter seine Sterne; um Mitternacht (Ortszeit) wird der Durchschnitt aller Einsätze des Tages abgerechnet (verfallene zählen mit 0). Daraus gibt es XP (in der App zum Abholen am Feuerwehrhaus), und neue Einsatzarten werden nur noch freigeschaltet, wenn der Tagesdurchschnitt reicht und die vorausgesetzte Art an dem Tag erfolgreich war. Neue Route `POST /api/lebenswelt/einsatz/sofort` löst zum Ausprobieren sofort einen Einsatz aus.
 - Push-Nachrichten an die Android-App über Firebase (Option `fcm_dienstkonto`): neue Einsätze, neue Garmin-Aktivitäten, Update verfügbar. Routen `/api/lebenswelt/push/geraet`, `/api/lebenswelt/push`, `/api/lebenswelt/push/test`. `openssl` im Container.
 
 ## 0.4.0
