@@ -72,3 +72,19 @@ test("Wünsche für die Familie ohne Aufbereitung, unbekannter Status gilt als o
   assert.equal(F.wunschFuerFamilie({ id: "y", daten: { status: "quatsch" } }).status, "offen")
   assert.equal(F.offeneFreigaben([{ typ: "freigabe", daten: {} }, { typ: "freigabe", daten: { status: "freigegeben" } }, { typ: "aufgabe", daten: {} }]), 1)
 })
+
+test("Benachrichtigung über Home Assistant nur für die volle Lebenswelt und nur auf Wunsch", () => {
+  const B = require("../lebenswelt/pb_hooks/benachrichtigung.js")
+  const o = { ha_benachrichtigung: "notify.mobile_app_alex_handy" }
+  assert.equal(B.haDienst(o, "alex", "alex", { ha: true }), "mobile_app_alex_handy")
+  assert.equal(B.haDienst(o, "papa", "alex", { ha: true }), null)
+  assert.equal(B.haDienst(o, "alex", "alex", { titel: "Einsatz" }), null)
+  assert.equal(B.haDienst({}, "alex", "alex", { ha: true }), null)
+  assert.equal(B.haDienst({ ha_benachrichtigung: "x; rm -rf" }, "alex", "alex", { ha: true }), null)
+  assert.equal(B.haDienst(o, "alex", undefined, { ha: true }), null)
+  assert.deepEqual(B.haDaten({ titel: "Wünsche zur Freigabe", text: "Zwei Wünsche", id: "freigabe" }), {
+    title: "Wünsche zur Freigabe",
+    message: "Zwei Wünsche",
+    data: { tag: "lebenswelt-freigabe", group: "lebenswelt" },
+  })
+})

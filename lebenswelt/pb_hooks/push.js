@@ -127,6 +127,8 @@ function melde(app, besitzer, token, name) {
  */
 function sende(app, besitzer, nachricht) {
   const ergebnis = { gesendet: 0, fehler: "" }
+  // Zusätzlich über die Home-Assistant-App, wenn eingerichtet (Option ha_benachrichtigung, Nachricht mit ha: true)
+  ergebnis.ha = haMelden(app, besitzer, nachricht)
   try {
     const k = dienstkonto()
     if (!k) return Object.assign(ergebnis, { fehler: "Push nicht eingerichtet (fcm_dienstkonto fehlt)" })
@@ -160,6 +162,32 @@ function sende(app, besitzer, nachricht) {
     console.log("Push: " + ergebnis.fehler)
   }
   return ergebnis
+}
+
+/** Ruft notify.<ha_benachrichtigung> in Home Assistant auf. Wirft nie; true, wenn Home Assistant angenommen hat. */
+function haMelden(app, besitzer, nachricht) {
+  try {
+    const h = require(`${__hooks}/hilfen.js`)
+    const b = require(`${__hooks}/benachrichtigung.js`)
+    const o = h.optionen()
+    const voll = String(o.person || "").trim() || (h.einzigePerson(app) || {}).id
+    const dienst = b.haDienst(o, besitzer, voll, nachricht)
+    if (!dienst) return false
+    const token = $os.getenv("SUPERVISOR_TOKEN")
+    if (!token) return false
+    const r = $http.send({
+      url: "http://supervisor/core/api/services/notify/" + dienst,
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify(b.haDaten(nachricht)),
+      timeout: 15,
+    })
+    if (r.statusCode !== 200) console.log("Benachrichtigung über Home Assistant: HTTP " + r.statusCode)
+    return r.statusCode === 200
+  } catch (err) {
+    console.log("Benachrichtigung über Home Assistant: " + String(err && err.message ? err.message : err))
+    return false
+  }
 }
 
 /** An alle Personen mit angemeldetem Gerät (z. B. „Update verfügbar“). */

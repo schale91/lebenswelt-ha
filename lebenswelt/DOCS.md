@@ -14,6 +14,7 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `vertraute_apps` | Hostnamen anderer Apps, die ohne Ingress zugreifen dürfen (Standard: der MCP-Server, über den Claude arbeitet). |
 | `fitness_personen` | HA-Benutzer-IDs oder Anmeldenamen, die nur die Fitness-Welt bekommen (siehe unten). Leer = niemand. |
 | `ais_schluessel` | API-Schlüssel von aisstream.io für den Schiffsverkehr auf der Elbe. Leer = kein Schiffsverkehr. |
+| `ha_benachrichtigung` | notify-Dienst der Home-Assistant-App auf deinem Handy (z. B. `mobile_app_alex_handy`). Wünsche zur Freigabe, Nilo-Spaziergänge und LKA-Wiedervorlagen kommen dann auch ohne Firebase an. Leer = aus. |
 | `ais_radius_km` | Umkreis um das Zuhause (`zone.home`) für den Schiffsverkehr in km, Standard 5. |
 | `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
 | `wetter_entitaet` | Wetter-Entität für das Einsatzspiel (Standard `weather.forecast_home`). |

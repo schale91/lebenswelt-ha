@@ -88,6 +88,7 @@ function erinnere(app) {
       text: n === 1 ? "Ein Vorgang wartet seit zwei Monaten auf das LKA. Bitte Stand prüfen." : n + " Vorgänge warten seit zwei Monaten auf das LKA. Bitte Stand prüfen.",
       kanal: "allgemein",
       id: "lka-" + tag,
+      ha: true,
     })
   }
 }

@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.12.0
+
+- Benachrichtigungen ohne Firebase: Neue Option `ha_benachrichtigung` (notify-Dienst der Home-Assistant-App, z. B. `mobile_app_alex_handy`). Wünsche zur Freigabe, Spaziergänge mit Nilo und fällige Wiedervorlagen beim LKA gehen dann zusätzlich als Benachrichtigung der Home-Assistant-App an die Person mit voller Lebenswelt. Einsätze und Garmin bleiben in der eigenen App. Logik in `pb_hooks/benachrichtigung.js`.
+- „Test-Benachrichtigung“ in der App prüft auch diesen Weg.
+
 ## 0.11.0
 
 - Einsatzspiel, Rettungsdienst (ab Level 16, `ORGANISATIONEN.rettungsdienst`): Rettungswache in vier Stufen (Stufe 1 als RTW-Stellplatz am Feuerwehrhaus nur tagsüber, Stufe 4 als Lehrrettungswache ab Level 27), Personal (Rettungssanitäter, Notfallsanitäter), Lehrgänge (`rs`, `nfs` nur an der Lehrrettungswache, `desinfektor`), Fahrzeuge KTW, RTW und NEF, zwölf Geräte. Ohne eigene Wache oder wenn kein Fahrzeug frei ist, kommt der RTW der Nachbarwache (`EXTERN`, 14 min, höchstens 3 Sterne).
