@@ -46,4 +46,37 @@ function tagVor(jetzt, tage) {
   return new Date(jetzt - tage * 86400000).toISOString().slice(0, 10)
 }
 
-module.exports = { istFitness, bewegungAus, schrittzielAus, tagVor }
+/** Neue Spaziergänge mit Nilo in einem hochgeladenen Spielstand (nicht im alten, höchstens zwei Stunden alt). */
+function neueNilo(alt, neu, jetzt) {
+  const bekannt = new Set(bewegungAus(alt, "0000").map((b) => b.id))
+  return bewegungAus(neu, "0000").filter((b) => b.art === "nilo" && !bekannt.has(b.id) && b.zeit > jetzt - 2 * 3600000)
+}
+
+/** Erinnerung am Abend: heute (JJJJ-MM-TT, Ortszeit) noch keine Bewegung eingetragen? */
+function braucheErinnerung(daten, heute) {
+  return !bewegungAus(daten, heute).some((b) => b.datum === heute)
+}
+
+const WUNSCH_STATUS = ["offen", "freigegeben", "abgelehnt", "umgesetzt"]
+
+/**
+ * Wunsch zur Freigabe (Dokument typ "freigabe", aufbereitet von der Samstags-Routine) für die Familie: nur was der
+ * Wünschende über den Stand seines Wunsches wissen muss, ohne die Aufbereitung.
+ */
+function wunschFuerFamilie(d) {
+  const x = d && d.daten ? d.daten : {}
+  return {
+    id: String(d.id || ""),
+    vorschlag: String(x.vorschlag || ""),
+    titel: String(x.titel || ""),
+    status: WUNSCH_STATUS.indexOf(x.status) >= 0 ? x.status : "offen",
+    anmerkung: String(x.anmerkung || ""),
+  }
+}
+
+/** Wie viele neu angelegte Freigaben warten noch? Für die Push-Nachricht nach dem Anlegen. */
+function offeneFreigaben(dokumente) {
+  return (dokumente || []).filter((d) => d.typ === "freigabe" && (!d.daten || !d.daten.status || d.daten.status === "offen")).length
+}
+
+module.exports = { istFitness, bewegungAus, schrittzielAus, tagVor, neueNilo, braucheErinnerung, wunschFuerFamilie, offeneFreigaben }

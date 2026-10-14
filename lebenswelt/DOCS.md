@@ -13,6 +13,8 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `person` | HA-Benutzer-ID, für die Claude und Hintergrundaufgaben arbeiten. Leer = die einzige bekannte Person. |
 | `vertraute_apps` | Hostnamen anderer Apps, die ohne Ingress zugreifen dürfen (Standard: der MCP-Server, über den Claude arbeitet). |
 | `fitness_personen` | HA-Benutzer-IDs oder Anmeldenamen, die nur die Fitness-Welt bekommen (siehe unten). Leer = niemand. |
+| `ais_schluessel` | API-Schlüssel von aisstream.io für den Schiffsverkehr auf der Elbe. Leer = kein Schiffsverkehr. |
+| `ais_radius_km` | Umkreis um das Zuhause (`zone.home`) für den Schiffsverkehr in km, Standard 5. |
 | `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
 | `wetter_entitaet` | Wetter-Entität für das Einsatzspiel (Standard `weather.forecast_home`). |
 | `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
@@ -31,7 +33,24 @@ Einrichtung:
 
 Die App schaltet in der Fitness-Welt nichts in Home Assistant und liest nur die Wetter-Entität. Wichtig: Home Assistant selbst kennt keine Rechte je Gerät. Wer ein HA-Konto hat, kann die normale HA-Oberfläche öffnen und dort Geräte bedienen. Deshalb das Konto ohne Adminrechte anlegen und ihm keine Dashboards mit Geräten zeigen.
 
-Routen: `GET /api/lebenswelt/familie` (Bewegung der Familie, für den Buggy auf der Karte und die Wochenübersicht).
+Wünsche aus der Fitness-Welt gehen in die Vorschlagsliste. Samstagabend bereitet eine Claude-Routine sie auf und legt je Wunsch ein Dokument `freigabe` bei der Person mit voller Lebenswelt an; das Add-on schickt dann eine Push-Nachricht. Freigegebenes setzt die Sonntags-Routine für beide gleich um.
+
+Push-Nachrichten (mit eingerichtetem `fcm_dienstkonto`): an die Familie, wenn „Nilo schieben“ eingetragen wird, und um 19 Uhr an die Fitness-Welt, wenn heute noch nichts eingetragen ist.
+
+Routen: `GET /api/lebenswelt/familie` (Bewegung der Familie für den Buggy und die Wochenübersicht, dazu der Stand der Wünsche).
+
+## Schiffsverkehr auf der Elbe
+
+Die App zeigt die echten Schiffe vor dem Deich (Binnenschiffe, Tanker, Fahrgastschiffe, Sportboote) nach ihren AIS-Daten. Freigeschaltet wird das im Shop der App.
+
+Einrichtung:
+
+1. Auf [aisstream.io](https://aisstream.io) kostenlos anmelden und einen API-Schlüssel anlegen.
+2. Hier unter Konfiguration als `ais_schluessel` eintragen, speichern, App neu starten.
+
+Das Programm `ais/ais.py` liest die Lage von `zone.home` aus Home Assistant, abonniert bei aisstream.io ein Rechteck von `ais_radius_km` um diesen Punkt und legt die Schiffe mit Lage relativ zum Zuhause (Meter nach Osten und Norden) in `/data/ais.json` ab. Dabei erfährt aisstream.io das Rechteck, also ungefähr, wo das Zuhause liegt. Die App bekommt keine Koordinaten.
+
+Route: `GET /api/lebenswelt/schiffe` (`eingerichtet`, `fehler`, `schiffe` mit Name, AIS-Typ, Länge, Lage, Fahrt, Kurs und Ziel).
 
 ## Updates der App per Knopf
 
@@ -63,7 +82,8 @@ Routen: `GET /api/lebenswelt/push` (eingerichtet, Zahl der Geräte), `POST /api/
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/api/lebenswelt/ich` | angemeldete Person mit `profil` (`voll` oder `fitness`) |
-| GET | `/api/lebenswelt/familie` | Bewegung der letzten 14 Tage aus der Fitness-Welt (alle Personen) |
+| GET | `/api/lebenswelt/familie` | Bewegung der letzten 14 Tage aus der Fitness-Welt (alle Personen) und Stand der Wünsche |
+| GET | `/api/lebenswelt/schiffe` | Schiffe auf der Elbe (AIS), Lage relativ zum Zuhause |
 | GET | `/api/lebenswelt/spielstand` | Spielstand der Person |
 | PUT | `/api/lebenswelt/spielstand` | Spielstand speichern (`{zeit, daten}`), 409 wenn der gespeicherte neuer ist |
 | GET | `/api/lebenswelt/dokumente?typ=a,b&seit=…` | Dokumente der Person, optional nur Änderungen seit `jetzt` der letzten Antwort |

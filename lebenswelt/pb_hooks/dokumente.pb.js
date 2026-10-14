@@ -70,6 +70,16 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
       ergebnis.push(h.alsDokument(r))
     }
   })
+  // Neue Wünsche zur Freigabe (Samstags-Routine): Push an die Person, die freigeben soll
+  const offen = require(`${__hooks}/familie.js`).offeneFreigaben(ergebnis)
+  if (offen) {
+    require(`${__hooks}/push.js`).sende(e.app, ich.id, {
+      titel: "Wünsche zur Freigabe",
+      text: offen === 1 ? "Ein Wunsch aus der Fitness-Welt wartet auf dich (Store)." : `${offen} Wünsche aus der Fitness-Welt warten auf dich (Store).`,
+      kanal: "allgemein",
+      id: "freigabe",
+    })
+  }
   return e.json(200, { dokumente: ergebnis })
 })
 

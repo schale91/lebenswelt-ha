@@ -38,3 +38,37 @@ test("Bewegung aus dem Spielstand: nur gültige Einträge ab dem Stichtag, nur b
 test("Stichtag vor n Tagen", () => {
   assert.equal(F.tagVor(Date.UTC(2026, 9, 14, 12), 14), "2026-09-30")
 })
+
+test("Push bei Nilo nur für neue, frische Spaziergänge", () => {
+  const jetzt = 10 * 3600000
+  const alt = { state: { bewegungen: [{ id: "n1", art: "nilo", datum: "2026-10-14", zeit: jetzt - 600000, minuten: 20 }] } }
+  const neu = {
+    state: {
+      bewegungen: [
+        { id: "n1", art: "nilo", datum: "2026-10-14", zeit: jetzt - 600000, minuten: 20 },
+        { id: "n2", art: "nilo", datum: "2026-10-14", zeit: jetzt - 60000, schritte: 2000 },
+        { id: "n3", art: "nilo", datum: "2026-10-13", zeit: jetzt - 5 * 3600000, minuten: 30 },
+        { id: "s1", art: "schritte", datum: "2026-10-14", zeit: jetzt, schritte: 4000 },
+      ],
+    },
+  }
+  assert.deepEqual(
+    F.neueNilo(alt, neu, jetzt).map((b) => b.id),
+    ["n2"],
+  )
+  assert.equal(F.neueNilo(null, { state: {} }, jetzt).length, 0)
+})
+
+test("Erinnerung am Abend nur ohne Eintrag am selben Tag", () => {
+  const daten = { state: { bewegungen: [{ id: "a", art: "schritte", datum: "2026-10-13", zeit: 1, schritte: 3000 }] } }
+  assert.equal(F.braucheErinnerung(daten, "2026-10-14"), true)
+  assert.equal(F.braucheErinnerung(daten, "2026-10-13"), false)
+  assert.equal(F.braucheErinnerung(null, "2026-10-14"), true)
+})
+
+test("Wünsche für die Familie ohne Aufbereitung, unbekannter Status gilt als offen", () => {
+  const w = F.wunschFuerFamilie({ id: "x", daten: { vorschlag: "Drehleiter", titel: "Drehleiter DLK 23/12", status: "freigegeben", aufbereitung: "lang", anmerkung: "ab Stufe 3" } })
+  assert.deepEqual(w, { id: "x", vorschlag: "Drehleiter", titel: "Drehleiter DLK 23/12", status: "freigegeben", anmerkung: "ab Stufe 3" })
+  assert.equal(F.wunschFuerFamilie({ id: "y", daten: { status: "quatsch" } }).status, "offen")
+  assert.equal(F.offeneFreigaben([{ typ: "freigabe", daten: {} }, { typ: "freigabe", daten: { status: "freigegeben" } }, { typ: "aufgabe", daten: {} }]), 1)
+})

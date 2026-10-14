@@ -23,4 +23,5 @@ Prüfen:
 ```
 node werkzeuge/pruefe-regelwerk.js --baum
 node --test test/einsatz.test.js test/familie.test.js
+python3 test/ais_test.py
 ```

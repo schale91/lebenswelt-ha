@@ -30,6 +30,8 @@ options:
   app_quelle: schale91/Claude@app-paket
   app_token: ""
   fcm_dienstkonto: ""
+  ais_schluessel: ""
+  ais_radius_km: 5
 schema:
   person: str?
   vertraute_apps:
@@ -41,3 +43,5 @@ schema:
   app_quelle: str?
   app_token: password?
   fcm_dienstkonto: password?
+  ais_schluessel: password?
+  ais_radius_km: int(1,20)?

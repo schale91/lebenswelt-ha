@@ -70,10 +70,11 @@ function erlaubt(e) {
   return quelle(e) !== null
 }
 
-/** Die einzige bekannte Person, falls es genau eine gibt (Einzelbetrieb). */
+/** Die einzige bekannte Person mit voller Lebenswelt, falls es genau eine gibt (Einzelbetrieb). */
 function einzigePerson(app) {
   try {
-    const liste = app.findRecordsByFilter("spielstaende", "benutzer != ''", "", 2, 0)
+    // Personen mit Fitness-Welt (Papa) zählen nicht mit: Claude arbeitet für die volle Lebenswelt
+    const liste = app.findRecordsByFilter("spielstaende", "benutzer != '' && profil != 'fitness'", "", 2, 0)
     if (liste.length === 1) return { id: liste[0].getString("benutzer"), name: liste[0].getString("name") }
   } catch (_) {
     // noch keine Personen
