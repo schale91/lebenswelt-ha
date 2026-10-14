@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.19.0
+
+- Einsatzspiel, zufällige Einsatzorte: Einsatzarten mit `ort_gruppen` treten außer an ihren festen Orten auch an Zufallsorten der Karte auf (`ZUFALLSORTE`, von der privaten Karte geliefert). Katze im Baum in allen Bäumen an freien Grünflächen (`baum`), Unfälle, Pannen, Ölspur, Wild, Streuen und andere Straßeneinsätze auf allen Straßen (`strasse`). Ohne Karte bleibt alles wie bisher.
+- `ortName` für lesbare Ortsnamen (auch in Push-Nachrichten), `orteVon` für alle Orte einer Einsatzart.
+
 ## 0.18.0
 
 - Einsatzspiel, Weg zum Gerätehaus: Zu Fuß und mit dem Rad geht es über den Gehweg entlang der Straßen (`fussroute`), abgekürzt wird nur am Anfang und am Ende über Hof oder Platz, höchstens `ZEITEN.abkuerzung_max` (30 Einheiten, etwa 90 m). Mit dem Auto über die Straße (`strassenroute`), nicht mehr quer durch Gärten. Auch der Trupp zu Fuß zur Einsatzstelle nimmt den Gehweg.

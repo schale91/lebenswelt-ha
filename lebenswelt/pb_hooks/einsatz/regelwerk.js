@@ -1089,6 +1089,7 @@ const AUSBAU = {
 const EINSATZARTEN = {
   // Feuerwehr, Einstieg
   tier_katze: {
+    ort_gruppen: ["baum"],
     org: "feuerwehr", name: "Katze auf Baum", stichwort: "TH Tier", preis: 50, start: true, harmlos: true,
     orte: ["baum_feuerwehr", "baum_bibliothek", "baum_markt"],
     intervall_min: 60, ablauf_min: 5, arbeit_min: 4, ziel_eintreffen_min: 4,
@@ -1120,6 +1121,7 @@ const EINSATZARTEN = {
     verfallen_text: "Das Gartenhaus hat Feuer gefangen. Die Nachbarwehr musste übernehmen.",
   },
   th_oelspur: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Ölspur auf der Fahrbahn", stichwort: "TH klein", preis: 250,
     freischaltung: { nach: "tier_katze", sterne: 4 },
     orte: ["hauptstrasse_ost", "hauptstrasse_west", "kreuzung"], intervall_min: 300, ablauf_min: 20, arbeit_min: 15, ziel_eintreffen_min: 10,
@@ -1132,6 +1134,7 @@ const EINSATZARTEN = {
   },
   // Feuerwehr, Wetterlagen
   th_baum_strasse: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Baum auf Straße", stichwort: "TH Sturm", preis: 600,
     freischaltung: { nach: "th_oelspur", sterne: 3 },
     orte: ["hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 600, ablauf_min: 30, arbeit_min: 20, ziel_eintreffen_min: 10,
@@ -1181,6 +1184,7 @@ const EINSATZARTEN = {
   },
   // Feuerwehr, mittlere Lagen
   b_pkw: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "PKW-Brand", stichwort: "B PKW", preis: 1200,
     freischaltung: { nach: "b_hecke", sterne: 4 },
     orte: ["hauptstrasse_ost", "festplatz", "marktplatz"], intervall_min: 600, ablauf_min: 12, arbeit_min: 12, ziel_eintreffen_min: 8, wachstum: 0.12,
@@ -1226,6 +1230,7 @@ const EINSATZARTEN = {
     verfallen_text: "Der Rettungsdienst war nach zwölf Minuten da. Jede Minute zählt.",
   },
   th_vu: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Verkehrsunfall, Person eingeklemmt", stichwort: "TH VU P", preis: 4000,
     freischaltung: { nach: "b_pkw", sterne: 4 },
     orte: ["kreuzung", "hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 1440, ablauf_min: 15, arbeit_min: 25, ziel_eintreffen_min: 8,
@@ -1377,6 +1382,7 @@ const EINSATZARTEN = {
     verfallen_text: "Angehörige haben die Person gefunden.",
   },
   p_vu_sachschaden: {
+    ort_gruppen: ["strasse"],
     org: "polizei", name: "Verkehrsunfall mit Sachschaden", stichwort: "VU", preis: 400,
     freischaltung: { nach: "p_falschparker", sterne: 3 },
     orte: ["kreuzung", "hauptstrasse_ost", "marktplatz"], intervall_min: 720, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 15,
@@ -1400,6 +1406,7 @@ const EINSATZARTEN = {
     verfallen_text: "Der Beschuldigte ist weggelaufen.",
   },
   p_wild: {
+    ort_gruppen: ["strasse"],
     org: "polizei", name: "Wildunfall", stichwort: "VU Wild", preis: 300,
     freischaltung: { nach: "p_vu_sachschaden", sterne: 3 },
     orte: ["hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 1440, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 15,
@@ -1434,6 +1441,7 @@ const EINSATZARTEN = {
     verfallen_text: "Der Sicherheitsdienst hat die Gruppen getrennt, ein Verletzter.",
   },
   p_trunkenheit: {
+    ort_gruppen: ["strasse"],
     org: "polizei", name: "Trunkenheitsfahrt", stichwort: "Verkehr", preis: 1800,
     freischaltung: { nach: "p_vu_sachschaden", sterne: 4 },
     orte: ["hauptstrasse_west", "kreuzung"], intervall_min: 4320, ablauf_min: 15, arbeit_min: 45, ziel_eintreffen_min: 10,
@@ -1459,6 +1467,7 @@ const EINSATZARTEN = {
   // ---------- Werkstatt und Abschleppdienst (ab Level 12, Konzept DORFDIENSTE.md Abschnitt 9) ----------
   // sperrt: solange der Einsatz offen ist, kostet die Stelle Einsatzfahrten in der Nähe Zeit (wie eine Baustelle)
   ab_panne: {
+    ort_gruppen: ["strasse"],
     org: "werkstatt", name: "Panne auf der Dorfstraße", stichwort: "Panne", preis: 200, start_level: 12, harmlos: true, sperrt: true,
     orte: ["hauptstrasse_ost", "hauptstrasse_west", "kreuzung", "marktplatz"], intervall_min: 1440, ablauf_min: 90, arbeit_min: 20, ziel_eintreffen_min: 20,
     mindestens: { personen: 1, geraete: [[{ starthilfe: 1 }, { abschleppseil: 1 }]] },
@@ -1477,6 +1486,7 @@ const EINSATZARTEN = {
     verfallen_text: "Ein Landwirt hat das Auto mit dem Traktor herausgezogen. Die Stoßstange ist ab.",
   },
   ab_lkw: {
+    ort_gruppen: ["strasse"],
     org: "werkstatt", name: "LKW festgefahren bei Glätte", stichwort: "Bergung schwer", preis: 1500, sperrt: true,
     freischaltung: { nach: "ab_graben", sterne: 3 },
     orte: ["hauptstrasse_ost", "kreuzung"], intervall_min: 1440, ablauf_min: 120, arbeit_min: 50, ziel_eintreffen_min: 30,
@@ -1503,6 +1513,7 @@ const EINSATZARTEN = {
   // ---------- Bauhof (ab Level 12, Abschnitt 10) ----------
   // wirkung.gestreut_h: so lange gilt auf den Straßen nach dem Streuen bei Glätte und Schnee der Reibwert für "nass"
   bh_streuen: {
+    ort_gruppen: ["strasse"],
     org: "bauhof", name: "Glätte: Straßen streuen", stichwort: "Winterdienst", preis: 250, start_level: 12, harmlos: true,
     orte: ["hauptstrasse_ost", "kreuzung", "hauptstrasse_west"], intervall_min: 240, ablauf_min: 240, arbeit_min: 45, ziel_eintreffen_min: 30,
     bedingung: { wetter: ["glaette", "schnee"], faktor: 1, sonst_faktor: 0 },
@@ -1872,6 +1883,7 @@ const EINSATZARTEN = {
   },
   // ---------- Feuerwehr, Polizei und Rettungsdienst (ab Level 16, Konzept DORFDIENSTE.md 13.6) ----------
   th_vu_mehrere: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Verkehrsunfall mit mehreren Verletzten", stichwort: "TH VU 2", preis: 2500, ab_level: 16,
     freischaltung: { nach: "th_vu", sterne: 4 },
     orte: ["kreuzung", "hauptstrasse_ost"], intervall_min: 4320, ablauf_min: 15, arbeit_min: 50, ziel_eintreffen_min: 10,
@@ -1883,6 +1895,7 @@ const EINSATZARTEN = {
     verfallen_text: "Die Nachbarwehr hat übernommen.",
   },
   th_motorrad: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Motorradunfall nach Wildwechsel", stichwort: "TH VU", preis: 1200, ab_level: 16,
     freischaltung: { nach: "th_vu", sterne: 3 },
     orte: ["hauptstrasse_west", "wiese_deich"], intervall_min: 2880, ablauf_min: 15, arbeit_min: 25, ziel_eintreffen_min: 10,
@@ -1941,6 +1954,7 @@ const EINSATZARTEN = {
     verfallen_text: "Ein Passant hat die Scheibe eingeschlagen. Es ging gut, aber knapp.",
   },
   th_rinder: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Rinder auf der Straße", stichwort: "TH Tier", preis: 1200, ab_level: 8, harmlos: true,
     freischaltung: { nach: "th_pferd", sterne: 3 },
     orte: ["hauptstrasse_ost", "kreuzung", "wiese_deich"], intervall_min: 4320, ablauf_min: 25, arbeit_min: 20, ziel_eintreffen_min: 12,
@@ -1964,6 +1978,7 @@ const EINSATZARTEN = {
     verfallen_text: "Die Tonne ist heruntergebrannt, die Spuren sind mit verbrannt.",
   },
   th_unfallflucht: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Ölspur nach Unfallflucht", stichwort: "TH klein", preis: 1100, ab_level: 8,
     freischaltung: { nach: "th_oelspur", sterne: 3 },
     orte: ["hauptstrasse_ost", "hauptstrasse_west", "kreuzung"], intervall_min: 2880, ablauf_min: 20, arbeit_min: 15, ziel_eintreffen_min: 10,
@@ -1987,6 +2002,7 @@ const EINSATZARTEN = {
     verfallen_text: "Der Netzbetreiber hat die Leitung abgesperrt, die Bewohner standen lange auf der Straße.",
   },
   abc_lkw: {
+    ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "LKW verliert Flüssigkeit (Gefahrgut)", stichwort: "ABC Gefahrgut", preis: 7000, ab_level: 8,
     freischaltung: { nach: "abc_gas", sterne: 4 },
     orte: ["hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 7200, ablauf_min: 15, arbeit_min: 40, ziel_eintreffen_min: 10,
@@ -2307,7 +2323,17 @@ const ZEITEN = {
   ohne_wasser: 2, // nichts in Reichweite, nur was gerade da ist
 }
 
+/**
+ * Zufallsorte: Punkte aus der Karte, an denen Einsätze mit ort_gruppen außer an ihren festen Orten auftreten können
+ * (baum: Bäume an freien Grünflächen; strasse: Abschnitte aller Straßen). Das öffentliche Regelwerk hat keine, die
+ * private Karte der App liefert sie (dienst.js, mitKarte).
+ */
+const ZUFALLSORTE = {}
+const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße" }
+
 module.exports = {
+  ZUFALLSORTE,
+  ZUFALLSORT_NAMEN,
   VERFALL,
   VERSION,
   PREISFAKTOR,
