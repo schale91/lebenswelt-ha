@@ -847,7 +847,9 @@ Offen ist derzeit nichts.
 
 **Umgesetzt: D7 DLRG** (Add-on 0.14.0). Mitgliedschaft mit Fitness-Voraussetzungen, Wachstation in vier Stufen, Wachdienst an Sommerwochenenden, der Mitglieder bindet (Abnahme in `test/dlrg.test.js`), Badeunfall, Boot in Not, Hochwasser-Evakuierung, Strömungsretter bei Wassereinsätzen der Feuerwehr, Suche am Ufer. Vereinfacht: Die Kopplung an den echten Elbpegel fehlt noch, Hochwasser-Einsätze hängen wie der Deicheinsatz an den Monaten; das Abzeichen wird ohne Zutun erneuert.
 
-**Als Nächstes:** D8 THW (Level 27).
+**Umgesetzt: D8 THW** (Add-on 0.15.0). Mitgliedschaft, Unterkunft in vier Stufen, Fahrzeuge und Fachgruppen-Geräte; das THW kommt nur auf Anforderung und hängt damit an der Führungsausbildung der Feuerwehr (Abnahme in `test/thw.test.js`). Vereinfacht: Die Fachgruppen sind keine eigenen Einheiten, sondern ergeben sich aus Geräten, Fahrzeugen und Lehrgängen; Ortung (Endstufe) fehlt noch.
+
+**Als Nächstes:** D9 Alle zusammen (Level 30).
 
 ---
 

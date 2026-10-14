@@ -22,6 +22,7 @@ const PREIS_MINIMUM = 10 // spielwert: nichts kostet weniger (außer Kostenlosem
 
 /** Quellen, auf die sich Einträge über `quelle` beziehen. Stand der Recherche: Oktober 2026. */
 const QUELLEN = {
+  thwg: { titel: "§ 1 THW-Gesetz: Hilfe auf Anforderung der für die Gefahrenabwehr zuständigen Stellen", url: "https://www.gesetze-im-internet.de/thw-helfrg/__1.html" },
   rettungsschwimmen: { titel: "Deutsche Prüfungsordnung Schwimmen, Retten, Rettungsschwimmen (Abdruck DLRG)", url: "https://koenigswinter.dlrg.de/fileadmin/groups/9220020/DLRG_Koenigswinter/Pruefungsordnung/po1.pdf" },
   nkatsg_mitwirkung: { titel: "MI Niedersachsen: Gliederung und Sollstärke der Einheiten im Sanitäts- und Betreuungsdienst", url: "https://www.mi.niedersachsen.de/startseite/themen/innere_sicherheit/brand_katastrophenschutz/katastrophenschutz/gliederung-und-sollstarke-der-einheiten-des-katastrophenschutzes-im-sanitats-und-betreuungsdienst-221740.html" },
   bedarfvo_rettd: { titel: "Verordnung über die Bemessung des Bedarfs an Einrichtungen des Rettungsdienstes (BedarfVO-RettD), Nds. GVBl. Nr. 18/2023", url: "https://www.niedersachsen.de/download/199212/Nds._GVBl._Nr._18_2023_vom_19.09.2023_S._201-215.pdf" },
@@ -313,6 +314,7 @@ const ORTE = {
   rettungswache: { name: "Rettungswache", x: 56, z: 86, fest: true },
   drk_unterkunft: { name: "DRK-Unterkunft", x: -52, z: 74, fest: true },
   wachstation: { name: "Wasserrettungsstation", x: 14, z: -44, fest: true },
+  thw_unterkunft: { name: "THW-Unterkunft", x: 76, z: -40, fest: true },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -410,6 +412,7 @@ const ORGANISATIONEN = {
   rettungsdienst: { name: "Rettungsdienst", gebaeude: "rettungswache", ab_level: 16, reaktion_s: 60 },
   drk: { name: "DRK-Ortsverein", gebaeude: "drk_unterkunft", ab_level: 20, reaktion_s: 300 },
   dlrg: { name: "DLRG-Ortsgruppe", gebaeude: "wachstation", ab_level: 24, reaktion_s: 300 },
+  thw: { name: "THW-Ortsverband", gebaeude: "thw_unterkunft", ab_level: 27, reaktion_s: 360, nur_nachforderung: true },
 }
 
 /**
@@ -422,6 +425,7 @@ const EXTERN = {
   rettungsdienst: { name: "RTW der Nachbarwache", anfahrt_min: 14, max_sterne: 3, ab_level: 16 }, // spielwert
   drk: { name: "Schnelleinsatzgruppe aus dem Nachbarort", anfahrt_min: 30, max_sterne: 3, ab_level: 20 }, // spielwert
   dlrg: { name: "Wasserrettungszug des Landkreises", anfahrt_min: 35, max_sterne: 3, ab_level: 24 }, // spielwert
+  thw: { name: "THW-Ortsverband der Kreisstadt", anfahrt_min: 45, max_sterne: 3, ab_level: 27 }, // spielwert
 }
 
 /**
@@ -463,6 +467,8 @@ const MITGLIEDSCHAFTEN = {
   drk: { name: "DRK-Ortsverein", eintritt: 120, ab_level: 20, grundausbildung: "sanitaetshelfer", grundausbildung_h: 16, fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
   // Wasserrettung: Wer eintritt, legt das Rettungsschwimmabzeichen Bronze ab und braucht dafür etwas Fitness
   dlrg: { name: "DLRG-Ortsgruppe", eintritt: 120, ab_level: 24, grundausbildung: "rs_bronze", grundausbildung_h: 16, fitness_min: 40, quelle: "rettungsschwimmen", fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
+  // Technisches Hilfswerk: Ehrenamt im Ortsverband, kommt nur auf Anforderung der Einsatzleitung
+  thw: { name: "THW-Ortsverband", eintritt: 100, ab_level: 27, grundausbildung: "thw_grund", grundausbildung_h: 24, quelle: "thwg", fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
 }
 
 /**
@@ -610,6 +616,12 @@ const LEHRGAENGE = {
   stroemungsretter: { org: "dlrg", name: "Strömungsretterin/Strömungsretter", dauer_h: 24, preis: 600, voraussetzung: ["wasserretter"], fitness_min: 65 },
   bootsfuehrer: { org: "dlrg", name: "Bootsführerin/Bootsführer", dauer_h: 24, preis: 500, voraussetzung: ["wasserretter"] },
   wachfuehrer: { org: "dlrg", name: "Wachführerin/Wachführer", dauer_h: 24, preis: 400, voraussetzung: ["wasserretter"] },
+  // THW (Spielwerte)
+  thw_grund: { org: "thw", name: "Grundausbildung THW", dauer_h: 24, preis: 0, hinweis: "beim Eintritt" },
+  thw_motorsaege: { org: "thw", name: "Motorsägenführerin/Motorsägenführer", dauer_h: 16, preis: 300, voraussetzung: ["thw_grund"] },
+  thw_kraftfahrer: { org: "thw", name: "Kraftfahrerin/Kraftfahrer C/CE", dauer_h: 40, preis: 900, voraussetzung: ["thw_grund"] },
+  thw_elektro: { org: "thw", name: "Elektrofachkraft Notversorgung", dauer_h: 40, preis: 700, voraussetzung: ["thw_grund"] },
+  thw_gf: { org: "thw", name: "Gruppenführerin/Gruppenführer THW", dauer_h: 40, preis: 800, voraussetzung: ["thw_grund"] },
   pk: { org: "polizei", name: "Bachelorstudium Polizeivollzugsdienst (Polizeiakademie Niedersachsen)", dauer_h: 0, preis: 0, quelle: "polizeiakademie", hinweis: "beim Einzug abgeschlossen" },
   einsatztraining: { org: "polizei", name: "Einsatztraining (jährlich)", dauer_h: 8, preis: 150, voraussetzung: ["pk"], verfaellt_tage: 365 },
   vu_aufnahme: { org: "polizei", name: "Verkehrsunfallaufnahme", dauer_h: 16, preis: 300, voraussetzung: ["pk"] },
@@ -665,6 +677,7 @@ const MERKMALE = {
   rtw_fahrzeug: { name: "Rettungswagen", aus: { fahrzeug: ["rtw"] } },
   ktw_fahrzeug: { name: "Krankentransportwagen", aus: { fahrzeug: ["ktw"] } },
   feldkueche_fahrzeug: { name: "Feldküche", aus: { fahrzeug: ["feldkueche"] } },
+  radlader_fahrzeug: { name: "Radlader", aus: { fahrzeug: ["radlader"] } },
   polizei_vor_ort: { name: "Polizei an der Einsatzstelle", aus: { lage: "polizei_eingetroffen" } },
 }
 
@@ -780,6 +793,13 @@ const GERAETE = {
   stroemungsretter_set: { name: "Strömungsretter-Ausrüstung (Trockenanzug, Helm, Weste)", slots: 1, preis: 1200, org: "dlrg", kategorie: "wasserrettung" },
   schlauchboot: { name: "Schlauchboot mit Außenborder", slots: 4, preis: 6000, org: "dlrg", kategorie: "boot" },
   motorrettungsboot: { name: "Motorrettungsboot", slots: 8, preis: 18000, org: "dlrg", kategorie: "boot" },
+  // THW: Fachgruppen
+  abstuetzsystem: { name: "Abstützsystem Holz (Bergungsgruppe)", slots: 3, preis: 2500, org: "thw", kategorie: "bergung" },
+  lichtmast: { name: "Lichtmast mit Aggregat", slots: 2, preis: 3000, org: "thw", kategorie: "bergung" },
+  netzersatzanlage: { name: "Netzersatzanlage (Fachgruppe Notversorgung)", slots: 6, preis: 15000, org: "thw", kategorie: "notversorgung" },
+  grosspumpe: { name: "Großpumpe 5000 l/min (Fachgruppe Wassergefahren)", slots: 4, preis: 9000, org: "thw", kategorie: "wassergefahren" },
+  sandsackfueller: { name: "Sandsack-Füllanlage", slots: 4, preis: 7000, org: "thw", kategorie: "wassergefahren" },
+  thw_motorsaegen: { name: "Motorsägen-Satz", slots: 1, preis: 1500, org: "thw", kategorie: "raeumen" },
   // Werkstatt und Abschleppdienst
   starthilfe: { name: "Starthilfegerät", slots: 0.5, preis: 150, org: "werkstatt", kategorie: "pannenhilfe" },
   abschleppseil: { name: "Abschleppseil und Abschleppstange", slots: 0.5, preis: 60, org: "werkstatt", kategorie: "pannenhilfe" },
@@ -888,6 +908,10 @@ const FAHRZEUGE = {
   // DLRG-Ortsgruppe (Rot und Gelb, ohne Logo)
   mtw_dlrg: { org: "dlrg", name: "Mannschaftstransportwagen Wasserrettung", besatzung: [1, 7], slots: 5, preis: 6000, tempo_kmh: 60, stellplatz: 1, fahrer: "rs_bronze", grundbeladung: { wurfsack: 2 } },
   gw_wasserrettung: { org: "dlrg", name: "Gerätewagen Wasserrettung mit Bootstrailer", besatzung: [1, 5], slots: 14, preis: 16000, tempo_kmh: 55, stellplatz: 1, fahrer: "rs_bronze", grundbeladung: { rettungsbrett: 1, wurfsack: 2 } },
+  // THW-Ortsverband (THW-Blau, ohne Logo)
+  mtw_thw: { org: "thw", name: "Mannschaftslastwagen (MTW OV)", besatzung: [1, 7], slots: 6, preis: 7000, tempo_kmh: 60, stellplatz: 1, fahrer: "thw_grund", grundbeladung: { lichtmast: 1 } },
+  gkw: { org: "thw", name: "Gerätekraftwagen (Bergungsgruppe)", besatzung: [1, 8], slots: 16, preis: 30000, tempo_kmh: 50, stellplatz: 1, fahrer: "thw_kraftfahrer", grundbeladung: { abstuetzsystem: 1, lichtmast: 1, thw_motorsaegen: 1 } },
+  radlader: { org: "thw", name: "Radlader mit Tieflader (Fachgruppe Räumen)", besatzung: [0, 2], slots: 2, preis: 35000, tempo_kmh: 35, stellplatz: 1, fahrer: "thw_kraftfahrer", merkmal_raeumen: true, grundbeladung: {} },
   hundestreife: { org: "polizei", name: "Diensthundstreife", besatzung: [0, 1], slots: 2, preis: 9000, tempo_kmh: 70, stellplatz: 1, fahrer: "diensthund", hund: true, grundbeladung: {} },
 }
 
@@ -985,6 +1009,13 @@ const GEBAEUDE = {
     { name: "Wasserrettungsstation mit Bootshaus und Slipanlage", bauzeit_h: 48, stellplaetze: 2, preis: 20000, lager_slots: 22, ab_level: 24, wachdienst: true },
     { name: "Station mit Steg, Strömungsrettungslager und Funkraum", bauzeit_h: 72, stellplaetze: 3, preis: 35000, lager_slots: 34, ab_level: 24, wachdienst: true, hinweis: "Strömungsretter rücken schneller aus" },
   ],
+  // Unterkunft des THW-Ortsverbands (Abschnitt 8). Stufe 0: Lagerraum in einer Scheune.
+  thw_unterkunft: [
+    { name: "Lagerraum in einer Scheune", bauzeit_h: 0, stellplaetze: 1, preis: 0, lager_slots: 8, ort: "scheune" },
+    { name: "Unterkunft des Ortsverbands", bauzeit_h: 24, stellplaetze: 2, preis: 10000, lager_slots: 20, ab_level: 27 },
+    { name: "Unterkunft mit Fahrzeughalle und Werkstatt", bauzeit_h: 48, stellplaetze: 4, preis: 25000, lager_slots: 36, ab_level: 27 },
+    { name: "Unterkunft mit Übungsgelände", bauzeit_h: 72, stellplaetze: 5, preis: 40000, lager_slots: 44, ab_level: 27, hinweis: "Trümmerkegel und Übungsbecken" },
+  ],
   // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
   // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
   sportplatz: [
@@ -1002,7 +1033,7 @@ const GEBAEUDE = {
 }
 
 /** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
-const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft", wachstation: "wachstation" }
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft", wachstation: "wachstation", thw_unterkunft: "thw_unterkunft" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -1108,7 +1139,7 @@ const EINSATZARTEN = {
     optimal: { personen: 6, geraete: [[{ leitkegel: 1 }], [{ warnleuchte: 1 }], [{ beleuchtung: 1 }]] },
     psa: { helm: 2 },
     regeln: ["verkehrsabsicherung", "einheitsfuehrer"],
-    folge: ["bh_absperrung"],
+    folge: ["bh_absperrung", "thw_raeumen"],
     text: "Eine Pappel ist umgestürzt und blockiert beide Fahrstreifen.",
     verfallen_text: "Die Straße blieb stundenlang gesperrt.",
   },
@@ -1248,7 +1279,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 18, qualifikation: { agt: 4, gf: 1, maschinist: 2 }, geraete: [[{ b_schlauch: 15 }], [{ bm_strahlrohr: 1 }, { cm_strahlrohr: 3 }], [{ fahrzeug_wasser: 2 }], [{ pressluftatmer: 4 }]] },
     optimal: { personen: 30, qualifikation: { zf: 1 }, geraete: [[{ elw_fahrzeug: 1 }], [{ dlak_fahrzeug: 1 }], [{ tlf_fahrzeug: 1 }], [{ beleuchtung: 2 }], [{ a_saugschlauch: 4, saugkorb: 1 }]] },
     regeln: ["einheitsfuehrer", "atemschutz_ueberwachung", "maschinist_pumpe", "wasserversorgung_lange_wegstrecke"],
-    folge: ["p_absperrung"],
+    folge: ["p_absperrung", "thw_abstuetzen", "thw_ausleuchten"],
     text: "Eine Strohscheune steht in Vollbrand, daneben steht ein Stall mit Rindern.",
     verfallen_text: "Kreisfeuerwehrbereitschaft alarmiert, die Scheune ist verloren.",
   },
@@ -1272,7 +1303,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 20, qualifikation: { zf: 1 }, geraete: [[{ sandsack: 10 }], [{ beleuchtung: 2 }]] },
     optimal: { personen: 40, geraete: [[{ sandsack: 20 }], [{ elw_fahrzeug: 1 }], [{ stromerzeuger: 2 }], [{ drohne: 1 }]] },
     regeln: ["einheitsfuehrer", "eigenschutz_wasser"],
-    folge: ["p_absperrung", "drk_verpflegung"],
+    folge: ["p_absperrung", "drk_verpflegung", "thw_ausleuchten", "thw_pumpen"],
     text: "Der Pegel steigt, am Deichfuß tritt Wasser aus (Qualmwasser). Eine Sandsackauflast muss her.",
     verfallen_text: "Das Technische Hilfswerk hat übernommen, der Deich hielt knapp.",
   },
@@ -1612,6 +1643,54 @@ const EINSATZARTEN = {
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }], [{ vakuummatratze: 1 }, { spineboard: 1 }]] },
     text: "Eine schwer verletzte oder lebensbedrohlich erkrankte Person braucht Rettungsdienst und Notarzt.",
   },
+  // ---------- THW (ab Level 27, Konzept DORFDIENSTE.md Abschnitt 8) ----------
+  // Nur auf Anforderung (nachforderung): Ohne Gruppen- oder Zugführer der Feuerwehr vor Ort dauert die Anforderung länger.
+  thw_abstuetzen: {
+    org: "thw", name: "Gebäude abstützen", stichwort: "THW Bergung", folge_nur: true, nachforderung: true, quelle: "thwg",
+    ablauf_min: 90, arbeit_min: 90, ziel_eintreffen_min: 40,
+    mindestens: { personen: 4, geraete: [[{ abstuetzsystem: 1 }]] },
+    optimal: { personen: 8, qualifikation: { thw_gf: 1 }, geraete: [[{ lichtmast: 1 }], [{ thw_motorsaegen: 1 }]] },
+    text: "Nach dem Brand ist die Scheune einsturzgefährdet. Das THW stützt Giebel und Dach ab.",
+  },
+  thw_ausleuchten: {
+    org: "thw", name: "Einsatzstelle ausleuchten", stichwort: "THW Licht", folge_nur: true, nachforderung: true, nur_dunkel: true, dauer_wie_ausloeser: true,
+    ablauf_min: 90, arbeit_min: 0, ziel_eintreffen_min: 40,
+    mindestens: { personen: 2, geraete: [[{ lichtmast: 1 }]] },
+    optimal: { personen: 4, geraete: [[{ lichtmast: 2 }]] },
+    text: "Der Einsatz dauert bis in die Nacht. Das THW leuchtet die Einsatzstelle großflächig aus.",
+  },
+  thw_pumpen: {
+    org: "thw", name: "Großpumpen und Sandsäcke", stichwort: "THW Wasser", folge_nur: true, nachforderung: true, dauer_wie_ausloeser: true,
+    ablauf_min: 120, arbeit_min: 0, ziel_eintreffen_min: 45,
+    mindestens: { personen: 4, geraete: [[{ grosspumpe: 1 }, { sandsackfueller: 1 }]] },
+    optimal: { personen: 8, geraete: [[{ grosspumpe: 1 }], [{ sandsackfueller: 1 }], [{ lichtmast: 1 }]] },
+    text: "Das THW bringt Großpumpen und eine Sandsack-Füllanlage an den Deich.",
+  },
+  thw_raeumen: {
+    org: "thw", name: "Sturmschaden räumen", stichwort: "THW Räumen", folge_nur: true, nachforderung: true,
+    ablauf_min: 90, arbeit_min: 40, ziel_eintreffen_min: 40,
+    mindestens: { personen: 3, qualifikation: { thw_motorsaege: 1 }, geraete: [[{ thw_motorsaegen: 1 }]] },
+    optimal: { personen: 6, geraete: [[{ radlader_fahrzeug: 1 }]] },
+    text: "Der umgestürzte Baum ist zerteilt, jetzt räumt das THW Stamm und Wurzelteller von der Straße.",
+  },
+  thw_strom: {
+    org: "thw", name: "Notstrom einspeisen", stichwort: "THW Strom", folge_nur: true, nachforderung: true,
+    ablauf_min: 120, arbeit_min: 120, ziel_eintreffen_min: 45,
+    mindestens: { personen: 3, qualifikation: { thw_elektro: 1 }, geraete: [[{ netzersatzanlage: 1 }]] },
+    optimal: { personen: 5, geraete: [[{ lichtmast: 1 }]] },
+    text: "Das THW speist mit der Netzersatzanlage Strom in den Ortsteil ein, bis der Netzbetreiber den Schaden behoben hat.",
+  },
+  th_stromausfall: {
+    org: "feuerwehr", name: "Stromausfall im Ortsteil", stichwort: "TH Strom", preis: 1800, ab_level: 27,
+    freischaltung: { nach: "th_baum_strasse", sterne: 3 },
+    orte: ["marktplatz", "schule", "bibliothek"], intervall_min: 4320, ablauf_min: 30, arbeit_min: 30, ziel_eintreffen_min: 10,
+    bedingung: { wetter: ["sturm", "schnee", "glaette"], faktor: 2, sonst_faktor: 0.3 },
+    mindestens: { personen: 2, geraete: [[{ stromerzeuger: 1 }, { beleuchtung: 1 }]] },
+    optimal: { personen: 6, geraete: [[{ stromerzeuger: 1 }], [{ beleuchtung: 2 }]] },
+    folge: ["thw_strom"],
+    text: "Nach einem Kabelschaden ist der halbe Ort ohne Strom. Die Feuerwehr versorgt die wichtigsten Stellen, für mehr braucht es das THW.",
+    verfallen_text: "Der Netzbetreiber hat nach Stunden repariert.",
+  },
   // ---------- DLRG-Ortsgruppe (ab Level 24, Konzept DORFDIENSTE.md Abschnitt 7) ----------
   dlrg_badeunfall: {
     org: "dlrg", name: "Badeunfall an der Elbe", stichwort: "Wasser", preis: 800, start_level: 24, quelle: "rettungsschwimmen",
@@ -1640,7 +1719,7 @@ const EINSATZARTEN = {
     bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.1 },
     mindestens: { personen: 4, qualifikation: { bootsfuehrer: 1, stroemungsretter: 1 }, geraete: [[{ motorrettungsboot: 1 }], [{ stroemungsretter_set: 1 }]] },
     optimal: { personen: 6, qualifikation: { stroemungsretter: 2 }, geraete: [[{ stroemungsretter_set: 2 }]] },
-    folge: ["drk_betreuung"],
+    folge: ["drk_betreuung", "thw_pumpen"],
     text: "Hinter dem Sommerdeich sind Häuser eingeschlossen. Die Bewohner müssen mit dem Boot geholt werden.",
     verfallen_text: "Die Bewohner wurden von außerhalb geholt, viel später.",
   },
@@ -1717,7 +1796,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 6, qualifikation: { th: 2 }, geraete: [[{ rettungssatz: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
     optimal: { personen: 9, einheit: "gruppe", qualifikation: { erste_hilfe: 2 }, geraete: [[{ notfallrucksack: 1 }], [{ beleuchtung: 1 }], [{ hrt: 2 }]] },
     regeln: ["einheitsfuehrer", "brandschutz_sicherstellen", "verkehrsabsicherung"],
-    folge: ["p_vollsperrung", "rd_notarzt", "rd_versorgung", "ab_bergung"], gemeinsam: { ziel_min: 10 },
+    folge: ["p_vollsperrung", "rd_notarzt", "rd_versorgung", "ab_bergung", "thw_ausleuchten"], gemeinsam: { ziel_min: 10 },
     text: "Zwei Autos sind frontal zusammengestoßen, in beiden Fahrzeugen sitzen Verletzte.",
     verfallen_text: "Die Nachbarwehr hat übernommen.",
   },
@@ -1845,7 +1924,7 @@ const EINSATZARTEN = {
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ verteiler: 1 }], [{ b_schlauch: 2 }], [{ waermebildkamera: 1 }]] },
     psa: { helm: 1, jacke: 2, handschuhe: 1 },
     regeln: ["einheitsfuehrer", "maschinist_pumpe"],
-    folge: ["p_brandermittlung", "drk_betreuung"], gemeinsam: { ziel_min: 15 },
+    folge: ["p_brandermittlung", "drk_betreuung", "thw_abstuetzen"], gemeinsam: { ziel_min: 15 },
     text: "Aus einem leerstehenden Haus schlagen Flammen. Ob jemand drin war, weiß niemand.",
     verfallen_text: "Die Nachbarwehren haben gelöscht, vom Haus blieb nur die Hülle.",
   },
@@ -2064,6 +2143,9 @@ const RETTUNG = {
   patient: { rot: [10, 18], gelb: [15, 30], gruen: [45, 120] },
 }
 
+/** Nachforderung (THW): ohne Gruppen- oder Zugführer der Feuerwehr vor Ort wird später angefordert (Konzept 13.2). */
+const NACHFORDERUNG = { fuehrung: ["gf", "zf", "verbandsfuehrer", "wachfuehrer"], verzug_min: 10 } // spielwert
+
 /** Wachdienst der DLRG an der Badestelle (Spielwerte): so viele Mitglieder sitzen auf dem Wachturm und fehlen der Feuerwehr. */
 const WACHDIENST = { tage: [6, 0], von: 11, bis: 18, monate: [6, 7, 8], personen: 2, ort: "elbe_ufer", reaktion_s: 30 }
 
@@ -2148,6 +2230,7 @@ module.exports = {
   FREISCHALTUNG_LEVEL,
   RETTUNG,
   WACHDIENST,
+  NACHFORDERUNG,
   ARBEITSZEIT,
   BERUFE,
   SCHICHTEN,
