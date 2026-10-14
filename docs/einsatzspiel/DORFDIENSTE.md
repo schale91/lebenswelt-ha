@@ -845,7 +845,9 @@ Offen ist derzeit nichts.
 
 **Umgesetzt: D6 DRK** (Add-on 0.13.0). Mitgliedschaft für Bewohner, Unterkunft in vier Stufen, Helfer vor Ort, Sanitätswachdienst bei Dorffest und Sportfest, Betreuung nach Brand und Räumung, Verpflegung bei langen Einsätzen, paralleler Alarm des Helfers vor Ort über die Leitstelle. Abnahme „Verpflegung verhindert Leistungsabfall“ in `test/drk.test.js`; umgesetzt als schnellere Arbeit nach drei Stunden mit Verpflegung, damit niemand beim Erreichen von Level 20 schlechter dasteht als vorher. Nicht umgesetzt: KTW im Katastrophenschutz, Betreuungs-LKW, Behandlungsplatz (kommt mit den Großlagen in D9), Abzug bei der Feuerwehr ohne Betreuung.
 
-**Als Nächstes:** D7 DLRG (Level 24).
+**Umgesetzt: D7 DLRG** (Add-on 0.14.0). Mitgliedschaft mit Fitness-Voraussetzungen, Wachstation in vier Stufen, Wachdienst an Sommerwochenenden, der Mitglieder bindet (Abnahme in `test/dlrg.test.js`), Badeunfall, Boot in Not, Hochwasser-Evakuierung, Strömungsretter bei Wassereinsätzen der Feuerwehr, Suche am Ufer. Vereinfacht: Die Kopplung an den echten Elbpegel fehlt noch, Hochwasser-Einsätze hängen wie der Deicheinsatz an den Monaten; das Abzeichen wird ohne Zutun erneuert.
+
+**Als Nächstes:** D8 THW (Level 27).
 
 ---
 

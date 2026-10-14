@@ -22,6 +22,7 @@ const PREIS_MINIMUM = 10 // spielwert: nichts kostet weniger (außer Kostenlosem
 
 /** Quellen, auf die sich Einträge über `quelle` beziehen. Stand der Recherche: Oktober 2026. */
 const QUELLEN = {
+  rettungsschwimmen: { titel: "Deutsche Prüfungsordnung Schwimmen, Retten, Rettungsschwimmen (Abdruck DLRG)", url: "https://koenigswinter.dlrg.de/fileadmin/groups/9220020/DLRG_Koenigswinter/Pruefungsordnung/po1.pdf" },
   nkatsg_mitwirkung: { titel: "MI Niedersachsen: Gliederung und Sollstärke der Einheiten im Sanitäts- und Betreuungsdienst", url: "https://www.mi.niedersachsen.de/startseite/themen/innere_sicherheit/brand_katastrophenschutz/katastrophenschutz/gliederung-und-sollstarke-der-einheiten-des-katastrophenschutzes-im-sanitats-und-betreuungsdienst-221740.html" },
   bedarfvo_rettd: { titel: "Verordnung über die Bemessung des Bedarfs an Einrichtungen des Rettungsdienstes (BedarfVO-RettD), Nds. GVBl. Nr. 18/2023", url: "https://www.niedersachsen.de/download/199212/Nds._GVBl._Nr._18_2023_vom_19.09.2023_S._201-215.pdf" },
   nrettdg_besetzung: { titel: "Landtag Niedersachsen Drs. 18/10734, Besetzung der Rettungsmittel nach § 10 NRettDG", url: "https://www.landtag-niedersachsen.de/Drucksachen/Drucksachen_18_12500/10501-11000/18-10734.pdf" },
@@ -311,6 +312,7 @@ const ORTE = {
   bauhof: { name: "Bauhof", x: -62, z: 32, fest: true },
   rettungswache: { name: "Rettungswache", x: 56, z: 86, fest: true },
   drk_unterkunft: { name: "DRK-Unterkunft", x: -52, z: 74, fest: true },
+  wachstation: { name: "Wasserrettungsstation", x: 14, z: -44, fest: true },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -407,6 +409,7 @@ const ORGANISATIONEN = {
   bauhof: { name: "Bauhof", gebaeude: "bauhof", ab_level: 12 },
   rettungsdienst: { name: "Rettungsdienst", gebaeude: "rettungswache", ab_level: 16, reaktion_s: 60 },
   drk: { name: "DRK-Ortsverein", gebaeude: "drk_unterkunft", ab_level: 20, reaktion_s: 300 },
+  dlrg: { name: "DLRG-Ortsgruppe", gebaeude: "wachstation", ab_level: 24, reaktion_s: 300 },
 }
 
 /**
@@ -418,6 +421,7 @@ const EXTERN = {
   bauhof: { name: "Straßenmeisterei des Kreises", anfahrt_min: 60, max_sterne: 3, ab_level: 12 }, // spielwert
   rettungsdienst: { name: "RTW der Nachbarwache", anfahrt_min: 14, max_sterne: 3, ab_level: 16 }, // spielwert
   drk: { name: "Schnelleinsatzgruppe aus dem Nachbarort", anfahrt_min: 30, max_sterne: 3, ab_level: 20 }, // spielwert
+  dlrg: { name: "Wasserrettungszug des Landkreises", anfahrt_min: 35, max_sterne: 3, ab_level: 24 }, // spielwert
 }
 
 /**
@@ -457,6 +461,8 @@ const MITGLIEDSCHAFTEN = {
   sportverein: { name: "Sportverein", eintritt: 200, ab_level: 5 },
   // Ehrenamt im DRK-Ortsverein, wie die Feuerwehr von zu Hause alarmiert (zweite Organisation neben der Hauptorganisation)
   drk: { name: "DRK-Ortsverein", eintritt: 120, ab_level: 20, grundausbildung: "sanitaetshelfer", grundausbildung_h: 16, fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
+  // Wasserrettung: Wer eintritt, legt das Rettungsschwimmabzeichen Bronze ab und braucht dafür etwas Fitness
+  dlrg: { name: "DLRG-Ortsgruppe", eintritt: 120, ab_level: 24, grundausbildung: "rs_bronze", grundausbildung_h: 16, fitness_min: 40, quelle: "rettungsschwimmen", fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
 }
 
 /**
@@ -597,6 +603,13 @@ const LEHRGAENGE = {
   betreuungshelfer: { org: "drk", name: "Betreuungshelferin/Betreuungshelfer", dauer_h: 16, preis: 200, voraussetzung: ["sanitaetshelfer"] },
   verpflegungshelfer: { org: "drk", name: "Verpflegungshelferin/Verpflegungshelfer (Feldkoch)", dauer_h: 16, preis: 200, voraussetzung: ["sanitaetshelfer"] },
   drk_gruppenfuehrer: { org: "drk", name: "Gruppenführerin/Gruppenführer Sanitätsdienst", dauer_h: 40, preis: 600, voraussetzung: ["sanitaetshelfer"] },
+  // DLRG (Spielwerte). Das Abzeichen wird im Spiel über das Training erneuert, ohne Zutun.
+  rs_bronze: { org: "dlrg", name: "Rettungsschwimmabzeichen Bronze", dauer_h: 16, preis: 0, quelle: "rettungsschwimmen", hinweis: "beim Eintritt, Fitness 40" },
+  rs_silber: { org: "dlrg", name: "Rettungsschwimmabzeichen Silber", dauer_h: 16, preis: 200, voraussetzung: ["rs_bronze"], fitness_min: 55, quelle: "rettungsschwimmen" },
+  wasserretter: { org: "dlrg", name: "Wasserretterin/Wasserretter", dauer_h: 40, preis: 500, voraussetzung: ["rs_silber"] },
+  stroemungsretter: { org: "dlrg", name: "Strömungsretterin/Strömungsretter", dauer_h: 24, preis: 600, voraussetzung: ["wasserretter"], fitness_min: 65 },
+  bootsfuehrer: { org: "dlrg", name: "Bootsführerin/Bootsführer", dauer_h: 24, preis: 500, voraussetzung: ["wasserretter"] },
+  wachfuehrer: { org: "dlrg", name: "Wachführerin/Wachführer", dauer_h: 24, preis: 400, voraussetzung: ["wasserretter"] },
   pk: { org: "polizei", name: "Bachelorstudium Polizeivollzugsdienst (Polizeiakademie Niedersachsen)", dauer_h: 0, preis: 0, quelle: "polizeiakademie", hinweis: "beim Einzug abgeschlossen" },
   einsatztraining: { org: "polizei", name: "Einsatztraining (jährlich)", dauer_h: 8, preis: 150, voraussetzung: ["pk"], verfaellt_tage: 365 },
   vu_aufnahme: { org: "polizei", name: "Verkehrsunfallaufnahme", dauer_h: 16, preis: 300, voraussetzung: ["pk"] },
@@ -761,6 +774,12 @@ const GERAETE = {
   betreuungsset: { name: "Betreuungsset (Decken, Feldbetten, Getränke)", slots: 2, preis: 400, org: "drk", kategorie: "betreuung" },
   thermobehaelter: { name: "Thermobehälter für Verpflegung", slots: 0.5, preis: 120, org: "drk", kategorie: "betreuung" },
   sanitaetszelt: { name: "Sanitätszelt", slots: 2, preis: 1200, org: "drk", kategorie: "betreuung" },
+  // DLRG: Wasserrettung
+  rettungsbrett: { name: "Rettungsbrett", slots: 1, preis: 300, org: "dlrg", kategorie: "wasserrettung" },
+  wurfsack: { name: "Wurfsack", slots: 0.25, preis: 60, org: "dlrg", kategorie: "wasserrettung" },
+  stroemungsretter_set: { name: "Strömungsretter-Ausrüstung (Trockenanzug, Helm, Weste)", slots: 1, preis: 1200, org: "dlrg", kategorie: "wasserrettung" },
+  schlauchboot: { name: "Schlauchboot mit Außenborder", slots: 4, preis: 6000, org: "dlrg", kategorie: "boot" },
+  motorrettungsboot: { name: "Motorrettungsboot", slots: 8, preis: 18000, org: "dlrg", kategorie: "boot" },
   // Werkstatt und Abschleppdienst
   starthilfe: { name: "Starthilfegerät", slots: 0.5, preis: 150, org: "werkstatt", kategorie: "pannenhilfe" },
   abschleppseil: { name: "Abschleppseil und Abschleppstange", slots: 0.5, preis: 60, org: "werkstatt", kategorie: "pannenhilfe" },
@@ -866,6 +885,9 @@ const FAHRZEUGE = {
   mtw_drk: { org: "drk", name: "Mannschaftstransportwagen (MTW)", besatzung: [1, 7], slots: 6, preis: 6000, tempo_kmh: 60, stellplatz: 1, fahrer: "sanitaetshelfer", grundbeladung: {} },
   gw_san: { org: "drk", name: "Gerätewagen Sanitätsdienst", besatzung: [1, 3], slots: 12, preis: 14000, tempo_kmh: 55, stellplatz: 1, fahrer: "sanitaetshelfer", grundbeladung: { notfallrucksack: 2, sanitaetszelt: 1 } },
   feldkueche: { org: "drk", name: "Feldküche (Anhänger)", besatzung: [0, 0], anhaenger: true, slots: 4, preis: 9000, tempo_kmh: 40, stellplatz: 1, fahrer: null, voraussetzung_fahrzeug: ["mtw_drk", "gw_san"], grundbeladung: { thermobehaelter: 2 } },
+  // DLRG-Ortsgruppe (Rot und Gelb, ohne Logo)
+  mtw_dlrg: { org: "dlrg", name: "Mannschaftstransportwagen Wasserrettung", besatzung: [1, 7], slots: 5, preis: 6000, tempo_kmh: 60, stellplatz: 1, fahrer: "rs_bronze", grundbeladung: { wurfsack: 2 } },
+  gw_wasserrettung: { org: "dlrg", name: "Gerätewagen Wasserrettung mit Bootstrailer", besatzung: [1, 5], slots: 14, preis: 16000, tempo_kmh: 55, stellplatz: 1, fahrer: "rs_bronze", grundbeladung: { rettungsbrett: 1, wurfsack: 2 } },
   hundestreife: { org: "polizei", name: "Diensthundstreife", besatzung: [0, 1], slots: 2, preis: 9000, tempo_kmh: 70, stellplatz: 1, fahrer: "diensthund", hund: true, grundbeladung: {} },
 }
 
@@ -956,6 +978,13 @@ const GEBAEUDE = {
     { name: "Unterkunft mit Fahrzeughalle und Lager", bauzeit_h: 48, stellplaetze: 4, preis: 18000, lager_slots: 24, ab_level: 20 },
     { name: "Katastrophenschutzzentrum", bauzeit_h: 96, stellplaetze: 6, preis: 45000, lager_slots: 40, ab_level: 24, hinweis: "später auch für die Wasserrettung" },
   ],
+  // Wasserrettungsstation an der Elbe (Abschnitt 7). Ab dem Wachturm gibt es den Wachdienst an Sommerwochenenden.
+  wachstation: [
+    { name: "Rettungsschwimmer mit Sonnenschirm", bauzeit_h: 0, stellplaetze: 0, preis: 0, lager_slots: 3 },
+    { name: "Wachturm an der Badestelle", bauzeit_h: 12, stellplaetze: 0, preis: 4000, lager_slots: 8, ab_level: 24, wachdienst: true },
+    { name: "Wasserrettungsstation mit Bootshaus und Slipanlage", bauzeit_h: 48, stellplaetze: 2, preis: 20000, lager_slots: 22, ab_level: 24, wachdienst: true },
+    { name: "Station mit Steg, Strömungsrettungslager und Funkraum", bauzeit_h: 72, stellplaetze: 3, preis: 35000, lager_slots: 34, ab_level: 24, wachdienst: true, hinweis: "Strömungsretter rücken schneller aus" },
+  ],
   // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
   // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
   sportplatz: [
@@ -973,7 +1002,7 @@ const GEBAEUDE = {
 }
 
 /** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
-const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft" }
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft", wachstation: "wachstation" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -1114,7 +1143,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 3, qualifikation: { eisrettung: 1 }, geraete: [[{ eisretter: 1 }, { rettungsring: 1, wathose: 1 }]] },
     optimal: { personen: 6, geraete: [[{ eisretter: 1 }], [{ rettungsweste: 2 }], [{ notfallrucksack: 1 }]] },
     regeln: ["eigenschutz_wasser", "einheitsfuehrer"],
-    folge: ["rd_notarzt"],
+    folge: ["rd_notarzt", "dlrg_wasserrettung"],
     text: "Ein Spaziergänger ist auf dem Altarm durchs Eis gebrochen.",
     verfallen_text: "Passanten haben die Person mit einem Ast herausgezogen, sie ist stark unterkühlt.",
   },
@@ -1231,7 +1260,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 3, qualifikation: { boot: 1 }, geraete: [[{ boot_fahrzeug: 1 }], [{ rettungsweste: 3 }]] },
     optimal: { personen: 6, geraete: [[{ drohne: 1 }], [{ notfallrucksack: 1 }]] },
     regeln: ["eigenschutz_wasser", "einheitsfuehrer"],
-    folge: ["rd_notarzt"],
+    folge: ["rd_notarzt", "dlrg_wasserrettung"],
     text: "Ein Schwimmer wird von der Strömung abgetrieben.",
     verfallen_text: "Die DLRG-Wasserrettung hat ihn erreicht.",
   },
@@ -1390,7 +1419,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 4 },
     optimal: { personen: 10, qualifikation: { diensthund: 1, drohne: 1 }, geraete: [[{ drohne: 1 }], [{ hrt: 2 }], [{ beleuchtung: 1 }]] },
     regeln: ["einheitsfuehrer"],
-    folge: ["fw_suche"],
+    folge: ["fw_suche", "dlrg_ufersuche"],
     text: "Ein sechsjähriges Kind ist vom Spielplatz verschwunden, die Eltern sind verzweifelt.",
     verfallen_text: "Das Kind wurde von Anwohnern im Schilf gefunden, unterkühlt.",
   },
@@ -1582,6 +1611,52 @@ const EINSATZARTEN = {
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }], [{ vakuummatratze: 1 }, { spineboard: 1 }]] },
     text: "Eine schwer verletzte oder lebensbedrohlich erkrankte Person braucht Rettungsdienst und Notarzt.",
+  },
+  // ---------- DLRG-Ortsgruppe (ab Level 24, Konzept DORFDIENSTE.md Abschnitt 7) ----------
+  dlrg_badeunfall: {
+    org: "dlrg", name: "Badeunfall an der Elbe", stichwort: "Wasser", preis: 800, start_level: 24, quelle: "rettungsschwimmen",
+    orte: ["elbe_ufer"], intervall_min: 2880, ablauf_min: 15, arbeit_min: 15, ziel_eintreffen_min: 8,
+    bedingung: { monate: [6, 7, 8], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2, qualifikation: { rs_bronze: 2 }, geraete: [[{ rettungsbrett: 1 }, { wurfsack: 1 }]] },
+    optimal: { personen: 3, qualifikation: { rs_silber: 1 }, geraete: [[{ rettungsbrett: 1 }], [{ schlauchboot: 1 }]] },
+    folge: ["rd_notarzt"],
+    text: "Ein Schwimmer ist in der Strömung in Not geraten und ruft um Hilfe.",
+    verfallen_text: "Badegäste haben ihn mit einer Luftmatratze ans Ufer gebracht.",
+  },
+  dlrg_boot: {
+    org: "dlrg", name: "Boot treibt manövrierunfähig", stichwort: "Wasser", preis: 1200,
+    freischaltung: { nach: "dlrg_badeunfall", sterne: 3 },
+    orte: ["elbe_ufer"], intervall_min: 4320, ablauf_min: 40, arbeit_min: 40, ziel_eintreffen_min: 15,
+    bedingung: { monate: [4, 5, 6, 7, 8, 9, 10], faktor: 1, sonst_faktor: 0.2 },
+    mindestens: { personen: 3, qualifikation: { bootsfuehrer: 1 }, geraete: [[{ schlauchboot: 1 }, { motorrettungsboot: 1 }]] },
+    optimal: { personen: 4, geraete: [[{ motorrettungsboot: 1 }], [{ wurfsack: 2 }]] },
+    text: "Ein Sportboot hat einen Motorschaden und treibt auf die Buhnen zu.",
+    verfallen_text: "Ein Schiff der Wasserschutzpolizei hat es nach langer Zeit abgeschleppt.",
+  },
+  dlrg_hochwasser: {
+    org: "dlrg", name: "Evakuierung bei Hochwasser", stichwort: "Wasser Hochwasser", preis: 2500,
+    freischaltung: { nach: "dlrg_boot", sterne: 4 },
+    orte: ["deich"], intervall_min: 20160, ablauf_min: 60, arbeit_min: 90, ziel_eintreffen_min: 30,
+    bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.1 },
+    mindestens: { personen: 4, qualifikation: { bootsfuehrer: 1, stroemungsretter: 1 }, geraete: [[{ motorrettungsboot: 1 }], [{ stroemungsretter_set: 1 }]] },
+    optimal: { personen: 6, qualifikation: { stroemungsretter: 2 }, geraete: [[{ stroemungsretter_set: 2 }]] },
+    folge: ["drk_betreuung"],
+    text: "Hinter dem Sommerdeich sind Häuser eingeschlossen. Die Bewohner müssen mit dem Boot geholt werden.",
+    verfallen_text: "Die Bewohner wurden von außerhalb geholt, viel später.",
+  },
+  dlrg_wasserrettung: {
+    org: "dlrg", name: "Strömungsretter unterstützen", stichwort: "Wasser", folge_nur: true,
+    ablauf_min: 20, arbeit_min: 20, ziel_eintreffen_min: 10,
+    mindestens: { personen: 2, qualifikation: { rs_silber: 1 }, geraete: [[{ wurfsack: 1 }, { rettungsbrett: 1 }]] },
+    optimal: { personen: 3, qualifikation: { stroemungsretter: 1 }, geraete: [[{ stroemungsretter_set: 1 }], [{ schlauchboot: 1 }]] },
+    text: "Die Feuerwehr fordert die Wasserrettung nach, die Strömung ist stark.",
+  },
+  dlrg_ufersuche: {
+    org: "dlrg", name: "Suche am Ufer", stichwort: "Suche", folge_nur: true,
+    ablauf_min: 40, arbeit_min: 45, ziel_eintreffen_min: 20,
+    mindestens: { personen: 2, qualifikation: { rs_bronze: 2 } },
+    optimal: { personen: 4, geraete: [[{ schlauchboot: 1 }]] },
+    text: "Die Polizei bittet die DLRG, das Ufer und die Buhnenfelder abzusuchen.",
   },
   // ---------- DRK-Ortsverein (ab Level 20, Konzept DORFDIENSTE.md Abschnitt 6) ----------
   drk_hvo: {
@@ -1989,6 +2064,9 @@ const RETTUNG = {
   patient: { rot: [10, 18], gelb: [15, 30], gruen: [45, 120] },
 }
 
+/** Wachdienst der DLRG an der Badestelle (Spielwerte): so viele Mitglieder sitzen auf dem Wachturm und fehlen der Feuerwehr. */
+const WACHDIENST = { tage: [6, 0], von: 11, bis: 18, monate: [6, 7, 8], personen: 2, ort: "elbe_ufer", reaktion_s: 30 }
+
 /** Personal der Polizei: Beamtinnen und Beamte werden an die Dienststelle versetzt (begrenzt durch personal_max). */
 const PERSONAL = {
   polizei: { name: "Beamtin/Beamter an die Dienststelle versetzen", preis: 600 }, // spielwert
@@ -2069,6 +2147,7 @@ module.exports = {
   EXTERN,
   FREISCHALTUNG_LEVEL,
   RETTUNG,
+  WACHDIENST,
   ARBEITSZEIT,
   BERUFE,
   SCHICHTEN,

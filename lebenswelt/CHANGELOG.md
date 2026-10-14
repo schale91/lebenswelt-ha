@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.14.0
+
+- Einsatzspiel, DLRG-Ortsgruppe (ab Level 24, `ORGANISATIONEN.dlrg`): Mitgliedschaft für Bewohner als zweite Organisation mit Rettungsschwimmabzeichen Bronze, das Fitness 40 verlangt (`fitness_min`); Silber ab Fitness 55, Strömungsretter ab 65, dazu Wasserretter, Bootsführer und Wachführer. Wachstation in vier Stufen (Sonnenschirm, Wachturm, Station mit Bootshaus, Steg und Funkraum), Gerätewagen mit Bootstrailer, MTW, Boote und Wasserrettungsgerät. Ohne Mitglieder kommt der Wasserrettungszug des Landkreises.
+- Wachdienst (`WACHDIENST`): Ab dem Wachturm sitzen von Juni bis August samstags und sonntags von 11 bis 18 Uhr zwei Mitglieder auf dem Turm. Sie rücken zu Wassereinsätzen in 30 Sekunden aus, Patienten an der Badestelle bekommen sofort Erste Hilfe, und der Feuerwehr fehlen sie in der Zeit.
+- Einsätze: Badeunfall (Sommer, mit Rettungsdienst-Teil), Boot treibt manövrierunfähig, Evakuierung bei Hochwasser (mit Betreuung durch das DRK), Strömungsretter bei Person im Eis und Person in der Elbe, Suche am Ufer beim vermissten Kind.
+- Lehrgänge und Mitgliedschaften können eine Mindestfitness verlangen (`fitness_min`).
+
 ## 0.13.0
 
 - Einsatzspiel, DRK-Ortsverein (ab Level 20, `ORGANISATIONEN.drk`): Ehrenamtliche aus dem Dorf treten über `kaufen` mit `art: "mitgliedschaft"`, `id: "drk"` ein (zweite Organisation neben Feuerwehr, Polizei oder Rettungsdienst, Grundausbildung Sanitätsdienst) und werden wie die Feuerwehr von zu Hause alarmiert. Unterkunft in vier Stufen (Stufe 0 als Gruppenraum im Gemeindehaus an der Bibliothek, Stufe 3 als Katastrophenschutzzentrum ab Level 24), Fahrzeuge PKW Helfer vor Ort, MTW, Gerätewagen Sanitätsdienst und Feldküche (Anhänger), Lehrgänge Betreuung, Verpflegung und Gruppenführung. Ohne Mitglieder kommt die Schnelleinsatzgruppe aus dem Nachbarort.
