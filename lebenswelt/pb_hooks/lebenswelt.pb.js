@@ -12,7 +12,29 @@ routerAdd("GET", "/api/lebenswelt/ich", (e) => {
   const h = require(`${__hooks}/hilfen.js`)
   const ich = h.benutzer(e)
   if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
-  return e.json(200, ich)
+  return e.json(200, Object.assign({}, ich, { profil: h.profilVon(ich) }))
+})
+
+// Familie in Bewegung: Bewegung der letzten 14 Tage aller Personen, die etwas eingetragen haben (Fitness-Welt).
+// Daraus zeigt jede Karte den Buggy, wenn Papa Nilo schiebt, und Alex eine kleine Wochenübersicht.
+routerAdd("GET", "/api/lebenswelt/familie", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const f = require(`${__hooks}/familie.js`)
+  if (!h.benutzer(e)) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const ab = f.tagVor(Date.now(), 14)
+  const personen = []
+  for (const r of e.app.findRecordsByFilter("spielstaende", "benutzer != ''", "", 0, 0)) {
+    let daten = null
+    try {
+      daten = JSON.parse(toString(r.get("daten")) || "null")
+    } catch (_) {
+      continue
+    }
+    const bewegungen = f.bewegungAus(daten, ab)
+    if (!bewegungen.length) continue
+    personen.push({ id: r.getString("benutzer"), name: r.getString("name") || "Opa", bewegungen: bewegungen, schrittziel: f.schrittzielAus(daten) })
+  }
+  return e.json(200, { personen: personen })
 })
 
 routerAdd("GET", "/api/lebenswelt/spielstand", (e) => {

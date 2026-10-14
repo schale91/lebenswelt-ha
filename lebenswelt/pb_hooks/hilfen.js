@@ -104,6 +104,11 @@ function benutzer(e) {
   return null
 }
 
+/** "fitness" für Personen in der Option fitness_personen (Fitness-Welt), sonst "voll". */
+function profilVon(ich) {
+  return require(`${__hooks}/familie.js`).istFitness(ich, optionen().fitness_personen || []) ? "fitness" : "voll"
+}
+
 function spielstandVon(app, id) {
   try {
     return app.findFirstRecordByFilter("spielstaende", "benutzer = {:id}", { id: id })
@@ -154,4 +159,4 @@ function spielDokument(typ) {
 }
 const NUR_LESEN = { fehler: "Dokumente des Einsatzspiels sind nur lesbar. Kaufen und Ändern geht über /api/lebenswelt/einsatz/." }
 
-module.exports = { optionen, erlaubt, benutzer, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }
+module.exports = { optionen, erlaubt, benutzer, profilVon, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }

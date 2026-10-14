@@ -12,11 +12,26 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 |---|---|
 | `person` | HA-Benutzer-ID, für die Claude und Hintergrundaufgaben arbeiten. Leer = die einzige bekannte Person. |
 | `vertraute_apps` | Hostnamen anderer Apps, die ohne Ingress zugreifen dürfen (Standard: der MCP-Server, über den Claude arbeitet). |
+| `fitness_personen` | HA-Benutzer-IDs oder Anmeldenamen, die nur die Fitness-Welt bekommen (siehe unten). Leer = niemand. |
 | `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
 | `wetter_entitaet` | Wetter-Entität für das Einsatzspiel (Standard `weather.forecast_home`). |
 | `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
 | `app_token` | GitHub-Token nur zum Lesen dieses einen Repositorys. Ohne Token gibt es keine Updates per Knopf. |
 | `fcm_dienstkonto` | Schlüssel eines Firebase-Dienstkontos (der ganze JSON-Inhalt) für Push-Nachrichten an die Android-App. Leer = keine Push-Nachrichten. |
+
+## Fitness-Welt (zum Beispiel für Papa)
+
+Eine zweite Person bekommt dieselbe Lebenswelt als Fitness-Welt: gleiche Karte, gleiches Einsatzspiel, gleicher Shop mit gleichen Preisen, und jede Änderung an der App kommt mit demselben Update auch bei ihr an. Statt Aufgaben, Smarthome und Kraftbuch zählt dort nur Bewegung (Schritte am Deich, Heim-Physio im Elternhaus, Physio in der Praxis, Nilo schieben am Haus). Die Daten liegen getrennt je Person in dieser Datenbank.
+
+Einrichtung:
+
+1. In Home Assistant unter Einstellungen → Personen einen eigenen Benutzer anlegen, **ohne** Administratorrechte.
+2. Hier unter Konfiguration den Anmeldenamen (oder die Benutzer-ID) bei `fitness_personen` eintragen, speichern, App neu starten.
+3. Er öffnet dieselbe Adresse wie du (`/local/lebenswelt-…/index.html`) oder installiert die eigene Android-App „Lebenswelt Fit“ und meldet sich mit seinem Konto an.
+
+Die App schaltet in der Fitness-Welt nichts in Home Assistant und liest nur die Wetter-Entität. Wichtig: Home Assistant selbst kennt keine Rechte je Gerät. Wer ein HA-Konto hat, kann die normale HA-Oberfläche öffnen und dort Geräte bedienen. Deshalb das Konto ohne Adminrechte anlegen und ihm keine Dashboards mit Geräten zeigen.
+
+Routen: `GET /api/lebenswelt/familie` (Bewegung der Familie, für den Buggy auf der Karte und die Wochenübersicht).
 
 ## Updates der App per Knopf
 
@@ -47,7 +62,8 @@ Routen: `GET /api/lebenswelt/push` (eingerichtet, Zahl der Geräte), `POST /api/
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/api/lebenswelt/ich` | angemeldete Person |
+| GET | `/api/lebenswelt/ich` | angemeldete Person mit `profil` (`voll` oder `fitness`) |
+| GET | `/api/lebenswelt/familie` | Bewegung der letzten 14 Tage aus der Fitness-Welt (alle Personen) |
 | GET | `/api/lebenswelt/spielstand` | Spielstand der Person |
 | PUT | `/api/lebenswelt/spielstand` | Spielstand speichern (`{zeit, daten}`), 409 wenn der gespeicherte neuer ist |
 | GET | `/api/lebenswelt/dokumente?typ=a,b&seit=…` | Dokumente der Person, optional nur Änderungen seit `jetzt` der letzten Antwort |
