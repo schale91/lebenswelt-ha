@@ -8,9 +8,11 @@ const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const MIN = 60000
 const trocken = () => "trocken"
 
-function kaufe(s, auftrag, t = T0) {
+/** Kaufen; Bauten sind in diesen Tests sofort fertig (eigene Tests prüfen die Bauzeit). */
+function kaufe(s, auftrag, t = T0, sofort = true) {
   const r = S.kaufe(s, auftrag, t, R)
   assert.ok(!r.fehler, r.fehler)
+  if (sofort) for (const b of r.stand.baustellen.slice()) S._intern.fertigstellen(R, r.stand, b, t)
   return r.stand
 }
 
@@ -256,4 +258,77 @@ test("Ohne Verteiler wird mit nur einem Strahlrohr gelöscht", () => {
   assert.ok(ohne.arbeit_ende - ohne.eintreffen > mit.arbeit_ende - mit.eintreffen, "ohne Verteiler muss es länger dauern")
   assert.ok(ohne.faktoren.some((f) => /Verteiler/.test(f.text)), JSON.stringify(ohne.faktoren))
   assert.ok(mit.faktoren.some((f) => f.grund === "loeschen" && f.faktor < 1), "zwei Rohre löschen schneller")
+})
+
+test("Bauen: ein Haus braucht Bauzeit, erst danach zieht die Einsatzkraft ein", () => {
+  let s = S.neuerStand(R, T0, 30)
+  s = kaufe(s, { art: "bauplatz", id: "bp01" }, T0, false)
+  assert.equal(s.personal.length, 0)
+  assert.equal(s.baustellen.length, 1)
+  const b = s.baustellen[0]
+  assert.equal(b.ende - b.start, R.BAU.haus_h * 3600000)
+  assert.equal(S._intern.bauPhase(R, b, b.start + 1).id, "erdarbeiten")
+  assert.equal(S._intern.bauPhase(R, b, b.ende - 1).id, "abnahme")
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const fertig = S.fortschreiben(s, b.ende + 1000, trocken, R)
+  assert.equal(fertig.baustellen.length, 0)
+  assert.equal(fertig.personal.length, 1)
+  assert.equal(fertig.bauchronik[0].name, "Haus auf BP01")
+})
+
+test("Bauen: die Baufirma hat zwei Kolonnen, der dritte Auftrag wartet", () => {
+  let s = S.neuerStand(R, T0, 31)
+  for (const bp of ["bp01", "bp02", "bp03"]) s = kaufe(s, { art: "bauplatz", id: bp }, T0, false)
+  const [a, b, c] = s.baustellen
+  assert.equal(a.start, T0)
+  assert.equal(b.start, T0)
+  assert.equal(c.start, a.ende)
+})
+
+test("Bauen: schlechtes Wetter verlängert die Bauzeit, nach dem Ende einmal nachgerechnet", () => {
+  let s = S.neuerStand(R, T0, 32)
+  s = kaufe(s, { art: "bauplatz", id: "bp01" }, T0, false)
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const ende = s.baustellen[0].ende
+  const sturm = S.fortschreiben(s, ende + 1000, () => "sturm", R)
+  assert.equal(sturm.baustellen.length, 1, "bei Sturm noch nicht fertig")
+  assert.equal(sturm.baustellen[0].verzug_ms, ende - T0)
+  const spaeter = S.fortschreiben(sturm, 2 * ende - T0 + 1000, () => "sturm", R)
+  assert.equal(spaeter.baustellen.length, 0)
+})
+
+test("Bauen: Umbau am Gerätehaus bremst das Ausrücken (Behelfsbetrieb), nicht mehr bei der Abnahme", () => {
+  let s = katzenWache(33, { stiefel: 2 })
+  const ohne = katze(s).e
+  s = kaufe(s, { art: "gebaeude", id: "geraetehaus" }, T0, false)
+  const b = s.baustellen[0]
+  assert.ok(S._intern.behelfAktiv(R, s, "geraetehaus", T0 + 1))
+  assert.ok(!S._intern.behelfAktiv(R, s, "geraetehaus", b.ende - 1), "Abnahme zählt nicht")
+  const mit = katze(s).e
+  assert.ok(mit.plan.eintreffen - mit.meldung > ohne.plan.eintreffen - ohne.meldung)
+  assert.ok(mit.plan.faktoren.some((f) => f.grund === "behelf"))
+  assert.match(S.kaufe(s, { art: "gebaeude", id: "geraetehaus" }, T0 + 1, R).fehler || "", /schon gebaut/)
+})
+
+test("Bauen: eine laute Baustelle an der Strecke kostet Zeit", () => {
+  let s = katzenWache(34, { stiefel: 2 })
+  s = kaufe(s, { art: "bauplatz", id: "bp07" }, T0, false)
+  const b = s.baustellen[0]
+  const amWeg = S._intern.baustellenAmWeg(R, s, [R.ORTE.feuerwehrhaus, R.ORTE.baum_feuerwehr, b.ort], T0 + 1)
+  assert.ok(amWeg.length >= 1)
+})
+
+test("Bauen: Baustellen-Einsätze entstehen nur, solange gebaut wird", () => {
+  let s = S.neuerStand(R, T0, 35)
+  for (const bp of ["bp01", "bp02", "bp03"]) s = kaufe(s, { art: "bauplatz", id: bp })
+  s = kaufe(s, { art: "gebaeude", id: "geraetehaus" }, T0, false)
+  assert.ok(s.einsatzarten.th_baustelle, "mit der Baustelle aktiv")
+  for (const [id, a] of Object.entries(s.einsatzarten)) if (id !== "th_baustelle") a.naechster = T0 + 1e12
+  const b = s.baustellen[0]
+  const nachher = S.fortschreiben(s, b.ende + 10 * 24 * 3600000, trocken, R)
+  const unfaelle = nachher.abgeschlossen.filter((e) => e.art === "th_baustelle")
+  for (const e of unfaelle) {
+    assert.ok(e.meldung >= b.start && e.meldung < b.ende + (nachher.bauchronik[0].verzug_ms || 0), "nur während des Baus")
+    assert.equal(e.ort, "baustelle:" + b.id)
+  }
 })

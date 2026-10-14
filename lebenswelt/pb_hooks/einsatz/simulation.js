@@ -130,6 +130,11 @@ function fussweg(R, p, q) {
 
 function punktVon(R, stand, ort) {
   if (R.ORTE[ort]) return R.ORTE[ort]
+  if (String(ort).indexOf("baustelle:") === 0) {
+    const id = ort.slice(10)
+    const b = (stand.baustellen || []).concat(stand.bauchronik || []).find((x) => x.id === id)
+    if (b) return b.ort
+  }
   const bp = bauplatz(R, ort)
   return bp
 }
@@ -179,6 +184,8 @@ function neuerStand(R, jetzt, saat) {
     laufend: [],
     abgeschlossen: [],
     ausgaben: [],
+    baustellen: [],
+    bauchronik: [],
     zaehler: 0,
   }
   for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
@@ -294,6 +301,107 @@ function ausbauFaktor(R, s, schluessel) {
 }
 
 /** Wann ist die Person nach dem Alarm umgezogen am Gerätehaus? */
+// ---------- Baustellen ----------
+
+/** Ältere Stände kennen noch keine Baustellen. */
+function bauFelder(s) {
+  if (!s.baustellen) s.baustellen = []
+  if (!s.bauchronik) s.bauchronik = []
+}
+
+function bauPhasen(R, b) {
+  return b.klein ? R.BAU.phasen_klein : R.BAU.phasen
+}
+
+/** Phase einer Baustelle zum Zeitpunkt t (null: noch nicht begonnen oder fertig). */
+function bauPhase(R, b, t) {
+  if (t < b.start || t >= b.ende) return null
+  const anteil = (t - b.start) / Math.max(1, b.ende - b.start)
+  let summe = 0
+  for (const ph of bauPhasen(R, b)) {
+    summe += ph.anteil
+    if (anteil < summe) return ph
+  }
+  const alle = bauPhasen(R, b)
+  return alle[alle.length - 1]
+}
+
+/** Wird am Gerätehaus bzw. an der Dienststelle gebaut (Behelfsbetrieb)? Abnahme und kleine Ausbauten zählen nicht. */
+function behelfAktiv(R, s, gebaeude, t) {
+  return (s.baustellen || []).some((b) => {
+    const am = (b.art === "gebaeude" && b.ziel === gebaeude) || (b.art === "ausbau" && !b.klein && R.AUSBAU[b.ziel] && R.AUSBAU[b.ziel].gebaeude === gebaeude)
+    const ph = am && bauPhase(R, b, t)
+    return Boolean(ph && ph.id !== "abnahme")
+  })
+}
+
+/** Baustellen in lauten Phasen nahe einem der Punkte (Baustellenampel, Baufahrzeuge auf der Straße). */
+function baustellenAmWeg(R, s, punkte, t) {
+  const r = R.BAU.verkehr.radius
+  return (s.baustellen || []).filter((b) => {
+    const ph = bauPhase(R, b, t)
+    return ph && ph.laut && punkte.some((p) => p && luftlinie(p, b.ort) <= r)
+  })
+}
+
+/** Neue Baustelle anlegen; die Baufirma hat R.BAU.parallel_max Kolonnen, weitere Aufträge warten. */
+function beginneBau(R, s, jetzt, b) {
+  bauFelder(s)
+  const kolonnen = []
+  for (let i = 0; i < R.BAU.parallel_max; i++) kolonnen.push(jetzt)
+  for (const x of s.baustellen.slice().sort((p, q) => p.start - q.start)) {
+    let i = 0
+    for (let k = 1; k < kolonnen.length; k++) if (kolonnen[k] < kolonnen[i]) i = k
+    kolonnen[i] = Math.max(kolonnen[i], x.ende)
+  }
+  const start = Math.max(jetzt, Math.min.apply(null, kolonnen))
+  s.zaehler += 1
+  const neu = Object.assign({ id: "b" + s.zaehler, start, ende: start + Math.round(b.bauzeit_h * STD), gekauft: jetzt, wetter_geprueft: false, verzug_ms: 0 }, b)
+  delete neu.bauzeit_h
+  s.baustellen.push(neu)
+  // Baustellen-Einsätze werden mit der ersten Baustelle aktiv
+  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.baustelle && !s.einsatzarten[id]) aktiviereArt(R, s, id, start)
+  return neu
+}
+
+/** Ist am Ziel schon eine Baustelle offen? */
+function imBau(s, art, ziel) {
+  return (s.baustellen || []).some((b) => b.art === art && b.ziel === ziel)
+}
+
+/** Baustelle fertig: Wirkung eintragen, in die Bauchronik übernehmen. */
+function fertigstellen(R, s, b, t) {
+  if (b.art === "gebaeude") s.gebaeude[b.ziel] = b.stufe
+  else if (b.art === "ausbau") {
+    if (s.ausbau.indexOf(b.ziel) < 0) s.ausbau.push(b.ziel)
+  } else if (b.art === "haus") {
+    const h = s.haeuser.find((x) => x.id === b.ziel)
+    if (h) {
+      h.im_bau = false
+      s.personal.push(neuePerson(s, "feuerwehr", h.id, t))
+    }
+  } else if (b.art === "haus_ausbau") {
+    const h = s.haeuser.find((x) => x.id === b.ziel)
+    const a = R.HAUS_AUSBAU[b.ausbau]
+    if (h && a) {
+      if (h.ausbau.indexOf(b.ausbau) < 0) h.ausbau.push(b.ausbau)
+      for (let i = 0; i < (a.bewohner || 0); i++) s.personal.push(neuePerson(s, "feuerwehr", h.id, t))
+    }
+  } else if (b.art === "neubaugebiet") {
+    if (s.neubaugebiete.indexOf(b.ziel) < 0) s.neubaugebiete.push(b.ziel)
+  }
+  s.baustellen = s.baustellen.filter((x) => x !== b)
+  s.bauchronik.push({ id: b.id, art: b.art, ziel: b.ziel, name: b.name, ort: b.ort, start: b.start, fertig: t, verzug_ms: b.verzug_ms })
+  if (s.bauchronik.length > 30) s.bauchronik = s.bauchronik.slice(-30)
+}
+
+/** Einmal am Ende: Zeit, die bei schlechtem Wetter verloren ging, wird angehängt (stündlich abgetastet). */
+function wetterVerzug(R, b, wetter) {
+  let verlust = 0
+  for (let t = b.start; t < b.ende; t += STD) verlust += (R.BAU.wetter_verzug[wetter(t)] || 0) * Math.min(STD, b.ende - t)
+  return Math.round(verlust)
+}
+
 // ---------- Ausrüstung und Licht ----------
 
 /** Wirkung der persönlichen Ausrüstung einer Person: Werte der jeweils gekauften Stufe, fehlende Werte neutral. */
@@ -365,7 +473,8 @@ function feuerwehrBereit(R, s, p, alarm, wetter) {
     beste = Math.min(beste, m / (a.tempo_ms * wf) + Math.max(0, extra))
   }
   const stufe = R.GEBAEUDE.geraetehaus[s.gebaeude.geraetehaus]
-  const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s") + psaEffekt(R, p).umziehen_s)
+  const behelf = behelfAktiv(R, s, "geraetehaus", alarm) ? R.BAU.behelf.umziehen_s : 0
+  const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s") + psaEffekt(R, p).umziehen_s + behelf)
   return alarm + Math.round((reaktion + beste + umziehen) * 1000)
 }
 
@@ -427,14 +536,16 @@ function plane(R, s, e, alarm, umwelt) {
 
   // Bereitschaftszeit je Person
   const bereit = personen
-    .map((p) => ({ p, t: org === "polizei" ? alarm + (POLIZEI_REAKTION_S + psaEffekt(R, p).reaktion_s) * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
+    .map((p) => ({ p, t: org === "polizei" ? alarm + (POLIZEI_REAKTION_S + psaEffekt(R, p).reaktion_s + (behelfAktiv(R, s, "dienststelle", alarm) ? R.BAU.behelf.reaktion_s : 0)) * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
     .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : 1))
 
   const fahrzeuge = s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org && frei(f, alarm))
   const lager = bestandVon(s, "lager:" + org, s.lager[org] || {}, alarm)
   const falschparker = org === "feuerwehr" && s.laufend.some((x) => x.art === "p_falschparker" && x.status !== "abgeschlossen" && x.meldung <= alarm && !(x.plan && x.plan.arbeit_ende <= alarm))
   const zf = falschparker ? R.EINSATZARTEN.p_falschparker.wirkung.fahrzeit_faktor : 1
-  const ausruecken = Math.max(0, R.ZEITEN.ausruecken_s + ausbauEffekt(R, s, "ausruecken_s")) * 1000
+  const behelfAus = org === "feuerwehr" && behelfAktiv(R, s, "geraetehaus", alarm) ? R.BAU.behelf.ausruecken_s : 0
+  const ausruecken = Math.max(0, R.ZEITEN.ausruecken_s + ausbauEffekt(R, s, "ausruecken_s") + behelfAus) * 1000
+  const amWeg = baustellenAmWeg(R, s, [basis, ort], alarm).slice(0, 2)
   const mind = art.mindestens || {}
   const opt = art.optimal || {}
 
@@ -507,9 +618,10 @@ function plane(R, s, e, alarm, umwelt) {
       fussFaktor = (1 / te.tempo) * (1 + te.stolpern * ((R.ZEITEN.stolpern_wetter || {})[wetter] || 1))
       if (dunkel(R, abfahrt)) fussFaktor *= 1 + (R.ZEITEN.nacht_zu_fuss - 1) * (1 - licht(R, bestand, leute.length, te))
     }
-    const fahrzeit = Math.round(((weg * R.METER_JE_EINHEIT) / (tempo * wf)) * zf * fussFaktor * 1000)
+    const bauVerzug = amWeg.length * (zuFuss ? R.BAU.verkehr.zu_fuss_s : R.BAU.verkehr.fahrzeug_s) * 1000
+    const fahrzeit = Math.round(((weg * R.METER_JE_EINHEIT) / (tempo * wf)) * zf * fussFaktor * 1000) + bauVerzug
     const eintreffen = abfahrt + fahrzeit
-    const kandidat = { auswahl, motor, trupp, leute, bestand, mit, abfahrt, fahrzeit, eintreffen, te, fussFaktor }
+    const kandidat = { auswahl, motor, trupp, leute, bestand, mit, abfahrt, fahrzeit, eintreffen, te, fussFaktor, bauVerzug }
     const punkte = (k) => [k.auswahl.length, -fehlendeGruppen(opt.geraete, k.bestand).length * 0 - Math.min(k.leute.length, opt.personen || 0), k.eintreffen]
     if (!bester) bester = kandidat
     else {
@@ -535,6 +647,8 @@ function plane(R, s, e, alarm, umwelt) {
     if (Math.abs(faktor - 1) >= 0.01) faktoren.push({ grund, faktor: Math.round(faktor * 100) / 100, text })
   }
   if (bester.fussFaktor > 1.01) merke("zu_fuss", bester.fussFaktor, "Weg zu Fuß: Stiefel, Wetter und Licht")
+  if (bester.bauVerzug) faktoren.push({ grund: "baustelle", sekunden: Math.round(bester.bauVerzug / 1000), text: "Baustelle an der Strecke (" + amWeg.map((b) => b.name).join(", ") + ")" })
+  if (behelfAus) faktoren.push({ grund: "behelf", sekunden: behelfAus + R.BAU.behelf.umziehen_s, text: "Behelfsbetrieb wegen Umbau am Gerätehaus" })
   merke("personen", Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5), vorhanden + " von optimal " + (opt.personen || vorhanden) + " Einsatzkräften")
   const fehltOpt = fehlendeGruppen(opt.geraete, bester.bestand)
   const fehltOptQ = fehlendeQualifikation(opt.qualifikation, bester.leute, alarm)
@@ -572,7 +686,7 @@ function plane(R, s, e, alarm, umwelt) {
   const th = String(art.stichwort || "").indexOf("TH") === 0
   merke("ausruestung", bester.te.arbeit * (th ? bester.te.arbeit_th : 1), "persönliche Ausrüstung")
   if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
-  const arbeit = faktoren.filter((f) => f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
+  const arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
   const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN)
   const zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
   // Ohne Rückmeldung kommen alle Alarmierten zum Gerätehaus, auch wer nicht mehr gebraucht wird
@@ -651,8 +765,8 @@ function bewerte(R, s, e) {
   let ab = 0
   for (const stufe of R.STERNE.einsatzende) if (anteil > stufe.ueber && stufe.abzug > ab) ab = stufe.abzug
   if (ab) {
-    const bremsen = (pl.faktoren || []).filter((f) => f.faktor > 1).sort((x, y) => y.faktor - x.faktor)
-    const warum = bremsen.length ? " Länger dauerte es durch: " + bremsen.map((f) => f.text + " (+" + Math.round((f.faktor - 1) * 100) + " %)").join(", ") + "." : ""
+    const bremsen = (pl.faktoren || []).filter((f) => f.faktor > 1 || f.sekunden > 0).sort((x, y) => (y.faktor || 1) - (x.faktor || 1))
+    const warum = bremsen.length ? " Länger dauerte es durch: " + bremsen.map((f) => f.text + (f.sekunden ? " (+" + f.sekunden + " s)" : " (+" + Math.round((f.faktor - 1) * 100) + " %)")).join(", ") + "." : ""
     ziehe("einsatzende", ab, "Einsatz beendet nach " + komma(dauerMin) + " Minuten, Ziel waren " + komma(ziel) + "." + warum)
   }
   if (art.psa) {
@@ -852,6 +966,7 @@ function naechstesEreignis(s, bis) {
     else nimm(e.ende, "ende", 0, e.id)
   }
   for (const [id, a] of Object.entries(s.einsatzarten)) nimm(a.naechster, "meldung", 2, id)
+  for (const b of s.baustellen || []) nimm(b.ende, "bau", 3, b.id)
   return best
 }
 
@@ -861,6 +976,7 @@ function naechstesEreignis(s, bis) {
  */
 function fortschreiben(stand, bis, umwelt, R) {
   const s = kopie(stand)
+  bauFelder(s)
   if (bis <= s.bis) return s
   const wetter = umwelt || ((t) => wetterBei(null, t))
   let schutz = 0
@@ -875,8 +991,22 @@ function fortschreiben(stand, bis, umwelt, R) {
       st.nr += 1
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
       const f = bedingungFaktor(art, ev.t, wetter(ev.t))
-      if (f > 0 && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null)
+      // Baustellen-Einsätze nur, solange eine passende Baustelle läuft
+      const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
+      if (f > 0 && (!art.baustelle || bst) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
+    } else if (ev.typ === "bau") {
+      const b = s.baustellen.find((x) => x.id === ev.id)
+      if (!b.wetter_geprueft) {
+        b.wetter_geprueft = true
+        const verlust = wetterVerzug(R, b, wetter)
+        if (verlust >= MIN) {
+          b.verzug_ms = verlust
+          b.ende += verlust
+          continue
+        }
+      }
+      fertigstellen(R, s, b, ev.t)
     } else {
       const e = s.laufend.find((x) => x.id === ev.id)
       if (ev.typ === "eintreffen") folgen(R, s, e, wetter)
@@ -924,6 +1054,7 @@ function neuePerson(s, org, haus, jetzt) {
  */
 function kaufe(stand, auftrag, jetzt, R) {
   const s = kopie(stand)
+  bauFelder(s)
   const art = auftrag.art
   const id = auftrag.id
   const anzahl = Math.max(1, Math.floor(auftrag.anzahl || 1))
@@ -946,9 +1077,10 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (s.haeuser.some((h) => h.bauplatz === id)) return fehler("Der Bauplatz ist schon bebaut.")
     roh = bp.preis
     s.zaehler += 1
-    const h = { id: "h" + s.zaehler, bauplatz: id, gekauft: jetzt, ausbau: [], alarmierung: "sirene" }
+    // Erst wird gebaut, mit dem fertigen Haus zieht die Einsatzkraft ein
+    const h = { id: "h" + s.zaehler, bauplatz: id, gekauft: jetzt, ausbau: [], alarmierung: "sirene", im_bau: true }
     s.haeuser.push(h)
-    s.personal.push(neuePerson(s, "feuerwehr", h.id, jetzt))
+    beginneBau(R, s, jetzt, { art: "haus", ziel: h.id, name: "Haus auf " + id.toUpperCase(), ort: { x: bp.x, z: bp.z }, bauzeit_h: R.BAU.haus_h, klein: false })
   } else if (art === "haus_ausbau") {
     const h = haus()
     const a = R.HAUS_AUSBAU[id]
@@ -956,8 +1088,11 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (h.ausbau.indexOf(id) >= 0) return fehler("Schon vorhanden.")
     if (a.voraussetzung && h.ausbau.indexOf(a.voraussetzung) < 0) return fehler("Zuerst " + R.HAUS_AUSBAU[a.voraussetzung].name + ".")
     roh = a.preis
-    h.ausbau.push(id)
-    if (a.bewohner) for (let i = 0; i < a.bewohner; i++) s.personal.push(neuePerson(s, "feuerwehr", h.id, jetzt))
+    if (a.bauzeit_h) {
+      if (imBau(s, "haus_ausbau", h.id)) return fehler("Am Haus wird schon gebaut.")
+      const bp = bauplatz(R, h.bauplatz)
+      beginneBau(R, s, jetzt, { art: "haus_ausbau", ziel: h.id, ausbau: id, name: a.name.split(" (")[0] + " auf " + h.bauplatz.toUpperCase(), ort: { x: bp.x, z: bp.z }, bauzeit_h: a.bauzeit_h, klein: false })
+    } else h.ausbau.push(id)
   } else if (art === "alarmierung") {
     const h = haus()
     const a = R.ALARMIERUNG[id]
@@ -1003,24 +1138,29 @@ function kaufe(stand, auftrag, jetzt, R) {
   } else if (art === "gebaeude") {
     const stufen = R.GEBAEUDE[id]
     if (!stufen) return fehler("Unbekanntes Gebäude.")
+    if (imBau(s, "gebaeude", id)) return fehler("Hier wird schon gebaut.")
     const neu = s.gebaeude[id] + 1
     if (!stufen[neu]) return fehler("Schon die höchste Stufe.")
     roh = stufen[neu].preis
-    s.gebaeude[id] = neu
+    beginneBau(R, s, jetzt, { art: "gebaeude", ziel: id, stufe: neu, name: stufen[neu].name, ort: id === "dienststelle" ? R.ORTE.dienststelle : R.ORTE.feuerwehrhaus, bauzeit_h: stufen[neu].bauzeit_h || 1, klein: false })
   } else if (art === "ausbau") {
     const a = R.AUSBAU[id]
     if (!a) return fehler("Unbekannter Ausbau.")
     if (s.ausbau.indexOf(id) >= 0) return fehler("Schon vorhanden.")
+    if (imBau(s, "ausbau", id)) return fehler("Wird schon gebaut.")
     if (a.gebaeude !== "ort" && s.gebaeude[a.gebaeude] < a.ab_stufe) return fehler("Das Gebäude ist dafür noch zu klein.")
     roh = a.preis
-    s.ausbau.push(id)
+    const wo = a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus
+    beginneBau(R, s, jetzt, { art: "ausbau", ziel: id, name: a.name, ort: { x: wo.x, z: wo.z }, bauzeit_h: a.bauzeit_h || 1, klein: Boolean(a.klein) })
   } else if (art === "neubaugebiet") {
     const nb = R.NEUBAUGEBIETE.find((n) => n.id === id)
     if (!nb) return fehler("Unbekanntes Neubaugebiet.")
     if (s.neubaugebiete.indexOf(id) >= 0) return fehler("Schon erschlossen.")
+    if (imBau(s, "neubaugebiet", id)) return fehler("Wird schon erschlossen.")
     if (s.gebaeude.geraetehaus < nb.ab_geraetehaus) return fehler("Erst das Gerätehaus ausbauen.")
     roh = nb.erschliessung
-    s.neubaugebiete.push(id)
+    const mitte = { x: nb.ursprung.x + ((nb.spalten - 1) * nb.raster) / 2, z: nb.ursprung.z + ((nb.reihen - 1) * nb.raster) / 2 }
+    beginneBau(R, s, jetzt, { art: "neubaugebiet", ziel: id, name: nb.name, ort: mitte, bauzeit_h: nb.bauzeit_h || 24, klein: false })
   } else if (art === "personal") {
     const P = R.PERSONAL[id]
     if (!P) return fehler("Unbekannt.")
@@ -1065,5 +1205,5 @@ module.exports = {
   ortszeit,
   preis,
   // für Tests
-  _intern: { plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde },
+  _intern: { plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

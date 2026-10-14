@@ -67,6 +67,14 @@ for (const [tabelle, teile] of [["PSA_FEUERWEHR", R.PSA_FEUERWEHR], ["PSA_POLIZE
     })
   }
 }
+// Bauen: Phasen ergeben zusammen 1, Bauzeiten an jeder Ausbaustufe
+for (const [name, liste] of [["phasen", R.BAU.phasen], ["phasen_klein", R.BAU.phasen_klein]]) {
+  const summe = liste.reduce((n, p) => n + p.anteil, 0)
+  if (Math.abs(summe - 1) > 1e-9) f(`BAU.${name}: Anteile ergeben ${summe} statt 1`)
+}
+for (const [geb, stufen] of Object.entries(R.GEBAEUDE)) stufen.forEach((st, i) => { if (i > 0 && !(st.bauzeit_h > 0)) f(`GEBAEUDE.${geb}[${i}]: bauzeit_h fehlt`) })
+for (const [id, a] of Object.entries(R.AUSBAU)) if (!(a.bauzeit_h > 0)) f(`AUSBAU.${id}: bauzeit_h fehlt`)
+for (const nb of R.NEUBAUGEBIETE) if (!(nb.bauzeit_h > 0)) f(`NEUBAUGEBIETE.${nb.id}: bauzeit_h fehlt`)
 if (!Array.isArray(R.SONNE) || R.SONNE.length !== 12) f("SONNE: zwölf Monate nötig")
 else R.SONNE.forEach(([auf, unter], i) => { if (!(auf > 0 && auf < unter && unter < 24)) f(`SONNE[${i}]: ungültig`) })
 
@@ -154,12 +162,13 @@ for (const [id, e] of Object.entries(arten)) {
   quelle(ort, e.quelle)
   if (!["feuerwehr", "polizei"].includes(e.org)) f(`${ort}: org ungültig`)
   if (!e.folge_nur) {
-    if (!(e.preis > 0)) f(`${ort}: preis fehlt`)
+    if (!(e.preis > 0) && !e.baustelle) f(`${ort}: preis fehlt`)
     if (!(e.intervall_min > 0)) f(`${ort}: intervall_min fehlt`)
     if (!(e.orte && e.orte.length)) f(`${ort}: orte fehlen`)
-    if (!e.start && !e.start_polizei && !e.freischaltung) f(`${ort}: weder Start noch Freischaltung`)
+    if (!e.start && !e.start_polizei && !e.freischaltung && !e.baustelle) f(`${ort}: weder Start noch Freischaltung`)
+    if (e.baustelle && e.phasen) for (const ph of e.phasen) if (!R.BAU.phasen.concat(R.BAU.phasen_klein).some((x) => x.id === ph)) f(`${ort}: unbekannte Bauphase "${ph}"`)
   }
-  for (const o of e.orte || []) if (!R.ORTE[o]) f(`${ort}: unbekannter Ort "${o}"`)
+  for (const o of e.orte || []) if (!R.ORTE[o] && !(o === "baustelle" && e.baustelle)) f(`${ort}: unbekannter Ort "${o}"`)
   if (!(e.ablauf_min > 0)) f(`${ort}: ablauf_min fehlt`)
   if (!(e.arbeit_min >= 0)) f(`${ort}: arbeit_min fehlt`)
   if (!(e.ziel_eintreffen_min > 0)) f(`${ort}: ziel_eintreffen_min fehlt`)
@@ -200,7 +209,7 @@ for (const [id, r] of Object.entries(R.REGELN)) {
 }
 
 // Freischaltbaum: kreisfrei, jede kaufbare Art ist von einem Start aus erreichbar
-const kaufbar = Object.keys(arten).filter((k) => !arten[k].folge_nur)
+const kaufbar = Object.keys(arten).filter((k) => !arten[k].folge_nur && !arten[k].baustelle)
 kreisfrei("Freischaltbaum", kaufbar, (k) => (arten[k].freischaltung ? [arten[k].freischaltung.nach] : []))
 const erreichbar = new Set(kaufbar.filter((k) => arten[k].start || arten[k].start_polizei))
 let neu = true

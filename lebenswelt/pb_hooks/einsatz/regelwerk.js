@@ -255,9 +255,9 @@ const BAUPLAETZE = [
  * Die Plätze liegen im Raster ab `ursprung` (Abstand `raster` Einheiten); das Frontend prüft gegen die Karte.
  */
 const NEUBAUGEBIETE = [
-  { id: "nb_nord", name: "Neubaugebiet Am Deich", ursprung: { x: -104, z: -64 }, spalten: 4, reihen: 3, raster: 12, erschliessung: 6000, preis: 500, ab_geraetehaus: 2 },
-  { id: "nb_ost", name: "Neubaugebiet Elbblick", ursprung: { x: 72, z: 30 }, spalten: 3, reihen: 4, raster: 12, erschliessung: 12000, preis: 650, ab_geraetehaus: 3 },
-  { id: "nb_sued", name: "Neubaugebiet Lindenhof", ursprung: { x: -60, z: 90 }, spalten: 4, reihen: 3, raster: 12, erschliessung: 20000, preis: 800, ab_geraetehaus: 4 },
+  { id: "nb_nord", name: "Neubaugebiet Am Deich", ursprung: { x: -104, z: -64 }, spalten: 4, reihen: 3, raster: 12, erschliessung: 6000, preis: 500, bauzeit_h: 24, ab_geraetehaus: 2 },
+  { id: "nb_ost", name: "Neubaugebiet Elbblick", ursprung: { x: 72, z: 30 }, spalten: 3, reihen: 4, raster: 12, erschliessung: 12000, preis: 650, bauzeit_h: 48, ab_geraetehaus: 3 },
+  { id: "nb_sued", name: "Neubaugebiet Lindenhof", ursprung: { x: -60, z: 90 }, spalten: 4, reihen: 3, raster: 12, erschliessung: 20000, preis: 800, bauzeit_h: 72, ab_geraetehaus: 4 },
 ]
 
 /**
@@ -288,7 +288,7 @@ const HAUS_AUSBAU = {
   fahrrad: { name: "Fahrrad", tempo_ms: 5, extra_s: 10, preis: 120 },
   ebike: { name: "E-Bike", tempo_ms: 7, extra_s: 10, preis: 450, voraussetzung: "fahrrad" },
   auto: { name: "Auto", tempo_ms: 11, extra_s: 35, preis: 1500 },
-  einliegerwohnung: { name: "Einliegerwohnung (eine weitere Einsatzkraft zieht ein)", bewohner: 1, preis: 2500 },
+  einliegerwohnung: { name: "Einliegerwohnung (eine weitere Einsatzkraft zieht ein)", bewohner: 1, preis: 2500, bauzeit_h: 6 },
   // extra_s beim Auto: einsteigen und am Gerätehaus parken. Der Parkplatz im Gebäudeausbau senkt das.
 }
 
@@ -619,40 +619,70 @@ const FAHRZEUGE = {
 }
 
 /**
+ * Bauen. Jedes Gebäude, jede Ausbaustufe, jeder Ausbau, jedes Haus und jedes Neubaugebiet hat eine Bauzeit
+ * (Echtzeit-Stunden, spielwert; bauzeit_h an der jeweiligen Stelle, Häuser BAU.haus_h). Gebaut wird in Phasen,
+ * die das Frontend mit Baufahrzeugen zeigt. Während des Baus wirkt die Baustelle auf die Einsätze.
+ */
+const BAU = {
+  haus_h: 4,
+  phasen: [
+    { id: "erdarbeiten", name: "Erdarbeiten", anteil: 0.2, fahrzeuge: ["bagger", "kipper"], laut: true },
+    { id: "rohbau", name: "Rohbau", anteil: 0.35, fahrzeuge: ["kran", "betonmischer"], laut: true },
+    { id: "dach", name: "Dach und Fassade", anteil: 0.2, fahrzeuge: ["kran", "kipper"], laut: true },
+    { id: "innenausbau", name: "Innenausbau", anteil: 0.2, fahrzeuge: ["transporter"] },
+    { id: "abnahme", name: "Abnahme", anteil: 0.05, fahrzeuge: [] },
+  ],
+  // kleine Ausbauten (Spinde, Alarmmonitor, ...) ohne Erdarbeiten und Kran
+  phasen_klein: [
+    { id: "anlieferung", name: "Anlieferung", anteil: 0.3, fahrzeuge: ["kipper"], laut: true },
+    { id: "einbau", name: "Einbau", anteil: 0.6, fahrzeuge: ["transporter"] },
+    { id: "abnahme", name: "Abnahme", anteil: 0.1, fahrzeuge: [] },
+  ],
+  // Behelfsbetrieb, solange am Gerätehaus bzw. an der Dienststelle gebaut wird (Container-Umkleide, enge Zufahrt)
+  behelf: { umziehen_s: 30, ausruecken_s: 20, reaktion_s: 20 },
+  // Baustellenampel und Baufahrzeuge auf der Straße in lauten Phasen: wer in der Nähe vorbei muss, verliert Zeit
+  verkehr: { radius: 20, fahrzeug_s: 25, zu_fuss_s: 8 },
+  // Anteil der Zeit, der bei diesem Wetter auf der Baustelle verloren geht (wird am Ende einmal nachgerechnet)
+  wetter_verzug: { sturm: 1, schnee: 0.6, glaette: 0.6, nass: 0.25 },
+  // Die Baufirma hat zwei Kolonnen; weitere Aufträge warten, bis eine frei wird
+  parallel_max: 2,
+}
+
+/**
  * Gebäude in Stufen. Gerätehaus angelehnt an die Gliederung der Ortsfeuerwehren in Niedersachsen
  * (Grundausstattungs-, Stützpunkt-, Schwerpunktfeuerwehr). stellplaetze begrenzt die Zahl der Fahrzeuge.
  */
 const GEBAEUDE = {
   geraetehaus: [
-    { name: "Unterstand am Dorfplatz", stellplaetze: 1, preis: 0, umziehen_s: 90, lager_slots: 6 },
-    { name: "Kleines Gerätehaus", stellplaetze: 1, preis: 2500, umziehen_s: 75, lager_slots: 12 },
-    { name: "Gerätehaus Grundausstattungsfeuerwehr", stellplaetze: 2, preis: 9000, umziehen_s: 60, lager_slots: 20, quelle: "fwvo_nds", hinweis: "mindestens ein Löschfahrzeug mit Staffelbesatzung" },
-    { name: "Gerätehaus Stützpunktfeuerwehr", stellplaetze: 4, preis: 30000, umziehen_s: 50, lager_slots: 40, quelle: "fwvo_nds", hinweis: "Löschfahrzeug mit Gruppenbesatzung und ein weiteres Fahrzeug" },
-    { name: "Gerätehaus Schwerpunktfeuerwehr", stellplaetze: 7, preis: 90000, umziehen_s: 40, lager_slots: 80, quelle: "fwvo_nds" },
+    { name: "Unterstand am Dorfplatz", bauzeit_h: 0, stellplaetze: 1, preis: 0, umziehen_s: 90, lager_slots: 6 },
+    { name: "Kleines Gerätehaus", bauzeit_h: 8, stellplaetze: 1, preis: 2500, umziehen_s: 75, lager_slots: 12 },
+    { name: "Gerätehaus Grundausstattungsfeuerwehr", bauzeit_h: 24, stellplaetze: 2, preis: 9000, umziehen_s: 60, lager_slots: 20, quelle: "fwvo_nds", hinweis: "mindestens ein Löschfahrzeug mit Staffelbesatzung" },
+    { name: "Gerätehaus Stützpunktfeuerwehr", bauzeit_h: 48, stellplaetze: 4, preis: 30000, umziehen_s: 50, lager_slots: 40, quelle: "fwvo_nds", hinweis: "Löschfahrzeug mit Gruppenbesatzung und ein weiteres Fahrzeug" },
+    { name: "Gerätehaus Schwerpunktfeuerwehr", bauzeit_h: 96, stellplaetze: 7, preis: 90000, umziehen_s: 40, lager_slots: 80, quelle: "fwvo_nds" },
   ],
   dienststelle: [
-    { name: "Büro der Kontaktbeamtin/des Kontaktbeamten", stellplaetze: 0, preis: 0, lager_slots: 4, personal_max: 1 },
-    { name: "Polizeistation", stellplaetze: 2, preis: 8000, lager_slots: 12, personal_max: 4 },
-    { name: "Polizeikommissariat", stellplaetze: 5, preis: 40000, lager_slots: 30, personal_max: 12, rund_um_die_uhr: true },
+    { name: "Büro der Kontaktbeamtin/des Kontaktbeamten", bauzeit_h: 0, stellplaetze: 0, preis: 0, lager_slots: 4, personal_max: 1 },
+    { name: "Polizeistation", bauzeit_h: 24, stellplaetze: 2, preis: 8000, lager_slots: 12, personal_max: 4 },
+    { name: "Polizeikommissariat", bauzeit_h: 72, stellplaetze: 5, preis: 40000, lager_slots: 30, personal_max: 12, rund_um_die_uhr: true },
   ],
 }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
-  spinde: { gebaeude: "geraetehaus", name: "Spinde mit fester Anordnung", preis: 600, effekt: { umziehen_s: -15 }, ab_stufe: 1 },
-  schwarz_weiss: { gebaeude: "geraetehaus", name: "Schwarz-Weiß-Trennung", preis: 4000, effekt: { gesundheit: 1 }, ab_stufe: 2 },
-  parkplatz: { gebaeude: "geraetehaus", name: "Parkplätze für Einsatzkräfte", preis: 1500, effekt: { auto_extra_s: -20 }, ab_stufe: 1 },
-  fahrradstaender: { gebaeude: "geraetehaus", name: "Überdachte Fahrradständer", preis: 300, effekt: { fahrrad_extra_s: -5 }, ab_stufe: 0 },
-  alarmmonitor: { gebaeude: "geraetehaus", name: "Alarmmonitor mit Einsatzkarte", preis: 1200, effekt: { ausruecken_s: -20 }, ab_stufe: 1 },
-  schlauchwaesche: { gebaeude: "geraetehaus", name: "Schlauchwaschanlage", preis: 5000, effekt: { schlauchpflege_faktor: 0.5 }, ab_stufe: 2 },
-  schlauchturm: { gebaeude: "geraetehaus", name: "Schlauchtrockenturm", preis: 9000, effekt: { schlauchpflege_faktor: 0.5 }, ab_stufe: 3 },
-  atemschutzwerkstatt: { gebaeude: "geraetehaus", name: "Atemschutzwerkstatt", preis: 12000, effekt: { atemschutz_pflege_faktor: 0.4 }, ab_stufe: 3 },
-  funkraum: { gebaeude: "geraetehaus", name: "Funkraum", preis: 3000, effekt: { fuehrung: 1 }, ab_stufe: 2 },
-  uebungshof: { gebaeude: "geraetehaus", name: "Übungshof", preis: 8000, effekt: { lehrgang_faktor: 0.8 }, ab_stufe: 3 },
-  hydrantennetz: { gebaeude: "ort", name: "Hydrantennetz im Dorf erneuern", preis: 15000, effekt: { hydrant_l_min: 1600 }, ab_stufe: 0, quelle: "nbrandschg", hinweis: "Grundversorgung mit Löschwasser ist Aufgabe der Gemeinde" },
-  sirene_neu: { gebaeude: "ort", name: "Elektronische Sirene", preis: 2000, effekt: { reaktion_s: -15 }, ab_stufe: 0 },
-  wache_kueche: { gebaeude: "dienststelle", name: "Sozialraum", preis: 1500, effekt: { schicht: 1 }, ab_stufe: 1 },
-  gewahrsam: { gebaeude: "dienststelle", name: "Gewahrsamsraum", preis: 6000, effekt: { festnahme: 1 }, ab_stufe: 2 },
+  spinde: { gebaeude: "geraetehaus", name: "Spinde mit fester Anordnung", preis: 600, effekt: { umziehen_s: -15 }, bauzeit_h: 2, klein: true, ab_stufe: 1 },
+  schwarz_weiss: { gebaeude: "geraetehaus", name: "Schwarz-Weiß-Trennung", preis: 4000, effekt: { gesundheit: 1 }, bauzeit_h: 12, ab_stufe: 2 },
+  parkplatz: { gebaeude: "geraetehaus", name: "Parkplätze für Einsatzkräfte", preis: 1500, effekt: { auto_extra_s: -20 }, bauzeit_h: 6, ab_stufe: 1 },
+  fahrradstaender: { gebaeude: "geraetehaus", name: "Überdachte Fahrradständer", preis: 300, effekt: { fahrrad_extra_s: -5 }, bauzeit_h: 2, klein: true, ab_stufe: 0 },
+  alarmmonitor: { gebaeude: "geraetehaus", name: "Alarmmonitor mit Einsatzkarte", preis: 1200, effekt: { ausruecken_s: -20 }, bauzeit_h: 1, klein: true, ab_stufe: 1 },
+  schlauchwaesche: { gebaeude: "geraetehaus", name: "Schlauchwaschanlage", preis: 5000, effekt: { schlauchpflege_faktor: 0.5 }, bauzeit_h: 8, klein: true, ab_stufe: 2 },
+  schlauchturm: { gebaeude: "geraetehaus", name: "Schlauchtrockenturm", preis: 9000, effekt: { schlauchpflege_faktor: 0.5 }, bauzeit_h: 24, ab_stufe: 3 },
+  atemschutzwerkstatt: { gebaeude: "geraetehaus", name: "Atemschutzwerkstatt", preis: 12000, effekt: { atemschutz_pflege_faktor: 0.4 }, bauzeit_h: 24, ab_stufe: 3 },
+  funkraum: { gebaeude: "geraetehaus", name: "Funkraum", preis: 3000, effekt: { fuehrung: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 2 },
+  uebungshof: { gebaeude: "geraetehaus", name: "Übungshof", preis: 8000, effekt: { lehrgang_faktor: 0.8 }, bauzeit_h: 24, ab_stufe: 3 },
+  hydrantennetz: { gebaeude: "ort", name: "Hydrantennetz im Dorf erneuern", preis: 15000, effekt: { hydrant_l_min: 1600 }, bauzeit_h: 72, ab_stufe: 0, quelle: "nbrandschg", hinweis: "Grundversorgung mit Löschwasser ist Aufgabe der Gemeinde" },
+  sirene_neu: { gebaeude: "ort", name: "Elektronische Sirene", preis: 2000, effekt: { reaktion_s: -15 }, bauzeit_h: 4, klein: true, ab_stufe: 0 },
+  wache_kueche: { gebaeude: "dienststelle", name: "Sozialraum", preis: 1500, effekt: { schicht: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 1 },
+  gewahrsam: { gebaeude: "dienststelle", name: "Gewahrsamsraum", preis: 6000, effekt: { festnahme: 1 }, bauzeit_h: 24, ab_stufe: 2 },
 }
 
 /**
@@ -888,6 +918,37 @@ const EINSATZARTEN = {
     folge: ["p_absperrung"],
     text: "Der Pegel steigt, am Deichfuß tritt Wasser aus (Qualmwasser). Eine Sandsackauflast muss her.",
     verfallen_text: "Das Technische Hilfswerk hat übernommen, der Deich hielt knapp.",
+  },
+
+  // Baustellen: entstehen nur, solange gebaut wird, und kosten nichts (baustelle: true)
+  th_baustelle: {
+    org: "feuerwehr", name: "Arbeitsunfall auf der Baustelle", stichwort: "TH Person", preis: 0, baustelle: true, phasen: ["rohbau", "dach"],
+    orte: ["baustelle"], intervall_min: 600, ablauf_min: 12, arbeit_min: 15, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ klappleiter: 1 }, { steckleiter_teil: 2 }, { multifunktionsleiter: 1 }, { schiebleiter: 1 }]] },
+    optimal: { personen: 6, geraete: [[{ notfallrucksack: 1 }], [{ schiebleiter: 1 }, { multifunktionsleiter: 1 }]] },
+    psa: { helm: 1, handschuhe: 1 },
+    regeln: ["leiter_sicherung", "einheitsfuehrer"],
+    text: "Ein Bauarbeiter ist vom Gerüst gestürzt und liegt verletzt im Rohbau. Der Rettungsdienst braucht Hilfe beim Tragen.",
+    verfallen_text: "Die Kollegen vom Bau haben ihn allein heruntergetragen.",
+  },
+  p_baustelle_diebstahl: {
+    org: "polizei", name: "Diebstahl von der Baustelle", stichwort: "Diebstahl", preis: 0, baustelle: true,
+    orte: ["baustelle"], intervall_min: 900, ablauf_min: 60, arbeit_min: 20, ziel_eintreffen_min: 20,
+    bedingung: { stunden: [22, 23, 0, 1, 2, 3, 4], sonst_faktor: 0.1 },
+    mindestens: { personen: 1 },
+    optimal: { personen: 2, geraete: [[{ taschenlampe: 1 }]] },
+    regeln: ["eigensicherung_zwei"],
+    text: "Vom Bauzaun aus wurde Kupferkabel aus dem Container geholt. Der Bauleiter hat Anzeige erstattet.",
+    verfallen_text: "Die Spuren sind verwischt, die Anzeige läuft gegen Unbekannt.",
+  },
+  p_baulaerm: {
+    org: "polizei", name: "Beschwerde über Baulärm", stichwort: "Lärm", preis: 0, baustelle: true, phasen: ["erdarbeiten", "rohbau", "anlieferung"],
+    orte: ["baustelle"], intervall_min: 720, ablauf_min: 45, arbeit_min: 8, ziel_eintreffen_min: 20,
+    bedingung: { stunden: [6, 7, 20, 21], sonst_faktor: 0.15 },
+    mindestens: { personen: 1 },
+    optimal: { personen: 1 },
+    text: "Nachbarn beschweren sich: Der Bagger läuft schon vor sieben Uhr.",
+    verfallen_text: "Der Bauleiter hat die Arbeiten von sich aus verschoben.",
   },
 
   // Polizei
@@ -1176,6 +1237,7 @@ module.exports = {
   MERKMALE,
   GERAETE,
   FAHRZEUGE,
+  BAU,
   GEBAEUDE,
   AUSBAU,
   EINSATZARTEN,

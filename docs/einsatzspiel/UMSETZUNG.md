@@ -251,3 +251,18 @@ Entscheidung: Volle Sterne gibt es nicht für schnelles Eintreffen, sondern wenn
 - Ohne Verteiler wird mit nur einem Strahlrohr gelöscht, mit Verteiler mit bis zu drei (je Rohr ein Trupp).
 - Fehlende Personen und fehlende optimale Geräte verlängern die Arbeit, statt pauschal Sterne zu kosten. Pauschale Abzüge bleiben nur für Vorschriften (`REGELN`), fehlende Mindest-Schutzausrüstung und große Schäden.
 - Folge für den Einstieg: 5 Sterne bei der Katze brauchen drei Kräfte und bessere Stiefel als Gummistiefel.
+
+## 13. Bauen mit Bauzeit und Baustellen (14.10.2026)
+
+Alles, was gebaut wird, hat eine Bauzeit (`BAU` im Regelwerk, `bauzeit_h` an Gebäudestufen, Ausbauten, Einliegerwohnung, Neubaugebieten; Häuser `BAU.haus_h`). Ein Kauf legt eine Baustelle an (`stand.baustellen`), die Wirkung tritt erst mit der Fertigstellung ein (`stand.bauchronik`). Ebenen:
+
+1. **Bauphasen** mit eigenen Baufahrzeugen: Erdarbeiten (Bagger, Kipper), Rohbau (Kran, Betonmischer), Dach und Fassade (Kran, Kipper), Innenausbau (Transporter), Abnahme. Kleine Ausbauten: Anlieferung, Einbau, Abnahme.
+2. **Baufirma mit zwei Kolonnen:** ein dritter Auftrag wartet, bis eine Kolonne frei ist.
+3. **Wetterverzug:** Sturm, Schnee, Glätte und Regen kosten Bautage; am Ende einmal nachgerechnet.
+4. **Behelfsbetrieb:** Solange am Gerätehaus bzw. an der Dienststelle gebaut wird, dauern Umziehen, Ausrücken und Aufbruch länger (Container-Umkleide, enge Zufahrt).
+5. **Baustellen stehen im Weg:** In lauten Phasen kosten Baustellen nahe Start oder Ziel eines Einsatzes Zeit (Baustellenampel, Baufahrzeuge auf der Straße).
+6. **Einsätze auf der Baustelle**, nur solange gebaut wird und ohne Kauf: Arbeitsunfall (Feuerwehr, Rohbau und Dach), Diebstahl von der Baustelle (Polizei, nachts), Beschwerde über Baulärm (Polizei, früh und abends, laute Phasen).
+7. **Bauchronik** in der Bilanz: fertige Bauten mit Datum und Wetterverzug.
+8. **Ein Haus** wird erst gebaut; die Einsatzkraft zieht beim Fertigstellen ein.
+
+Ideen für spätere Ebenen: Eigenleistung der Wehr (schneller bauen, Kräfte abends auf der Baustelle), Bauabnahme mit Mängeln durch die Bauaufsicht, Richtfest, Lieferzeit für Fahrzeuge (Beschaffung), Container als Zwischenlager während des Umbaus.
