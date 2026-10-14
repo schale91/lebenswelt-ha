@@ -25,25 +25,38 @@ function katze(s, t = T0 + MIN) {
   return { e: fertig.abgeschlossen.find((a) => a.id === e.id), stand: fertig }
 }
 
-test("Einstieg 1 und 2: Katze ist gekauft, ohne Feuerwehr verfällt jeder Einsatz", () => {
+test("Einstieg 1 und 2: Katze ist gekauft, ohne Feuerwehr wartet der Einsatz lange und verfällt erst nach einem Tag", () => {
   const s = S.neuerStand(R, T0, 1)
   assert.ok(s.einsatzarten.tier_katze)
   const nach = S.fortschreiben(s, T0 + 12 * 60 * MIN, trocken, R)
-  assert.ok(nach.abgeschlossen.length >= 6 && nach.abgeschlossen.length <= 18, "etwa stündlich: " + nach.abgeschlossen.length)
-  for (const e of nach.abgeschlossen) {
+  // Es wartet immer nur eine Katze, keine zweite kommt dazu
+  assert.equal(nach.abgeschlossen.length, 0)
+  assert.equal(nach.laufend.filter((e) => e.wartet).length, 1)
+  const spaeter = S.fortschreiben(nach, T0 + 30 * 60 * MIN, trocken, R)
+  assert.ok(spaeter.abgeschlossen.length >= 1)
+  for (const e of spaeter.abgeschlossen) {
     assert.equal(e.status, "verfallen")
     assert.equal(e.grund, "Keine Einsatzkraft verfügbar.")
     assert.equal(e.bewertung.sterne, 0)
+    assert.equal(e.ende - e.meldung, R.VERFALL.frist_min * MIN)
   }
 })
 
-test("Einstieg 3 und 4: eine Einsatzkraft ohne Leiter, der Einsatz verfällt mit Grund", () => {
+test("Einstieg 3 und 4: eine Einsatzkraft ohne Leiter, der Einsatz wartet mit Grund", () => {
   let s = S.neuerStand(R, T0, 2)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   assert.equal(s.personal.length, 1)
-  const { e } = katze(s)
-  assert.equal(e.status, "verfallen")
-  assert.match(e.grund, /leiter/i)
+  const { e, stand } = katze(s)
+  assert.ok(!e, "noch nicht abgeschlossen")
+  const w = stand.laufend.find((x) => x.art === "tier_katze")
+  assert.ok(w.wartet)
+  assert.match(w.grund, /leiter/i)
+  // Wird die Leiter Stunden später gekauft, rückt die Feuerwehr noch aus, mit wenig Sternen
+  const k = S.kaufe(stand, { art: "geraet", id: "klappleiter" }, stand.bis, R).stand
+  const fertig = S.fortschreiben(k, stand.bis + 60 * MIN, trocken, R)
+  const z = fertig.abgeschlossen.find((x) => x.id === w.id)
+  assert.equal(z.status, "abgeschlossen", z.grund)
+  assert.equal(z.bewertung.sterne, 1)
 })
 
 test("Einstieg 5: mit Klappleiter klappt die Rettung, aber höchstens 3 Sterne (Leiter nicht gesichert)", () => {
@@ -86,14 +99,18 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
   assert.ok(d.abgerechnet && d.durchschnitt >= 4.5 && d.xp > 0, JSON.stringify(d))
 })
 
-test("Der Baum am Markt ist zu Fuß vom Feuerwehrhaus nicht in 5 Minuten zu schaffen", () => {
+test("Der Baum am Markt ist zu Fuß vom Feuerwehrhaus nicht in 5 Minuten zu schaffen: zu spät, aber nicht verfallen", () => {
   let s = S.neuerStand(R, T0, 5)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "geraet", id: "klappleiter" })
   for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
   const e = S._intern.erzeuge(R, s, "tier_katze", T0 + MIN, trocken, null, "baum_markt")
-  assert.equal(e.status, "verfallen")
-  assert.match(e.grund, /Zu spät/)
+  assert.equal(e.status, "alarmiert")
+  assert.ok(e.plan.eintreffen - e.meldung > R.EINSATZARTEN.tier_katze.ablauf_min * MIN)
+  const fertig = S.fortschreiben(s, T0 + 2 * 60 * MIN, trocken, R)
+  const z = fertig.abgeschlossen.find((x) => x.id === e.id)
+  assert.ok(z.bewertung.abzuege.some((a) => a.grund === "einsatzende"))
+  assert.ok(z.bewertung.sterne <= 3)
 })
 
 test("Preise: Faktor 0,05, Mindestpreis 10 Münzen", () => {
@@ -400,8 +417,8 @@ test("Ohne Kräfte wartet ein Einsatz und wird alarmiert, sobald jemand da ist; 
   const jetzt = weiter.laufend.find((x) => x.id === e.id) || weiter.abgeschlossen.find((x) => x.id === e.id)
   assert.ok(!jetzt.wartet)
   assert.notEqual(jetzt.status, "verfallen")
-  // Ohne Kauf: verfällt nach der Frist mit Grund
-  const ohne = S.fortschreiben(r.stand, T0 + 90 * MIN, trocken, RL)
+  // Ohne Kauf: verfällt nach der langen Frist mit Grund
+  const ohne = S.fortschreiben(r.stand, T0 + MIN + R.VERFALL.frist_min * MIN, trocken, RL)
   const v = ohne.abgeschlossen.find((x) => x.id === e.id)
   assert.equal(v.status, "verfallen")
   assert.equal(v.grund, "Keine Einsatzkraft verfügbar.")
