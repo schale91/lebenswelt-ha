@@ -39,6 +39,7 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
   const liste = Array.isArray(body.dokumente) ? body.dokumente : []
   if (!liste.length || liste.length > 500) return e.json(400, { fehler: "dokumente: 1 bis 500 Einträge." })
   const sammlung = e.app.findCollectionByNameOrId("dokumente")
+  const vorgaenge = require(`${__hooks}/vorgaenge.js`)
   const ergebnis = []
   e.app.runInTransaction((tx) => {
     for (const d of liste) {
@@ -57,14 +58,14 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
       const neu = d.daten && typeof d.daten === "object" ? d.daten : {}
       if (r) {
         const alt = JSON.parse(toString(r.get("daten")) || "{}")
-        r.set("daten", d.ersetzen ? neu : h.verschmelze(alt, neu))
+        r.set("daten", vorgaenge.ergaenzeFrist(typ, alt, d.ersetzen ? neu : h.verschmelze(alt, neu), neu))
         r.set("geloescht", false)
       } else {
         r = new Record(sammlung)
         r.set("besitzer", ich.id)
         r.set("typ", typ)
         r.set("schluessel", schluessel)
-        r.set("daten", h.verschmelze({}, neu))
+        r.set("daten", vorgaenge.ergaenzeFrist(typ, null, h.verschmelze({}, neu), neu))
       }
       tx.save(r)
       ergebnis.push(h.alsDokument(r))
@@ -87,7 +88,9 @@ routerAdd("PATCH", "/api/lebenswelt/dokumente/{id}", (e) => {
   if (h.spielDokument(r.getString("typ"))) return e.json(403, h.NUR_LESEN)
   const body = e.requestInfo().body || {}
   if (!body.daten || typeof body.daten !== "object") return e.json(400, { fehler: "daten muss ein Objekt sein." })
-  r.set("daten", h.verschmelze(JSON.parse(toString(r.get("daten")) || "{}"), body.daten))
+  const alt = JSON.parse(toString(r.get("daten")) || "{}")
+  // Neu auf „Warten auf LKA“: Wiedervorlage in zwei Monaten, sofern keine Frist mitkommt
+  r.set("daten", require(`${__hooks}/vorgaenge.js`).ergaenzeFrist(r.getString("typ"), alt, h.verschmelze(alt, body.daten), body.daten))
   e.app.save(r)
   return e.json(200, h.alsDokument(r))
 })
