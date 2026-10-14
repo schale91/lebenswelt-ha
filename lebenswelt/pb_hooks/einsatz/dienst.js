@@ -94,6 +94,11 @@ function mitKarte(r) {
   const gewaesser = Array.isArray(k.gewaesser)
     ? k.gewaesser.filter((g) => g && typeof g.name === "string" && Array.isArray(g.punkte) && g.punkte.length >= 2 && g.punkte.every((p) => Array.isArray(p) && zahl(p[0]) && zahl(p[1])))
     : R.GEWAESSER
+  // Zufallsorte der echten Karte (Bäume, Straßenabschnitte): Einsatzarten mit ort_gruppen wählen auch daraus
+  const zufallsorte = {}
+  if (k.zufallsorte && typeof k.zufallsorte === "object")
+    for (const [g, liste] of Object.entries(k.zufallsorte))
+      if (/^[a-z_]+$/.test(g) && Array.isArray(liste)) zufallsorte[g] = liste.filter((o) => o && zahl(o.x) && zahl(o.z)).slice(0, 80).map((o) => ({ x: o.x, z: o.z }))
   return Object.assign({}, R, {
     STRASSEN: k.strassen,
     ORTE: orte,
@@ -103,6 +108,7 @@ function mitKarte(r) {
     HYDRANTEN: hydranten,
     HYDRANT_PLAETZE: hydrantPlaetze,
     GEWAESSER: gewaesser,
+    ZUFALLSORTE: zufallsorte,
     KARTE: "privat",
   })
 }
@@ -166,7 +172,7 @@ function meldeNeue(app, besitzer, neu, jetzt) {
     for (const e of frisch) {
       const art = R.EINSATZARTEN[e.art] || {}
       const wer = art.org === "polizei" ? "Polizei" : "Feuerwehr"
-      const ort = (R.ORTE[e.ort] && R.ORTE[e.ort].name) || ""
+      const ort = S.ortName(R, e.ort)
       p.sende(app, besitzer, { titel: `Einsatz: ${art.stichwort || e.art}`, text: `${wer} alarmiert${ort ? " · " + ort : ""}. Schau zu, wie es läuft.`, kanal: "einsatz", id: e.id, ttl_s: Math.max(60, Math.round(((e.ende || e.verfall) - jetzt) / 1000)) })
     }
   } catch (err) {

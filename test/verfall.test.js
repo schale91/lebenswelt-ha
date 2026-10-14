@@ -101,3 +101,24 @@ test("Kein zweiter Einsatz derselben Art an einem Ort, an dem noch einer läuft"
     assert.equal(e.ort, orte[orte.length - 1])
   }
 })
+
+test("Zufallsorte aus der Karte: die Katze sitzt auch in anderen Bäumen, Unfälle auf allen Straßen", () => {
+  const baeume = [{ x: 10, z: 20 }, { x: -30, z: 40 }, { x: 55, z: -12 }]
+  const RK = Object.assign({}, R, { ZUFALLSORTE: { baum: baeume, strasse: [{ x: 0, z: 10 }] } })
+  const orte = S.orteVon(RK, R.EINSATZARTEN.tier_katze)
+  assert.equal(orte.length, R.EINSATZARTEN.tier_katze.orte.length + baeume.length)
+  assert.equal(S.ortName(RK, "zufall:baum:1"), "Baum im Dorf")
+  let s = S.neuerStand(RK, T0, 12)
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const gesehen = new Set()
+  for (let i = 0; i < 60; i++) {
+    const x = JSON.parse(JSON.stringify(s))
+    x.zaehler = i
+    gesehen.add(S._intern.erzeuge(RK, x, "tier_katze", T0 + i * MIN, trocken, null).ort)
+  }
+  // zufällig über alle Orte verteilt, auch die aus der Karte
+  assert.ok([...gesehen].some((o) => o.startsWith("zufall:baum:")), [...gesehen].join(","))
+  assert.ok(gesehen.size >= 4, [...gesehen].join(","))
+  // ohne Karte bleibt alles wie bisher
+  assert.deepEqual(S.orteVon(R, R.EINSATZARTEN.tier_katze), R.EINSATZARTEN.tier_katze.orte)
+})

@@ -264,8 +264,30 @@ function fussweg(R, p, q) {
   return linienLaenge(fussroute(R, p, q))
 }
 
+/** Alle Orte einer Einsatzart: die festen (orte) und die Zufallsorte ihrer Gruppen aus der Karte (ort_gruppen). */
+function orteVon(R, art) {
+  const aus = (art.orte || []).slice()
+  for (const g of art.ort_gruppen || []) {
+    const liste = (R.ZUFALLSORTE && R.ZUFALLSORTE[g]) || []
+    for (let i = 0; i < liste.length; i++) aus.push("zufall:" + g + ":" + i)
+  }
+  return aus
+}
+
+/** Lesbarer Name eines Orts (Zufallsorte nach ihrer Gruppe). */
+function ortName(R, ort) {
+  if (R.ORTE[ort]) return R.ORTE[ort].name || ort
+  if (String(ort).indexOf("zufall:") === 0) return (R.ZUFALLSORT_NAMEN && R.ZUFALLSORT_NAMEN[ort.split(":")[1]]) || "im Dorf"
+  return ""
+}
+
 function punktVon(R, stand, ort) {
   if (R.ORTE[ort]) return R.ORTE[ort]
+  if (String(ort).indexOf("zufall:") === 0) {
+    const teile = ort.split(":")
+    const liste = (R.ZUFALLSORTE && R.ZUFALLSORTE[teile[1]]) || []
+    return liste[Number(teile[2])] || null
+  }
   if (String(ort).indexOf("baustelle:") === 0) {
     const id = ort.slice(10)
     const b = (stand.baustellen || []).concat(stand.bauchronik || []).find((x) => x.id === id)
@@ -1478,9 +1500,10 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const r = zufall(s.zufall + ":" + id + ":ort:" + s.zaehler)
   // Nur Orte außerhalb der Schutzzonen, außer die Art ist harmlos; gibt es keinen, bleibt die ganze Liste.
   // Wo gerade ein Einsatz derselben Art läuft (die Katze sitzt noch im Baum), entsteht kein zweiter.
-  const erlaubt = (art.orte || []).filter((o) => ortErlaubt(R, s, art, o))
+  const alle = orteVon(R, art)
+  const erlaubt = alle.filter((o) => ortErlaubt(R, s, art, o))
   const frei = erlaubt.filter((o) => !ortBesetzt(s, id, o))
-  const auswahl = frei.length ? frei : erlaubt.length ? erlaubt : art.orte
+  const auswahl = frei.length ? frei : erlaubt.length ? erlaubt : alle
   const ort = ortFest || (folgeVon ? folgeVon.ort : auswahl[Math.floor(r() * auswahl.length)])
   const e = {
     id: "e_" + t + "_" + id + "_" + s.zaehler,
@@ -1894,7 +1917,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
       // Wartet schon ein Einsatz dieser Art auf Kräfte, kommt kein zweiter dazu
       // Ebenso, wenn an allen Orten der Art gerade schon einer läuft
-      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id) || (!art.baustelle && (art.orte || []).length > 0 && art.orte.every((o) => ortBesetzt(s, ev.id, o)))
+      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id) || (!art.baustelle && orteVon(R, art).length > 0 && orteVon(R, art).every((o) => ortBesetzt(s, ev.id, o)))
       if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f) && !wartetSchon) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
     } else if (ev.typ === "warten") {
@@ -2222,6 +2245,8 @@ function einraeumen(stand, auftrag, R) {
 }
 
 module.exports = {
+  ortName,
+  orteVon,
   fortschreiben,
   kaufe,
   sofort,

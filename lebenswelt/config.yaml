@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.18.0"
+version: "0.19.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha

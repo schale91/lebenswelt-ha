@@ -209,6 +209,7 @@ for (const [id, e] of Object.entries(arten)) {
     if (e.baustelle && e.phasen) for (const ph of e.phasen) if (!R.BAU.phasen.concat(R.BAU.phasen_klein).some((x) => x.id === ph)) f(`${ort}: unbekannte Bauphase "${ph}"`)
   }
   for (const o of e.orte || []) if (!R.ORTE[o] && !(o === "baustelle" && e.baustelle)) f(`${ort}: unbekannter Ort "${o}"`)
+  for (const g of e.ort_gruppen || []) if (!R.ZUFALLSORT_NAMEN[g]) f(`${ort}: unbekannte Ortsgruppe "${g}"`)
   if (!(e.ablauf_min > 0)) f(`${ort}: ablauf_min fehlt`)
   if (!(e.arbeit_min >= 0)) f(`${ort}: arbeit_min fehlt`)
   if (!(e.ziel_eintreffen_min > 0)) f(`${ort}: ziel_eintreffen_min fehlt`)
