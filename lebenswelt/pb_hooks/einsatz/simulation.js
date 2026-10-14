@@ -53,6 +53,32 @@ function ortszeit(ms) {
   return { stunde: l.getUTCHours(), minute: l.getUTCMinutes(), wochentag: l.getUTCDay(), monat: l.getUTCMonth() + 1 }
 }
 
+/** Versatz der Ortszeit (Mitteleuropa, mit Sommerzeit) zu UTC in ms. */
+const TAG_XP_MAX = 150
+const TAGE_BEHALTEN = 21
+
+function ortsversatz(ms) {
+  const jahr = new Date(ms).getUTCFullYear()
+  const letzterSonntag = (monat) => {
+    const t = new Date(Date.UTC(jahr, monat + 1, 0, 1))
+    t.setUTCDate(t.getUTCDate() - t.getUTCDay())
+    return t.getTime()
+  }
+  return (ms >= letzterSonntag(2) && ms < letzterSonntag(9) ? 2 : 1) * STD
+}
+
+/** Kalendertag in Ortszeit als JJJJ-MM-TT. */
+function tagVon(ms) {
+  return new Date(ms + ortsversatz(ms)).toISOString().slice(0, 10)
+}
+
+/** Ende eines Kalendertags (Mitternacht Ortszeit) in ms. */
+function tagesende(tag) {
+  const mitternachtUtc = Date.parse(tag + "T00:00:00Z") + 24 * STD
+  const grob = mitternachtUtc - ortsversatz(mitternachtUtc)
+  return mitternachtUtc - ortsversatz(grob)
+}
+
 /** Zahl mit einer Nachkommastelle und deutschem Komma, für Texte im Protokoll. */
 function komma(n) {
   return n.toFixed(1).replace(".", ",")
@@ -307,6 +333,7 @@ function ausbauFaktor(R, s, schluessel) {
 function bauFelder(s) {
   if (!s.baustellen) s.baustellen = []
   if (!s.bauchronik) s.bauchronik = []
+  if (!s.tage) s.tage = {}
 }
 
 function bauPhasen(R, b) {
@@ -896,16 +923,58 @@ function abschliessen(R, s, e) {
     st.anzahl += 1
     if (e.status === "abgeschlossen") st.erfolgreich += 1
     st.beste_sterne = Math.max(st.beste_sterne || 0, e.bewertung.sterne)
+    st.letzte = { id: e.id, sterne: e.bewertung.sterne, ende: e.ende, status: e.status }
   }
-  // Freischaltungen
-  for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
-    if (!a.freischaltung || a.freischaltung.nach !== e.art || s.freigeschaltet.indexOf(id) >= 0) continue
-    if (e.bewertung.sterne >= a.freischaltung.sterne) s.freigeschaltet.push(id)
+  // Tagesbilanz: alle Einsätze des Tages zählen, verfallene mit 0 Sternen. Abgerechnet wird um Mitternacht.
+  const tag = tagVon(e.ende || e.verfall)
+  const d = s.tage[tag] || (s.tage[tag] = { anzahl: 0, sterne: 0, erfolgreich: 0, arten: [], abgerechnet: false })
+  d.anzahl += 1
+  d.sterne += e.bewertung.sterne
+  if (e.status === "abgeschlossen") {
+    d.erfolgreich += 1
+    if (d.arten.indexOf(e.art) < 0) d.arten.push(e.art)
   }
+  e.tag = tag
   s.laufend = s.laufend.filter((x) => x !== e)
   e.abgeschlossen_am = e.ende
   s.abgeschlossen.push(e)
   void art
+}
+
+/**
+ * Abrechnung eines Tages um Mitternacht: Durchschnitt der Sterne aller Einsätze, XP daraus, und Freischaltung
+ * neuer Einsatzarten, wenn der Durchschnitt reicht und die vorausgesetzte Art an diesem Tag erfolgreich war.
+ */
+function tagesabschluss(R, s, tag) {
+  const d = s.tage[tag]
+  if (!d || d.abgerechnet) return
+  d.durchschnitt = d.anzahl ? Math.round((d.sterne / d.anzahl) * 10) / 10 : 0
+  d.xp = d.anzahl ? Math.min(TAG_XP_MAX, Math.round(d.durchschnitt * 10 * Math.sqrt(d.anzahl))) : 0
+  d.freigeschaltet = []
+  for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
+    if (!a.freischaltung || s.freigeschaltet.indexOf(id) >= 0) continue
+    if (d.arten.indexOf(a.freischaltung.nach) >= 0 && d.durchschnitt >= a.freischaltung.sterne) {
+      s.freigeschaltet.push(id)
+      d.freigeschaltet.push(id)
+    }
+  }
+  d.abgerechnet = true
+  // nur die letzten Wochen behalten
+  const tage = Object.keys(s.tage).sort()
+  for (const t of tage.slice(0, Math.max(0, tage.length - TAGE_BEHALTEN))) if (s.tage[t].abgerechnet) delete s.tage[t]
+}
+
+/** Einsatz sofort auslösen (zum Ausprobieren). Ohne `id` eine zufällige gekaufte Art. */
+function sofort(stand, id, jetzt, umwelt, R) {
+  const s = fortschreiben(stand, jetzt, umwelt, R)
+  const wetter = umwelt || ((t) => wetterBei(null, t))
+  const gekauft = Object.keys(s.einsatzarten).filter((x) => R.EINSATZARTEN[x] && !R.EINSATZARTEN[x].baustelle)
+  if (id && gekauft.indexOf(id) < 0) return { fehler: "Diese Einsatzart ist noch nicht gekauft." }
+  if (!gekauft.length) return { fehler: "Noch keine Einsatzart gekauft." }
+  const art = id || gekauft[Math.floor(zufall(s.zufall + ":sofort:" + s.zaehler)() * gekauft.length)]
+  const e = erzeuge(R, s, art, jetzt, wetter, null)
+  e.sofort = true
+  return { stand: s, einsatz: e }
 }
 
 /** Benutzte Schläuche und Atemschutzgeräte gehen in die Pflege. */
@@ -967,6 +1036,7 @@ function naechstesEreignis(s, bis) {
   }
   for (const [id, a] of Object.entries(s.einsatzarten)) nimm(a.naechster, "meldung", 2, id)
   for (const b of s.baustellen || []) nimm(b.ende, "bau", 3, b.id)
+  for (const [tag, d] of Object.entries(s.tage || {})) if (!d.abgerechnet) nimm(tagesende(tag), "tag", 4, tag)
   return best
 }
 
@@ -995,6 +1065,8 @@ function fortschreiben(stand, bis, umwelt, R) {
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
       if (f > 0 && (!art.baustelle || bst) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
+    } else if (ev.typ === "tag") {
+      tagesabschluss(R, s, ev.id)
     } else if (ev.typ === "bau") {
       const b = s.baustellen.find((x) => x.id === ev.id)
       if (!b.wetter_geprueft) {
@@ -1197,6 +1269,7 @@ function einraeumen(stand, auftrag, R) {
 module.exports = {
   fortschreiben,
   kaufe,
+  sofort,
   einraeumen,
   neuerStand,
   wetterBei,
@@ -1205,5 +1278,5 @@ module.exports = {
   ortszeit,
   preis,
   // für Tests
-  _intern: { plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

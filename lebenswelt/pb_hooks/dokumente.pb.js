@@ -144,3 +144,45 @@ routerAdd("GET", "/api/lebenswelt/personen", (e) => {
 routerAdd("POST", "/api/lebenswelt/garmin", (e) => {
   return e.json(200, require(`${__hooks}/hintergrund.js`).garminAbgleich() || { ok: false })
 })
+
+// Update der App per Knopf: Stand ansehen, sofort nachsehen, bereitliegende Version installieren
+routerAdd("GET", "/api/lebenswelt/app-paket", (e) => {
+  return e.json(200, require(`${__hooks}/app_paket.js`).zustand())
+})
+routerAdd("POST", "/api/lebenswelt/app-paket", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  if (!h.benutzer(e)) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  return e.json(200, require(`${__hooks}/app_paket.js`).pruefe())
+})
+routerAdd("POST", "/api/lebenswelt/app-paket/installieren", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  if (!h.benutzer(e)) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const z = require(`${__hooks}/app_paket.js`).installiere()
+  return e.json(z.fehler ? 500 : 200, z)
+})
+
+// Push-Nachrichten an die Android-App: Gerät anmelden, Stand, Test
+routerAdd("POST", "/api/lebenswelt/push/geraet", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const body = e.requestInfo().body || {}
+  try {
+    return e.json(200, require(`${__hooks}/push.js`).melde(e.app, ich.id, String(body.token || ""), body.name))
+  } catch (err) {
+    return e.json(400, { fehler: String(err && err.message ? err.message : err) })
+  }
+})
+routerAdd("GET", "/api/lebenswelt/push", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const p = require(`${__hooks}/push.js`)
+  return e.json(200, { eingerichtet: p.eingerichtet(), geraete: p.anzahl(e.app, ich.id) })
+})
+routerAdd("POST", "/api/lebenswelt/push/test", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  return e.json(200, require(`${__hooks}/push.js`).sende(e.app, ich.id, { titel: "Lebenswelt", text: "Push-Nachrichten funktionieren.", kanal: "allgemein", id: "test" }))
+})

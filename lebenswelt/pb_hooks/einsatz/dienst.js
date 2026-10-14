@@ -53,8 +53,56 @@ function wetterVerlauf(app, besitzer) {
   return r ? lies(r).verlauf || [] : []
 }
 
+/**
+ * Private Karte der Person (Dokument typ "karte", schluessel "dorf"), geschrieben von der App. Sie ersetzt Straßennetz,
+ * Lage der Orte und Bauplätze des öffentlichen Regelwerks. So steht die echte Karte nur in der eigenen Datenbank und
+ * im privaten App-Repository, nie im öffentlichen Add-on. Ohne gültige Karte gilt die erfundene Karte des Regelwerks.
+ */
+const karten = {}
+function regelwerkFuer(app, besitzer) {
+  const r = finde(app, besitzer, "karte", "dorf")
+  if (!r || r.getBool("geloescht")) return R
+  // Gleiche Karte, gleiches Objekt: So rechnet die Simulation das Wegenetz nur nach einer Änderung neu
+  const stand = r.id + "|" + String(r.get("updated"))
+  if (karten[besitzer] && karten[besitzer].stand === stand) return karten[besitzer].R
+  const neu = mitKarte(r)
+  karten[besitzer] = { stand, R: neu }
+  return neu
+}
+
+function mitKarte(r) {
+  let k
+  try {
+    k = lies(r)
+  } catch (_) {
+    return R
+  }
+  if (!karteGueltig(k)) return R
+  const orte = {}
+  for (const [id, o] of Object.entries(R.ORTE)) orte[id] = k.orte && k.orte[id] ? Object.assign({}, o, { x: k.orte[id].x, z: k.orte[id].z }) : o
+  const bauplaetze = (k.bauplaetze || R.BAUPLAETZE).map((b) => {
+    const alt = R.BAUPLAETZE.find((x) => x.id === b.id)
+    return Object.assign({}, alt || { preis: 500 }, { id: b.id, x: b.x, z: b.z }, b.preis ? { preis: b.preis } : {})
+  })
+  const neubaugebiete = R.NEUBAUGEBIETE.map((n) => (k.neubaugebiete && k.neubaugebiete[n.id] ? Object.assign({}, n, { ursprung: k.neubaugebiete[n.id] }) : n))
+  return Object.assign({}, R, { STRASSEN: k.strassen, ORTE: orte, BAUPLAETZE: bauplaetze, NEUBAUGEBIETE: neubaugebiete, KARTE: "privat" })
+}
+
+function karteGueltig(k) {
+  const zahl = (v) => typeof v === "number" && isFinite(v)
+  const s = k && k.strassen
+  if (!s || !Array.isArray(s.knoten) || !Array.isArray(s.kanten) || s.knoten.length < 2) return false
+  const ids = new Set(s.knoten.map((n) => n.id))
+  if (!s.knoten.every((n) => typeof n.id === "string" && zahl(n.x) && zahl(n.z))) return false
+  if (!s.kanten.every((e) => ids.has(e.von) && ids.has(e.nach) && zahl(e.laenge) && e.laenge > 0)) return false
+  if (k.orte && !Object.values(k.orte).every((o) => o && zahl(o.x) && zahl(o.z))) return false
+  if (k.bauplaetze && !(Array.isArray(k.bauplaetze) && k.bauplaetze.every((b) => typeof b.id === "string" && zahl(b.x) && zahl(b.z)))) return false
+  return true
+}
+
 /** Stand laden, bis jetzt fortschreiben, Abgeschlossenes ins Protokoll verschieben, speichern. */
 function aktuell(app, besitzer, jetzt) {
+  const R = regelwerkFuer(app, besitzer)
   const r = finde(app, besitzer, WELT, "stand")
   let stand = r ? lies(r) : S.neuerStand(R, jetzt)
   if (!gueltig(stand)) {
@@ -64,12 +112,32 @@ function aktuell(app, besitzer, jetzt) {
     stand = S.neuerStand(R, jetzt)
   }
   const verlauf = wetterVerlauf(app, besitzer)
+  const bekannt = new Set(stand.laufend.map((e) => e.id))
   stand = S.fortschreiben(stand, jetzt, (t) => S.wetterBei(verlauf, t), R)
+  meldeNeue(app, besitzer, stand.laufend.filter((e) => !bekannt.has(e.id)), jetzt)
   for (const e of stand.abgeschlossen) schreibe(app, besitzer, "einsatz", e.id, e)
   stand.abgeschlossen = []
   if (stand.ausgaben.length > AUSGABEN_MAX) stand.ausgaben = stand.ausgaben.slice(-AUSGABEN_MAX)
   schreibe(app, besitzer, WELT, "stand", stand)
   return { stand: stand, wetter: S.wetterBei(verlauf, jetzt) }
+}
+
+/** Push für neue Einsätze (höchstens drei, nur frische, nicht nach langer Pause alles nachholen). */
+function meldeNeue(app, besitzer, neu, jetzt) {
+  const frisch = neu.filter((e) => e.status !== "verfallen" && e.meldung >= jetzt - 5 * 60 * 1000).slice(0, 3)
+  if (!frisch.length) return
+  try {
+    const p = require(`${__hooks}/push.js`)
+    if (!p.eingerichtet()) return
+    for (const e of frisch) {
+      const art = R.EINSATZARTEN[e.art] || {}
+      const wer = art.org === "polizei" ? "Polizei" : "Feuerwehr"
+      const ort = (R.ORTE[e.ort] && R.ORTE[e.ort].name) || ""
+      p.sende(app, besitzer, { titel: `Einsatz: ${art.stichwort || e.art}`, text: `${wer} alarmiert${ort ? " · " + ort : ""}. Schau zu, wie es läuft.`, kanal: "einsatz", id: e.id, ttl_s: Math.max(60, Math.round((e.verfall - jetzt) / 1000)) })
+    }
+  } catch (err) {
+    console.log("Einsatzspiel: Push fehlgeschlagen", err)
+  }
 }
 
 function speichere(app, besitzer, stand) {
@@ -127,4 +195,4 @@ function wetterAbgleich(app) {
   return { ok: true, wetter: w }
 }
 
-module.exports = { aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }
+module.exports = { regelwerkFuer, aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }

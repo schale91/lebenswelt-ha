@@ -4,8 +4,10 @@
 
 routerAdd("GET", "/api/lebenswelt/einsatz/regelwerk", (e) => {
   const h = require(`${__hooks}/hilfen.js`)
-  if (!h.benutzer(e)) return e.json(401, h.KEINE_PERSON)
-  return e.json(200, require(`${__hooks}/einsatz/regelwerk.js`))
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  // mit der privaten Karte der Person, falls die App eine hinterlegt hat
+  return e.json(200, require(`${__hooks}/einsatz/dienst.js`).regelwerkFuer(e.app, ich.id))
 })
 
 routerAdd("GET", "/api/lebenswelt/einsatz/stand", (e) => {
@@ -40,7 +42,7 @@ routerAdd("POST", "/api/lebenswelt/einsatz/kaufen", (e) => {
   const auftrag = e.requestInfo().body || {}
   const jetzt = Date.now()
   const a = d.aktuell(e.app, ich.id, jetzt)
-  const k = d.S.kaufe(a.stand, auftrag, jetzt, d.R)
+  const k = d.S.kaufe(a.stand, auftrag, jetzt, d.regelwerkFuer(e.app, ich.id))
   if (k.fehler) return e.json(400, { fehler: k.fehler })
 
   let r = h.spielstandVon(e.app, ich.id)
@@ -69,7 +71,7 @@ routerAdd("POST", "/api/lebenswelt/einsatz/einraeumen", (e) => {
   const ich = h.benutzer(e)
   if (!ich) return e.json(401, h.KEINE_PERSON)
   const a = d.aktuell(e.app, ich.id, Date.now())
-  const r = d.S.einraeumen(a.stand, e.requestInfo().body || {}, d.R)
+  const r = d.S.einraeumen(a.stand, e.requestInfo().body || {}, d.regelwerkFuer(e.app, ich.id))
   if (r.fehler) return e.json(400, { fehler: r.fehler })
   d.speichere(e.app, ich.id, r.stand)
   return e.json(200, { ok: true, stand: r.stand })
@@ -89,6 +91,21 @@ routerAdd("POST", "/api/lebenswelt/einsatz/personal", (e) => {
   if (body.anrede !== undefined) p.anrede = String(body.anrede).slice(0, 30)
   d.speichere(e.app, ich.id, a.stand)
   return e.json(200, { ok: true, person: p })
+})
+
+// Einsatz sofort auslösen (zum Ausprobieren); ohne "art" eine zufällige gekaufte Einsatzart
+routerAdd("POST", "/api/lebenswelt/einsatz/sofort", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  const body = e.requestInfo().body || {}
+  const jetzt = Date.now()
+  const a = d.aktuell(e.app, ich.id, jetzt)
+  const r = d.S.sofort(a.stand, body.art ? String(body.art) : null, jetzt, () => a.wetter, d.regelwerkFuer(e.app, ich.id))
+  if (r.fehler) return e.json(400, { fehler: r.fehler })
+  d.speichere(e.app, ich.id, r.stand)
+  return e.json(200, { ok: true, einsatz: r.einsatz, stand: r.stand })
 })
 
 // Minutentakt: Einsätze entstehen und verfallen auch, wenn die App zu ist

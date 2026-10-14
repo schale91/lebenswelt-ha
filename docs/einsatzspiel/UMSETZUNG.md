@@ -268,3 +268,25 @@ Alles, was gebaut wird, hat eine Bauzeit (`BAU` im Regelwerk, `bauzeit_h` an Geb
 Ideen für spätere Ebenen: Eigenleistung der Wehr (schneller bauen, Kräfte abends auf der Baustelle), Bauabnahme mit Mängeln durch die Bauaufsicht, Richtfest, Lieferzeit für Fahrzeuge (Beschaffung), Container als Zwischenlager während des Umbaus.
 
 Frontend dazu (`app/src/scene/Bau.tsx`, `Geraetehaus.tsx`): eigenes Gerätehaus je Stufe (Unterstand mit Pultdach, kleines Gerätehaus mit einem Tor, Grundausstattung mit zwei Toren und Sozialtrakt, Stützpunkt mit vier Toren nach dem bisherigen Modell, Schwerpunkt mit sieben Toren, zweigeschossigem Trakt und Schlauchturm), Polizeistation und Kommissariat neben der Dienststelle, sichtbare Ausbauten (Schlauchturm, Übungshof, Fahrradständer, Parkplatz, Funkmast, elektronische Sirene, Werkstattanbau). Baustellen zeigen je Phase Baugrube, wachsenden Rohbau, Gerüst, Bagger, Kran, Betonmischer, Kipper und Transporter, dazu eine Blase mit Restzeit. In lauten Phasen steht ein Kipper mit Baustellenampel auf der nächsten Straße. Ab der Dachphase eines Umbaus steht das neue Gebäude eingerüstet. Fertige Häuser der Einsatzkräfte stehen auf ihren Bauplätzen, mit Fahrrad oder Auto vor der Tür.
+
+## 14. Stand E2 bis E7 (14.10.2026)
+
+E2 bis E7 sind im Frontend (Repository `Claude`, Ordner `app/`) umgesetzt. Am Server ändert sich dafür nichts, Version 0.4.0 bleibt.
+
+- **E2 Einsatzstellen:** jede Einsatzart am Ort, Fortschritt aus der Zeitleiste, Nachwirkung 30 Minuten nach dem Ende.
+- **E3 Einsatzkräfte:** Weg von zu Hause zum Gerätehaus, Plätze nach FwDV 3, Schlauchleitung mit Kupplungen, Verteiler, Wasserstrahl, Leiter, Flutlicht. Liegt die Einsatzstelle abseits der Straße, halten die Fahrzeuge am Rand und die Kräfte gehen zu Fuß.
+- **E4 Fahrphysik und Verkehr:** Intelligent Driver Model, Kurvengrenze aus Reibung und Radius, Platz machen bei Blaulicht, Warten an der Kreuzung, lenkende Vorderräder.
+- **E5 Wetter:** Schneedecke auf allen nach oben zeigenden Flächen, Fahrspuren im Schnee, Pfützen, Rutschen bei Glätte, Licht bei Nacht.
+- **E6 Häuser:** Tür geht bei Alarm auf, Fahrrad oder Auto fehlt, solange die Person unterwegs ist.
+- **E7 Leistung:**
+  - Unbewegliches wird je Bereich zu einem Mesh je Material verschmolzen. Was sich bewegt, leuchtet, durchsichtig ist oder eine Textur hat, bleibt einzeln. Klicks bleiben erhalten, weil die Originale für den Raycaster sichtbar bleiben.
+  - Bäume, Figuren der Einsatzkräfte und Schlauchkupplungen sind instanziert.
+  - Teilchen außerhalb des Bildes werden nicht berechnet. Schatten werden nur jedes zweite Bild neu gezeichnet, auf dem Handy jedes dritte, dort mit 1024er Schattenkarte und höchstens 1,5-facher Pixeldichte.
+  - Gemessen mit drei gleichzeitigen Einsätzen bei Nacht und Schnee:
+
+    | Gerät | Zeichenaufrufe vorher | Zeichenaufrufe nachher |
+    |---|---|---|
+    | Desktop | 746 | 394 |
+    | Handy | 393 | 241 |
+
+  - Die Bildrate selbst lässt sich in der Testumgebung nicht messen, weil sie ohne Grafikkarte rechnet. Auf dem echten Gerät zeigt `?fps=1` die Bildrate an. Mit `?verschmelzen=0` lässt sich das Verschmelzen zum Vergleich abschalten.

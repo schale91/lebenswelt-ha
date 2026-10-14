@@ -38,4 +38,4 @@ Keine Inhalte aus VS-NfD-Vorschriften (PDV 100) ins Repository.
 | E4 Fahrphysik und Verkehr | Claude | Abstand, Kreuzungen, Blaulicht, Aufstellen, lenkende Räder |
 | E5 Wetter | Claude | Schnee, Spuren, Rutschen, Regen, Nacht |
 | E6 Häuser | Claude | Bauplätze, Neubaugebiete, Häuser der Einsatzkräfte |
-| E7 Leistung | Claude | Zielwerte erreicht |
+| E7 Leistung | Claude | Zeichenaufrufe halbiert, Bildrate mit `?fps=1` am Gerät prüfen |

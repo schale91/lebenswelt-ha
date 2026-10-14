@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.4.0"
+version: "0.5.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha
@@ -16,15 +16,25 @@ panel_icon: mdi:island
 backup: cold
 # Für den Garmin-Abgleich: liest Zustände aus Home Assistant (nur lesend genutzt).
 homeassistant_api: true
+# Selbst-Update der App: schreibt neue Versionen nach www/lebenswelt-*/ (nur Ordner mit server.json).
+map:
+  - type: homeassistant_config
+    read_only: false
 options:
   person: ""
   vertraute_apps:
     - 81f33d0f-ha-mcp
   garmin_sensor: sensor.garmin_connect_last_activities
   wetter_entitaet: weather.forecast_home
+  app_quelle: schale91/Claude@app-paket
+  app_token: ""
+  fcm_dienstkonto: ""
 schema:
   person: str?
   vertraute_apps:
     - str
   garmin_sensor: str?
   wetter_entitaet: str?
+  app_quelle: str?
+  app_token: password?
+  fcm_dienstkonto: password?
