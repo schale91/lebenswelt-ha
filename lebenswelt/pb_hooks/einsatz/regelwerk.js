@@ -46,7 +46,7 @@ const METER_JE_EINHEIT = 3 // spielwert
 // STRASSEN-ANFANG (aus dem Frontend exportiert mit app/skripte/strassennetz.ts, nicht von Hand ändern)
 /** Straßennetz der Hauptkarte: Knoten (Weltkoordinaten) und Kanten mit Länge in Welteinheiten. */
 const STRASSEN = {
-  quelle: "Frontend scene/layout.ts (STRASSE)",
+  quelle: "Frontend scene/layout.ts (STRASSE, SEITENSTRASSE)",
   breite: 6,
   knoten: [
     {
@@ -57,89 +57,124 @@ const STRASSEN = {
     {
       id: "s01",
       x: 0,
-      z: -10
+      z: 6
     },
     {
       id: "s02",
+      x: 0,
+      z: -10
+    },
+    {
+      id: "s03",
       x: -0.15,
       z: -12.35
     },
     {
-      id: "s03",
+      id: "s04",
       x: -0.61,
       z: -14.66
     },
     {
-      id: "s04",
+      id: "s05",
       x: -1.37,
       z: -16.89
     },
     {
-      id: "s05",
+      id: "s06",
       x: -2.41,
       z: -19
     },
     {
-      id: "s06",
+      id: "s07",
       x: -3.72,
       z: -20.96
     },
     {
-      id: "s07",
+      id: "s08",
       x: -5.27,
       z: -22.73
     },
     {
-      id: "s08",
+      id: "s09",
       x: -7.04,
       z: -24.28
     },
     {
-      id: "s09",
+      id: "s10",
       x: -9,
       z: -25.59
     },
     {
-      id: "s10",
+      id: "s11",
       x: -11.11,
       z: -26.63
     },
     {
-      id: "s11",
+      id: "s12",
       x: -13.34,
       z: -27.39
     },
     {
-      id: "s12",
+      id: "s13",
       x: -15.65,
       z: -27.85
     },
     {
-      id: "s13",
+      id: "s14",
       x: -18,
       z: -28
     },
     {
-      id: "s14",
+      id: "s15",
       x: -120,
       z: -28
+    },
+    {
+      id: "t01",
+      x: -26,
+      z: 6
+    },
+    {
+      id: "t02",
+      x: -30,
+      z: 7
+    },
+    {
+      id: "t03",
+      x: -34,
+      z: 10
+    },
+    {
+      id: "t04",
+      x: -38,
+      z: 13
+    },
+    {
+      id: "t05",
+      x: -42,
+      z: 14
+    },
+    {
+      id: "t06",
+      x: -100,
+      z: 14
     }
   ],
   kanten: [
     {
       von: "s00",
       nach: "s01",
-      laenge: 110
+      laenge: 94
     },
     {
       von: "s01",
       nach: "s02",
-      laenge: 2.35
+      laenge: 16
     },
     {
       von: "s02",
       nach: "s03",
-      laenge: 2.36
+      laenge: 2.35
     },
     {
       von: "s03",
@@ -149,17 +184,17 @@ const STRASSEN = {
     {
       von: "s04",
       nach: "s05",
-      laenge: 2.35
+      laenge: 2.36
     },
     {
       von: "s05",
       nach: "s06",
-      laenge: 2.36
+      laenge: 2.35
     },
     {
       von: "s06",
       nach: "s07",
-      laenge: 2.35
+      laenge: 2.36
     },
     {
       von: "s07",
@@ -169,17 +204,17 @@ const STRASSEN = {
     {
       von: "s08",
       nach: "s09",
-      laenge: 2.36
+      laenge: 2.35
     },
     {
       von: "s09",
       nach: "s10",
-      laenge: 2.35
+      laenge: 2.36
     },
     {
       von: "s10",
       nach: "s11",
-      laenge: 2.36
+      laenge: 2.35
     },
     {
       von: "s11",
@@ -189,12 +224,47 @@ const STRASSEN = {
     {
       von: "s12",
       nach: "s13",
-      laenge: 2.35
+      laenge: 2.36
     },
     {
       von: "s13",
       nach: "s14",
+      laenge: 2.35
+    },
+    {
+      von: "s14",
+      nach: "s15",
       laenge: 102
+    },
+    {
+      von: "s01",
+      nach: "t01",
+      laenge: 26
+    },
+    {
+      von: "t01",
+      nach: "t02",
+      laenge: 4.12
+    },
+    {
+      von: "t02",
+      nach: "t03",
+      laenge: 5
+    },
+    {
+      von: "t03",
+      nach: "t04",
+      laenge: 5
+    },
+    {
+      von: "t04",
+      nach: "t05",
+      laenge: 4.12
+    },
+    {
+      von: "t05",
+      nach: "t06",
+      laenge: 58
     }
   ]
 }
@@ -235,10 +305,11 @@ const BAUPLAETZE = [
   { id: "bp01", x: -56, z: -4, preis: 1800 },
   { id: "bp02", x: -58, z: -20, preis: 1700 },
   { id: "bp03", x: -40, z: -37, preis: 1500 },
-  { id: "bp04", x: -60, z: 10, preis: 1300 },
+  // bp04, bp06, bp07 und bp17 bis bp20 liegen an der Seitenstraße südlich des Elternhauses
+  { id: "bp04", x: -66, z: 5, preis: 1300 },
   { id: "bp05", x: -30, z: -40, preis: 1200 },
-  { id: "bp06", x: -44, z: 18, preis: 1100 },
-  { id: "bp07", x: -8, z: 4, preis: 900 },
+  { id: "bp06", x: -40, z: 23, preis: 1100 },
+  { id: "bp07", x: -68, z: 23, preis: 900 },
   { id: "bp08", x: -50, z: 30, preis: 900 },
   { id: "bp09", x: 8, z: 30, preis: 700 },
   { id: "bp10", x: -4, z: 46, preis: 650 },
@@ -248,6 +319,10 @@ const BAUPLAETZE = [
   { id: "bp14", x: 50, z: 64, preis: 400 },
   { id: "bp15", x: -64, z: 56, preis: 400 },
   { id: "bp16", x: 50, z: -14, preis: 350 },
+  { id: "bp17", x: -80, z: 23, preis: 450 },
+  { id: "bp18", x: -78, z: 5, preis: 400 },
+  { id: "bp19", x: -92, z: 23, preis: 350 },
+  { id: "bp20", x: -90, z: 5, preis: 300 },
 ]
 
 /**
