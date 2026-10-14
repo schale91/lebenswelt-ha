@@ -50,7 +50,7 @@ function ortszeit(ms) {
   }
   const sommer = ms >= letzterSonntag(2) && ms < letzterSonntag(9)
   const l = new Date(ms + (sommer ? 2 : 1) * STD)
-  return { stunde: l.getUTCHours(), minute: l.getUTCMinutes(), wochentag: l.getUTCDay(), monat: l.getUTCMonth() + 1 }
+  return { stunde: l.getUTCHours(), minute: l.getUTCMinutes(), wochentag: l.getUTCDay(), monat: l.getUTCMonth() + 1, tag: l.getUTCDate() }
 }
 
 /** Versatz der Ortszeit (Mitteleuropa, mit Sommerzeit) zu UTC in ms. */
@@ -1042,7 +1042,8 @@ function bedingungFaktor(art, t, wetter) {
   const b = art.bedingung
   if (!b) return 1
   const z = ortszeit(t)
-  const passt = (!b.wetter || b.wetter.indexOf(wetter) >= 0) && (!b.monate || b.monate.indexOf(z.monat) >= 0) && (!b.stunden || b.stunden.indexOf(z.stunde) >= 0) && (!b.wochentage || b.wochentage.indexOf(z.wochentag) >= 0)
+  const datum = (z.monat < 10 ? "0" : "") + z.monat + "-" + (z.tag < 10 ? "0" : "") + z.tag
+  const passt = (!b.wetter || b.wetter.indexOf(wetter) >= 0) && (!b.monate || b.monate.indexOf(z.monat) >= 0) && (!b.stunden || b.stunden.indexOf(z.stunde) >= 0) && (!b.wochentage || b.wochentage.indexOf(z.wochentag) >= 0) && (!b.daten || b.daten.indexOf(datum) >= 0)
   if (passt) return b.faktor === undefined ? 1 : b.faktor
   return b.sonst_faktor === undefined ? 1 : b.sonst_faktor
 }
@@ -1122,6 +1123,7 @@ function versucheWartende(R, s, t, umwelt) {
     e.status = "alarmiert"
     belege(R, s, e, e.plan.einsatzbereit)
     e.ende = e.plan.arbeit_ende
+    meldePartner(s, e)
   }
 }
 
@@ -1154,11 +1156,45 @@ function folgen(R, s, e, umwelt) {
     const fa = R.EINSATZARTEN[id]
     if (!fa) continue
     // Nur, wenn die andere Organisation überhaupt jemanden hat (sonst entsteht der Folgeeinsatz nicht)
-    if (!s.personal.some((p) => istMitglied(p, fa.org))) continue
+    if (!s.personal.some((p) => istMitglied(p, fa.org))) {
+      if (art.gemeinsam) e.gemeinsam = { art: id, fehlt: fa.org === "polizei" ? "An der Dienststelle arbeitet noch niemand." : "Im Dorf wohnt noch keine Einsatzkraft." }
+      continue
+    }
     // Kein dramatischer Folgeeinsatz in einer Schutzzone
     if (!ortErlaubt(R, s, fa, e.ort)) continue
-    erzeuge(R, s, id, t, umwelt, e)
+    const f = erzeuge(R, s, id, t, umwelt, e)
+    if (art.gemeinsam && !e.gemeinsam) e.gemeinsam = partnerStand(f)
   }
+}
+
+/** Was der Ausloeser über seinen Partner bei einem gemeinsamen Einsatz weiß. */
+function partnerStand(f) {
+  return { art: f.art, partner: f.id, status: f.wartet ? "wartet" : f.status, eintreffen: f.plan && f.plan.eintreffen ? f.plan.eintreffen : null }
+}
+
+/** Nach einer Änderung am Partner (alarmiert, verfallen) den Auslöser aktualisieren. */
+function meldePartner(s, f) {
+  if (!f.folge_von) return
+  const e = s.laufend.find((x) => x.id === f.folge_von)
+  if (e && e.gemeinsam && e.gemeinsam.partner === f.id) e.gemeinsam = partnerStand(f)
+}
+
+/**
+ * Zusammenarbeit bei gemeinsamen Einsätzen (1 bis 5 Sterne, zählt nicht in die Sterne des Einsatzes): Wie schnell nach
+ * der Feuerwehr war der Partner da? Ziel aus gemeinsam.ziel_min; je halbes Ziel zu spät ein Stern weniger.
+ */
+function bewerteZusammenarbeit(R, s, e) {
+  const art = R.EINSATZARTEN[e.art]
+  const g = e.gemeinsam || {}
+  const partner = g.art && R.EINSATZARTEN[g.art] ? R.EINSATZARTEN[g.art].name : "Partner"
+  if (g.fehlt) return { sterne: 1, text: g.fehlt + " „" + partner + "“ fiel aus." }
+  if (!g.partner) return { sterne: 1, text: "„" + partner + "“ kam nicht zustande." }
+  if (g.status === "verfallen") return { sterne: 1, text: "„" + partner + "“ ist verfallen, niemand kam." }
+  if (!g.eintreffen || g.eintreffen > e.plan.arbeit_ende) return { sterne: 1, text: "„" + partner + "“ war erst nach dem Ende vor Ort." }
+  const ziel = art.gemeinsam.ziel_min
+  const spaet = Math.max(0, (g.eintreffen - e.plan.eintreffen) / MIN - ziel)
+  const sterne = Math.max(1, 5 - Math.ceil(spaet / Math.max(1, ziel / 2)))
+  return { sterne, text: sterne === 5 ? "„" + partner + "“ war rechtzeitig da." : "„" + partner + "“ kam " + komma(spaet) + " Minuten später als geplant." }
 }
 
 function abschliessen(R, s, e) {
@@ -1166,6 +1202,10 @@ function abschliessen(R, s, e) {
   const st = s.einsatzarten[e.art]
   if (e.status !== "verfallen") {
     e.bewertung = bewerte(R, s, e)
+    if (art.gemeinsam) {
+      e.bewertung.zusammenarbeit = bewerteZusammenarbeit(R, s, e)
+      s.zusammenarbeit = (s.zusammenarbeit || []).concat([{ id: e.id, sterne: e.bewertung.zusammenarbeit.sterne }]).slice(-20)
+    }
     e.status = "abgeschlossen"
     for (const x of e.plan.personen) {
       const p = s.personal.find((q) => q.id === x.id)
@@ -1337,6 +1377,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       e.status = "verfallen"
       e.grund = e.grund || "Keine Einsatzkraft verfügbar."
       e.ende = e.verfall
+      meldePartner(s, e)
     } else if (ev.typ === "tag") {
       tagesabschluss(R, s, ev.id)
     } else if (ev.typ === "training") {
@@ -1456,6 +1497,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!a || a.folge_nur) return fehler("Diese Einsatzart gibt es nicht zu kaufen.")
     if (s.einsatzarten[id]) return fehler("Schon gekauft.")
     if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet.")
+    if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
     roh = a.preis
     aktiviereArt(R, s, id, jetzt)
   } else if (art === "bauplatz") {
@@ -1632,5 +1674,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

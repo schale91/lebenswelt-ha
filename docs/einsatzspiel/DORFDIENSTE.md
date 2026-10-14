@@ -837,7 +837,9 @@ Offen ist derzeit nichts.
 
 **Damit es auf dem Handy ankommt:** Das Add-on 0.8.0 in Home Assistant aktualisieren. Das App-Paket baut die Pipeline nur vom Zweig `claude/code-readiness-check-40jtgv`; der Stand liegt auf `claude/jolly-allen-zfccim` und muss dorthin übernommen werden.
 
-**Als Nächstes:** D3 Zusammenarbeit von Feuerwehr und Polizei (Level 8).
+**Umgesetzt: D3 Zusammenarbeit von Feuerwehr und Polizei** (Add-on 0.9.0). Die acht Einsätze aus 13.5 mit je einem Polizei-Teil, Bewertung der Zusammenarbeit im Protokoll und als Durchschnitt in der Bilanz. Vereinfacht gegenüber dem Konzept: Die „Serie“ von Mülltonnenbränden ist eine eigene Einsatzart, die nachts häufiger kommt, mit Brandermittlung der Polizei; dass die Polizei die Serie durch Ermittlung beendet, ist noch nicht umgesetzt. Freigeschaltet wird jede Art wie bisher über einen Vorgänger (eine Art, nicht zwei). Tests in `test/gemeinsam.test.js`.
+
+**Als Nächstes:** D4 Werkstatt mit Abschleppdienst und Bauhof (Level 12).
 
 ---
 

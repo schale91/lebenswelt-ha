@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.9.0
+
+- Einsatzspiel, gemeinsame Einsätze von Feuerwehr und Polizei (ab Level 8, `FREISCHALTUNG_LEVEL.zusammenarbeit`): Kind im Auto eingeschlossen, Rinder auf der Straße, Mülltonnenbrand in Serie, Ölspur nach Unfallflucht, Gasgeruch mit Räumung der Häuser, LKW verliert Gefahrgut, Brand in leerstehendem Haus, Silvesternacht. Jeder hat einen Polizei-Teil als Folgeeinsatz (Halter ermitteln, Straße sperren, Brandermittlung, Fahndung, Räumung, Vollsperrung, Sachbeschädigung).
+- Einsatzarten mit `ab_level` sind erst ab diesem Level kaufbar.
+- Bewertung der Zusammenarbeit (`bewertung.zusammenarbeit`, 1 bis 5 Sterne, zählt nicht in die Sterne des Einsatzes): Wie schnell war die Polizei nach der Feuerwehr da (Ziel `gemeinsam.ziel_min`)? Die letzten 20 stehen im Stand unter `zusammenarbeit`. Der Auslöser kennt seinen Partner (`gemeinsam`).
+- `bedingung.daten` (MM-TT) für Einsätze an bestimmten Tagen, zum Beispiel Silvester.
 ## 0.8.0
 
 - Einsatzspiel, Dorfbewohner: Wer in ein Haus zieht, hat einen Beruf. `kaufen` mit `art: "bauplatz"` (und bei der Einliegerwohnung) nimmt `bewohner: {org, beruf, arbeitgeber}` an. Feuerwehr: `beruf: "dorf"` mit einem Arbeitgeber im Dorf (`ARBEITGEBER`, begrenzte Stellen) kommt in der Arbeitszeit vom Arbeitsplatz und braucht 60 s mehr; `beruf: "auswaerts"` fehlt werktags von 7 bis 17 Uhr. Polizei: wohnt im Dorf, Schichtdienst an der Dienststelle, zählt zu deren Personal. Wer schon da war, bleibt „wie bisher“ (`beruf: "frei"`). Ohne `bewohner` gilt das auch für neue Häuser (ältere App-Versionen).
