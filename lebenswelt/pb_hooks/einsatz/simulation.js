@@ -229,9 +229,9 @@ function neuerStand(R, jetzt, saat) {
     haeuser: [],
     personal: [],
     fahrzeuge: [],
-    lager: { feuerwehr: {}, polizei: {} },
+    lager: { feuerwehr: {}, polizei: {}, werkstatt: {}, bauhof: {} },
     pflege: [],
-    gebaeude: { geraetehaus: 0, dienststelle: 0, sportplatz: 0 },
+    gebaeude: { geraetehaus: 0, dienststelle: 0, sportplatz: 0, werkstatt: 0, bauhof: 0 },
     ausbau: [],
     neubaugebiete: [],
     laufend: [],
@@ -533,7 +533,42 @@ function bauFelder(s) {
     s.version = 2
   }
   if (s.level === undefined) s.level = 0
-  if (s.gebaeude && s.gebaeude.sportplatz === undefined) s.gebaeude.sportplatz = 0
+  for (const g of ["sportplatz", "werkstatt", "bauhof"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
+  for (const o of ["werkstatt", "bauhof"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
+}
+
+/** Gebäude einer Organisation (geraetehaus, dienststelle, werkstatt, bauhof). */
+function gebaeudeVon(R, org) {
+  return (R.ORGANISATIONEN && R.ORGANISATIONEN[org] && R.ORGANISATIONEN[org].gebaeude) || (org === "polizei" ? "dienststelle" : "geraetehaus")
+}
+
+/** Ist die Organisation mit dem aktuellen Level schon im Spiel? */
+function orgFrei(R, s, org) {
+  const o = R.ORGANISATIONEN && R.ORGANISATIONEN[org]
+  return !o || levelReicht(s, o.ab_level)
+}
+
+/** Einsatzarten mit start_level werden mit dem Level kaufbar (der erste Einsatz einer neuen Organisation). */
+function levelFreischalten(R, s) {
+  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.start_level && levelReicht(s, a.start_level) && s.freigeschaltet.indexOf(id) < 0) s.freigeschaltet.push(id)
+}
+
+/** Glätte und Schnee wirken auf gestreuten Straßen wie Nässe (Winterdienst des Bauhofs). */
+function wetterGestreut(s, w, t) {
+  return (w === "glaette" || w === "schnee") && s.gestreut_bis && t < s.gestreut_bis ? "nass" : w
+}
+
+/** Offene Einsätze, die eine Straße blockieren (Panne, Bergung, Reinigung), nahe einem der Punkte. */
+function sperrungenAmWeg(R, s, punkte, t, ohne) {
+  const r = R.BAU.verkehr.radius
+  const aus = []
+  for (const x of s.laufend) {
+    const a = R.EINSATZARTEN[x.art]
+    if (!a || !a.sperrt || x.id === ohne || x.meldung > t || t >= (x.ende || x.verfall)) continue
+    const p = punktVon(R, s, x.ort)
+    if (p && punkte.some((q) => q && luftlinie(q, p) <= r)) aus.push({ name: a.name, ort: p })
+  }
+  return aus
 }
 
 function bauPhasen(R, b) {
@@ -769,22 +804,27 @@ function plane(R, s, e, alarm, umwelt) {
   const wetter = e.wetter
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
   const ort = punktVon(R, s, e.ort)
-  const basis = org === "polizei" ? R.ORTE.dienststelle : R.ORTE.feuerwehrhaus
+  const geb = gebaeudeVon(R, org)
+  const basis = R.ORTE[(R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[geb]) || "feuerwehrhaus"] || R.ORTE.feuerwehrhaus
   const personen = s.personal.filter((p) => einsatzbereitFuer(R, p, org, alarm))
-  if (!personen.length) return { grund: org === "polizei" ? "Keine Beamtin und kein Beamter verfügbar." : "Keine Einsatzkraft verfügbar." }
+  if (!personen.length) return externerPlan(R, s, e, alarm) || { grund: org === "polizei" ? "Keine Beamtin und kein Beamter verfügbar." : org === "feuerwehr" ? "Keine Einsatzkraft verfügbar." : "Niemand im Dienst." }
 
-  // Bereitschaftszeit je Person
+  // Bereitschaftszeit je Person: Feuerwehr von zu Hause, alle anderen sind an ihrem Gebäude im Dienst
+  const reaktionS = (p) =>
+    org === "polizei"
+      ? POLIZEI_REAKTION_S + psaEffekt(R, p, "polizei").reaktion_s + (behelfAktiv(R, s, "dienststelle", alarm) ? R.BAU.behelf.reaktion_s : 0)
+      : ((R.ORGANISATIONEN && R.ORGANISATIONEN[org] && R.ORGANISATIONEN[org].reaktion_s) || 120) + (behelfAktiv(R, s, geb, alarm) ? R.BAU.behelf.reaktion_s : 0)
   const bereit = personen
-    .map((p) => ({ p, t: org === "polizei" ? alarm + (POLIZEI_REAKTION_S + psaEffekt(R, p, "polizei").reaktion_s + (behelfAktiv(R, s, "dienststelle", alarm) ? R.BAU.behelf.reaktion_s : 0)) * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
+    .map((p) => ({ p, t: org === "feuerwehr" ? feuerwehrBereit(R, s, p, alarm, wetter) : alarm + reaktionS(p) * 1000 }))
     .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : 1))
 
   const fahrzeuge = s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org && frei(f, alarm))
   const lager = bestandVon(s, "lager:" + org, s.lager[org] || {}, alarm)
-  const falschparker = org === "feuerwehr" && s.laufend.some((x) => x.art === "p_falschparker" && x.status !== "abgeschlossen" && x.meldung <= alarm && !(x.plan && x.plan.arbeit_ende <= alarm))
+  const falschparker = org === "feuerwehr" && s.laufend.some((x) => x.art === "p_falschparker" && x.status !== "abgeschlossen" && x.meldung <= alarm && !(x.plan && x.plan.arbeit_ende <= alarm) && !(x.umgesetzt && x.umgesetzt <= alarm))
   const zf = falschparker ? R.EINSATZARTEN.p_falschparker.wirkung.fahrzeit_faktor : 1
   const behelfAus = org === "feuerwehr" && behelfAktiv(R, s, "geraetehaus", alarm) ? R.BAU.behelf.ausruecken_s : 0
   const ausruecken = Math.max(0, R.ZEITEN.ausruecken_s + ausbauEffekt(R, s, "ausruecken_s") + behelfAus) * 1000
-  const amWeg = baustellenAmWeg(R, s, [basis, ort], alarm).slice(0, 2)
+  const amWeg = baustellenAmWeg(R, s, [basis, ort], alarm).concat(sperrungenAmWeg(R, s, [basis, ort], alarm, e.id)).slice(0, 2)
   const mind = art.mindestens || {}
   const opt = art.optimal || {}
 
@@ -847,7 +887,8 @@ function plane(R, s, e, alarm, umwelt) {
       tempo = org === "polizei" ? ZU_FUSS_POLIZEI_MS : handzug ? R.ZEITEN.handzugwagen_ms : R.ZEITEN.zu_fuss_mit_leiter_ms
       weg = fussweg(R, basis, ort)
     } else {
-      tempo = Math.min.apply(null, motor.map((f) => R.FAHRZEUGE[f.typ].tempo_kmh)) / 3.6 * R.ZEITEN.sonderrechte_tempo
+      const sonderrechte = motor.some((f) => R.FAHRZEUGE[f.typ].ohne_sonderrechte) ? 1 : R.ZEITEN.sonderrechte_tempo
+      tempo = (Math.min.apply(null, motor.map((f) => R.FAHRZEUGE[f.typ].tempo_kmh)) / 3.6) * sonderrechte
       weg = strassenweg(R, basis, ort)
     }
     // Zu Fuß bestimmen Stiefel, Wetter und Licht das Tempo
@@ -876,7 +917,7 @@ function plane(R, s, e, alarm, umwelt) {
       }
     }
   }
-  if (!bester) return { grund: naechsterGrund || "Keine passende Ausrüstung." }
+  if (!bester) return externerPlan(R, s, e, alarm) || { grund: naechsterGrund || "Keine passende Ausrüstung." }
 
   // Arbeit vor Ort. Jeder Faktor wird mit Grund vermerkt, damit das Protokoll erklärt, was Zeit gekostet hat.
   const vorhanden = bester.leute.length
@@ -886,7 +927,7 @@ function plane(R, s, e, alarm, umwelt) {
     if (Math.abs(faktor - 1) >= 0.01) faktoren.push({ grund, faktor: Math.round(faktor * 100) / 100, text })
   }
   if (bester.fussFaktor > 1.01) merke("zu_fuss", bester.fussFaktor, "Weg zu Fuß: Stiefel, Wetter und Licht")
-  if (bester.bauVerzug) faktoren.push({ grund: "baustelle", sekunden: Math.round(bester.bauVerzug / 1000), text: "Baustelle an der Strecke (" + amWeg.map((b) => b.name).join(", ") + ")" })
+  if (bester.bauVerzug) faktoren.push({ grund: "baustelle", sekunden: Math.round(bester.bauVerzug / 1000), text: "Hindernis an der Strecke (" + amWeg.map((b) => b.name).join(", ") + ")" })
   if (behelfAus) faktoren.push({ grund: "behelf", sekunden: behelfAus + R.BAU.behelf.umziehen_s, text: "Behelfsbetrieb wegen Umbau am Gerätehaus" })
   merke("personen", Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5), vorhanden + " von optimal " + (opt.personen || vorhanden) + " Einsatzkräften")
   const fehltOpt = fehlendeGruppen(opt.geraete, bester.bestand)
@@ -967,6 +1008,40 @@ function plane(R, s, e, alarm, umwelt) {
   }
 }
 
+/**
+ * Grundversorgung von außen (EXTERN): Kann im Dorf niemand ausrücken, übernimmt die Einheit von außerhalb mit fester
+ * Anfahrt. Ohne Personen und Fahrzeuge im Dorf, höchstens max_sterne. Nur für Organisationen mit EXTERN-Eintrag ab ihrem Level.
+ */
+function externerPlan(R, s, e, alarm) {
+  const art = R.EINSATZARTEN[e.art]
+  const x = R.EXTERN && R.EXTERN[art.org]
+  if (!x || !levelReicht(s, x.ab_level)) return null
+  const eintreffen = alarm + x.anfahrt_min * MIN
+  const arbeitEnde = eintreffen + Math.round((art.arbeit_min || 0) * MIN)
+  return {
+    plan: {
+      alarm,
+      extern: x.name,
+      personen: [],
+      fahrzeuge: [],
+      mitgenommen: {},
+      bestand: {},
+      zu_fuss: false,
+      abfahrt: alarm,
+      fahrzeit: eintreffen - alarm,
+      eintreffen,
+      arbeit_ende: arbeitEnde,
+      zurueck: arbeitEnde,
+      einsatzbereit: arbeitEnde,
+      verzug_min: Math.round(((eintreffen - e.meldung) / MIN) * 10) / 10,
+      wasser: null,
+      faktoren: [{ grund: "extern", sekunden: x.anfahrt_min * 60, text: x.name + " mit langer Anfahrt" }],
+      gesperrt: [],
+      vergeblich: [],
+    },
+  }
+}
+
 // ---------- Regeln und Bewertung ----------
 
 function polizeiVorOrt(s, e, bis) {
@@ -1030,6 +1105,11 @@ function bewerte(R, s, e) {
       continue
     }
     if (!regelErfuellt(R, s, regel, k, e, pl.eintreffen)) ziehe(r, regel.abzug, regel.text)
+  }
+  if (pl.extern) {
+    const x = R.EXTERN[art.org]
+    const vorher = Math.max(1, Math.round((R.STERNE.max - abzuege.reduce((n, a) => n + a.sterne, 0)) * 2) / 2)
+    if (vorher > x.max_sterne) ziehe("extern", vorher - x.max_sterne, x.name + " hat übernommen. Mit eigenem Betrieb im Dorf geht es schneller.")
   }
   const summe = abzuege.reduce((n, a) => n + a.sterne, 0)
   const sterne = Math.max(1, Math.round((R.STERNE.max - summe) * 2) / 2)
@@ -1155,15 +1235,19 @@ function folgen(R, s, e, umwelt) {
   for (const id of ids) {
     const fa = R.EINSATZARTEN[id]
     if (!fa) continue
-    // Nur, wenn die andere Organisation überhaupt jemanden hat (sonst entsteht der Folgeeinsatz nicht)
-    if (!s.personal.some((p) => istMitglied(p, fa.org))) {
-      if (art.gemeinsam) e.gemeinsam = { art: id, fehlt: fa.org === "polizei" ? "An der Dienststelle arbeitet noch niemand." : "Im Dorf wohnt noch keine Einsatzkraft." }
+    // Organisationen, die erst mit einem Level kommen (Werkstatt, Bauhof), gibt es vorher nicht
+    if (!orgFrei(R, s, fa.org)) continue
+    const extern = R.EXTERN && R.EXTERN[fa.org] && levelReicht(s, R.EXTERN[fa.org].ab_level)
+    const partner = art.gemeinsam && fa.org === "polizei"
+    // Nur, wenn die andere Organisation jemanden hat oder von außen kommt (sonst entsteht der Folgeeinsatz nicht)
+    if (!extern && !s.personal.some((p) => istMitglied(p, fa.org))) {
+      if (partner) e.gemeinsam = { art: id, fehlt: "An der Dienststelle arbeitet noch niemand." }
       continue
     }
     // Kein dramatischer Folgeeinsatz in einer Schutzzone
     if (!ortErlaubt(R, s, fa, e.ort)) continue
     const f = erzeuge(R, s, id, t, umwelt, e)
-    if (art.gemeinsam && !e.gemeinsam) e.gemeinsam = partnerStand(f)
+    if (partner) e.gemeinsam = partnerStand(f)
   }
 }
 
@@ -1202,6 +1286,15 @@ function abschliessen(R, s, e) {
   const st = s.einsatzarten[e.art]
   if (e.status !== "verfallen") {
     e.bewertung = bewerte(R, s, e)
+    if (art.wirkung && art.wirkung.gestreut_h) {
+      const stufe = R.GEBAEUDE.bauhof && R.GEBAEUDE.bauhof[s.gebaeude.bauhof || 0]
+      const h = art.wirkung.gestreut_h + ((stufe && stufe.gestreut_h) || 0)
+      s.gestreut_bis = Math.max(s.gestreut_bis || 0, e.plan.arbeit_ende + Math.round(h * STD))
+    }
+    if (e.art === "ab_umsetzen" && e.folge_von) {
+      const fp = s.laufend.find((x) => x.id === e.folge_von)
+      if (fp) fp.umgesetzt = e.plan.arbeit_ende
+    }
     if (art.gemeinsam) {
       e.bewertung.zusammenarbeit = bewerteZusammenarbeit(R, s, e)
       s.zusammenarbeit = (s.zusammenarbeit || []).concat([{ id: e.id, sterne: e.bewertung.zusammenarbeit.sterne }]).slice(-20)
@@ -1349,7 +1442,9 @@ function fortschreiben(stand, bis, umwelt, R) {
   const s = kopie(stand)
   bauFelder(s)
   if (bis <= s.bis) return s
-  const wetter = umwelt || ((t) => wetterBei(null, t))
+  const roh = umwelt || ((t) => wetterBei(null, t))
+  const wetter = (t) => wetterGestreut(s, roh(t), t)
+  levelFreischalten(R, s)
   if (!s.training_naechster && R.FITNESS) s.training_naechster = naechstesTraining(R, s.bis)
   let schutz = 0
   let vorher = s.bis
@@ -1484,6 +1579,7 @@ function pruefeBewohner(R, s, roh) {
 function kaufe(stand, auftrag, jetzt, R) {
   const s = kopie(stand)
   bauFelder(s)
+  levelFreischalten(R, s)
   const art = auftrag.art
   const id = auftrag.id
   const anzahl = Math.max(1, Math.floor(auftrag.anzahl || 1))
@@ -1558,17 +1654,21 @@ function kaufe(stand, auftrag, jetzt, R) {
     p.psa[id] = stufe
   } else if (art === "geraet") {
     const g = R.GERAETE[id]
-    const org = auftrag.org || (g && g.org === "polizei" ? "polizei" : "feuerwehr")
+    const org = auftrag.org || (g && g.org !== "beide" ? g.org : "feuerwehr")
     if (!g || (g.org !== "beide" && g.org !== org)) return fehler("Unbekanntes Gerät.")
-    const max = R.GEBAEUDE[org === "polizei" ? "dienststelle" : "geraetehaus"][s.gebaeude[org === "polizei" ? "dienststelle" : "geraetehaus"]].lager_slots
+    if (!orgFrei(R, s, org)) return fehler("Erst ab Level " + R.ORGANISATIONEN[org].ab_level + ".")
+    if (!s.lager[org]) s.lager[org] = {}
+    const gl = gebaeudeVon(R, org)
+    const max = R.GEBAEUDE[gl][s.gebaeude[gl] || 0].lager_slots
     if (lagerSlots(R, s, org) + g.slots * anzahl > max) return fehler("Im Lager ist kein Platz mehr. Erst in ein Fahrzeug einräumen oder das Gebäude ausbauen.")
     roh = g.preis * anzahl
     s.lager[org][id] = (s.lager[org][id] || 0) + anzahl
   } else if (art === "fahrzeug") {
     const f = R.FAHRZEUGE[id]
     if (!f) return fehler("Unbekanntes Fahrzeug.")
-    const geb = f.org === "polizei" ? "dienststelle" : "geraetehaus"
-    const plaetze = R.GEBAEUDE[geb][s.gebaeude[geb]].stellplaetze
+    if (!orgFrei(R, s, f.org)) return fehler("Erst ab Level " + R.ORGANISATIONEN[f.org].ab_level + ".")
+    const geb = gebaeudeVon(R, f.org)
+    const plaetze = R.GEBAEUDE[geb][s.gebaeude[geb] || 0].stellplaetze
     if (f.stellplatz && stellplaetzeBelegt(R, s, f.org) + f.stellplatz > plaetze) return fehler("Kein freier Stellplatz. Erst das Gebäude ausbauen.")
     if (f.voraussetzung_fahrzeug && !s.fahrzeuge.some((x) => f.voraussetzung_fahrzeug.indexOf(x.typ) >= 0)) return fehler("Braucht ein Zugfahrzeug.")
     roh = f.preis
@@ -1629,10 +1729,20 @@ function kaufe(stand, auftrag, jetzt, R) {
   } else if (art === "personal") {
     const P = R.PERSONAL[id]
     if (!P) return fehler("Unbekannt.")
-    const max = R.GEBAEUDE.dienststelle[s.gebaeude.dienststelle].personal_max
-    if (polizeiZahl(s) >= max) return fehler("Die Dienststelle ist voll besetzt. Erst ausbauen.")
+    const porg = P.org || "polizei"
+    if (!orgFrei(R, s, porg)) return fehler("Erst ab Level " + R.ORGANISATIONEN[porg].ab_level + ".")
+    const pg = gebaeudeVon(R, porg)
+    const max = R.GEBAEUDE[pg][s.gebaeude[pg] || 0].personal_max || 0
+    const zahl = porg === "polizei" ? polizeiZahl(s) : s.personal.filter((x) => x.org === porg).length
+    if (zahl >= max) return fehler(porg === "polizei" ? "Die Dienststelle ist voll besetzt. Erst ausbauen." : "Alle Stellen sind besetzt. Erst ausbauen.")
     roh = P.preis
-    s.personal.push(neuePerson(s, "polizei", null, jetzt))
+    const neu = neuePerson(s, porg, null, jetzt)
+    if (P.lehrgaenge) {
+      neu.lehrgaenge = {}
+      for (const l of P.lehrgaenge) neu.lehrgaenge[l] = jetzt
+    }
+    if (porg !== "polizei") neu.beruf = "frei"
+    s.personal.push(neu)
   } else return fehler("Unbekannte Kaufart.")
 
   // Vielleicht kann ein wartender Einsatz jetzt alarmiert werden
@@ -1674,5 +1784,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

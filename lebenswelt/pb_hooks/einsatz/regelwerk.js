@@ -299,6 +299,8 @@ const ORTE = {
   schule: { name: "Grundschule", x: -40, z: 40 },
   festplatz: { name: "Festplatz", x: 40, z: 74 },
   sportplatz: { name: "Sportplatz", x: 70, z: 84, fest: true },
+  werkstatt_dorf: { name: "Kfz-Werkstatt", x: 20, z: 82, fest: true },
+  bauhof: { name: "Bauhof", x: -62, z: 32, fest: true },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -386,6 +388,25 @@ const FREISCHALTUNG_LEVEL = {
 }
 
 /**
+ * Organisationen mit ihrem Gebäude. Werkstatt und Bauhof kommen ab Level 12 (FREISCHALTUNG_LEVEL).
+ */
+const ORGANISATIONEN = {
+  feuerwehr: { name: "Feuerwehr", gebaeude: "geraetehaus" },
+  polizei: { name: "Polizei", gebaeude: "dienststelle" },
+  werkstatt: { name: "Werkstatt und Abschleppdienst", gebaeude: "werkstatt", ab_level: 12 },
+  bauhof: { name: "Bauhof", gebaeude: "bauhof", ab_level: 12 },
+}
+
+/**
+ * Grundversorgung von außen: Ab ihrem Level ist eine Organisation sofort da, aber von außerhalb und langsam. Sie
+ * übernimmt, wenn im Dorf niemand ausrücken kann. Höchstens max_sterne. Konzept DORFDIENSTE.md, Abschnitt 2.
+ */
+const EXTERN = {
+  werkstatt: { name: "Abschleppdienst aus der Stadt", anfahrt_min: 35, max_sterne: 3, ab_level: 12 }, // spielwert
+  bauhof: { name: "Straßenmeisterei des Kreises", anfahrt_min: 60, max_sterne: 3, ab_level: 12 }, // spielwert
+}
+
+/**
  * Berufe der Bewohner. Wer auswärts arbeitet, fehlt der Feuerwehr in der Arbeitszeit (Tagesalarmsicherheit). Wer im Dorf
  * arbeitet, kommt in der Arbeitszeit vom Arbeitsplatz aus und braucht einen Moment, um die Arbeit zu unterbrechen
  * (Freistellung nach § 12 NBrandSchG). Beim Schichtdienst an der Dienststelle wird während der Schicht nicht für die
@@ -408,6 +429,8 @@ const ARBEITGEBER = {
   hof: { name: "Hof am Ortsrand", ort: "scheune", stellen: 1 },
   bibliothek: { name: "Bibliothek", ort: "bibliothek", stellen: 1 },
   platzwart: { name: "Platzwart am Sportplatz", ort: "sportplatz", stellen: 1, gebaeude: "sportplatz", ab_stufe: 5 },
+  werkstatt: { name: "Kfz-Werkstatt", ort: "werkstatt_dorf", stellen: 2, gebaeude: "werkstatt", ab_stufe: 2 },
+  bauhof: { name: "Bauhof", ort: "bauhof", stellen: 2, gebaeude: "bauhof", ab_stufe: 1 },
 }
 
 /**
@@ -541,6 +564,13 @@ const LEHRGAENGE = {
   zf: { org: "feuerwehr", name: "Zugführer (NABK)", dauer_h: 96, preis: 2000, voraussetzung: ["gf"] },
   verbandsfuehrer: { org: "feuerwehr", name: "Verbandsführer (NABK)", dauer_h: 120, preis: 3500, voraussetzung: ["zf"] },
   // Polizei
+  // Werkstatt und Bauhof: Beruf bei der Einstellung, dazu einzelne Lehrgänge
+  kfz: { org: "werkstatt", name: "Kfz-Mechatronikerin/Kfz-Mechatroniker", dauer_h: 0, preis: 0, hinweis: "bei der Einstellung vorhanden" },
+  ladungssicherung: { org: "werkstatt", name: "Ladungssicherung", dauer_h: 8, preis: 150, voraussetzung: ["kfz"] },
+  bergung: { org: "werkstatt", name: "Bergung schwerer Fahrzeuge", dauer_h: 24, preis: 500, voraussetzung: ["kfz", "ladungssicherung"] },
+  gemeindearbeit: { org: "bauhof", name: "Gemeindearbeiterin/Gemeindearbeiter", dauer_h: 0, preis: 0, hinweis: "bei der Einstellung vorhanden" },
+  winterdienst: { org: "bauhof", name: "Winterdienst-Fahrerin/Fahrer", dauer_h: 8, preis: 150, voraussetzung: ["gemeindearbeit"] },
+  baumkontrolle: { org: "bauhof", name: "Baumkontrolle", dauer_h: 16, preis: 300, voraussetzung: ["gemeindearbeit"] },
   pk: { org: "polizei", name: "Bachelorstudium Polizeivollzugsdienst (Polizeiakademie Niedersachsen)", dauer_h: 0, preis: 0, quelle: "polizeiakademie", hinweis: "beim Einzug abgeschlossen" },
   einsatztraining: { org: "polizei", name: "Einsatztraining (jährlich)", dauer_h: 8, preis: 150, voraussetzung: ["pk"], verfaellt_tage: 365 },
   vu_aufnahme: { org: "polizei", name: "Verkehrsunfallaufnahme", dauer_h: 16, preis: 300, voraussetzung: ["pk"] },
@@ -648,7 +678,7 @@ const GERAETE = {
   // Technische Hilfe
   motorsaege: { name: "Motorsäge mit Schnittschutzausrüstung", slots: 1, preis: 900, org: "feuerwehr", kategorie: "th" },
   oelbinder: { name: "Ölbindemittel (Sack)", slots: 0.25, preis: 25, org: "feuerwehr", kategorie: "th" },
-  besen_schaufel: { name: "Besen und Schaufel", slots: 0.25, preis: 20, org: "feuerwehr", kategorie: "th" },
+  besen_schaufel: { name: "Besen und Schaufel", slots: 0.25, preis: 20, org: "beide", kategorie: "th" },
   tauchpumpe: { name: "Tauchpumpe", slots: 1, preis: 700, org: "feuerwehr", kategorie: "th", effekt: { pumpe_l_min: 400 } },
   wassersauger: { name: "Wassersauger", slots: 1, preis: 500, org: "feuerwehr", kategorie: "th" },
   stromerzeuger: { name: "Stromerzeuger", slots: 2, preis: 1600, org: "feuerwehr", kategorie: "th" },
@@ -685,6 +715,19 @@ const GERAETE = {
   taschenlampe: { name: "Taschenlampe", slots: 0, preis: 40, org: "beide", kategorie: "allgemein", effekt: { nacht: 0.5 } },
   laser_messgeraet: { name: "Lasermessgerät Geschwindigkeit", slots: 0.5, preis: 2500, org: "polizei", kategorie: "polizei" },
   drohne: { name: "Drohne mit Wärmebild", slots: 1, preis: 6000, org: "beide", kategorie: "erkundung", effekt: { suchen: 3 } },
+  // Werkstatt und Abschleppdienst
+  starthilfe: { name: "Starthilfegerät", slots: 0.5, preis: 150, org: "werkstatt", kategorie: "pannenhilfe" },
+  abschleppseil: { name: "Abschleppseil und Abschleppstange", slots: 0.5, preis: 60, org: "werkstatt", kategorie: "pannenhilfe" },
+  abschleppbrille: { name: "Hubbrille", slots: 2, preis: 1200, org: "werkstatt", kategorie: "abschleppen", effekt: { abschleppen: 1 } },
+  plateau: { name: "Schiebeplateau", slots: 3, preis: 2500, org: "werkstatt", kategorie: "abschleppen", effekt: { abschleppen: 1.3 } },
+  seilwinde: { name: "Seilwinde", slots: 1, preis: 900, org: "werkstatt", kategorie: "bergen" },
+  drehkran: { name: "Drehkran", slots: 4, preis: 6000, org: "werkstatt", kategorie: "bergen" },
+  // Bauhof
+  streusalz: { name: "Streusalz (Sack)", slots: 0.25, preis: 15, org: "bauhof", kategorie: "winterdienst" },
+  streuer: { name: "Streuautomat", slots: 2, preis: 1800, org: "bauhof", kategorie: "winterdienst" },
+  schneeschild: { name: "Schneeschild", slots: 2, preis: 1500, org: "bauhof", kategorie: "winterdienst" },
+  kehrbesen: { name: "Kehrbesen mit Wassertank", slots: 2, preis: 1600, org: "bauhof", kategorie: "reinigung" },
+  absperrschranke: { name: "Absperrschranke mit Leuchte", slots: 0.5, preis: 120, org: "bauhof", kategorie: "absperrung" },
 }
 
 /**
@@ -759,6 +802,15 @@ const FAHRZEUGE = {
   zivil: { org: "polizei", name: "Zivilstreifenwagen", besatzung: [0, 2], slots: 4, preis: 6000, tempo_kmh: 70, stellplatz: 1, fahrer: "pk", grundbeladung: { taschenlampe: 2 } },
   grukw: { org: "polizei", name: "Gruppenkraftwagen", besatzung: [1, 8], slots: 8, preis: 14000, tempo_kmh: 65, stellplatz: 1, fahrer: "pk", grundbeladung: { leitkegel: 2, absperrband: 2, beleuchtung: 1 } },
   vu_wagen: { org: "polizei", name: "Verkehrsunfallaufnahmefahrzeug", besatzung: [0, 2], slots: 8, preis: 11000, tempo_kmh: 70, stellplatz: 1, fahrer: "vu_aufnahme", grundbeladung: { unfallaufnahme: 1, leitkegel: 2, warnleuchte: 1, faltsignal: 1 } },
+  // Werkstatt und Abschleppdienst (gelbes Rundumlicht nach § 52 Abs. 4 StVZO, keine Sonderrechte)
+  pannenhilfe: { org: "werkstatt", name: "Pannenhilfsfahrzeug", besatzung: [0, 1], slots: 4, preis: 4000, tempo_kmh: 50, stellplatz: 1, fahrer: "kfz", ohne_sonderrechte: true, grundbeladung: { starthilfe: 1, abschleppseil: 1 } },
+  abschleppwagen: { org: "werkstatt", name: "Abschleppwagen mit Hubbrille", besatzung: [0, 2], slots: 6, preis: 9000, tempo_kmh: 45, stellplatz: 1, fahrer: "kfz", ohne_sonderrechte: true, grundbeladung: { abschleppbrille: 1, abschleppseil: 1 } },
+  plateauwagen: { org: "werkstatt", name: "Abschleppwagen mit Schiebeplateau", besatzung: [0, 2], slots: 8, preis: 12000, tempo_kmh: 45, stellplatz: 1, fahrer: "kfz", ohne_sonderrechte: true, grundbeladung: { plateau: 1, seilwinde: 1 } },
+  bergewagen: { org: "werkstatt", name: "Schwerer Bergewagen mit Drehkran", besatzung: [0, 2], slots: 10, preis: 25000, tempo_kmh: 40, stellplatz: 1, fahrer: "bergung", ohne_sonderrechte: true, grundbeladung: { drehkran: 1, seilwinde: 1 } },
+  // Bauhof
+  pritschenwagen: { org: "bauhof", name: "Pritschenwagen", besatzung: [0, 2], slots: 6, preis: 3500, tempo_kmh: 45, stellplatz: 1, fahrer: "gemeindearbeit", ohne_sonderrechte: true, grundbeladung: { besen_schaufel: 2, absperrschranke: 2 } },
+  winterdienstfahrzeug: { org: "bauhof", name: "Kommunalfahrzeug mit Schneeschild und Streuer", besatzung: [0, 2], slots: 6, preis: 12000, tempo_kmh: 35, stellplatz: 1, fahrer: "winterdienst", ohne_sonderrechte: true, grundbeladung: { streuer: 1, schneeschild: 1 } },
+  kehrmaschine: { org: "bauhof", name: "Kehrmaschine", besatzung: [0, 1], slots: 3, preis: 9000, tempo_kmh: 25, stellplatz: 1, fahrer: "gemeindearbeit", ohne_sonderrechte: true, grundbeladung: { kehrbesen: 1 } },
   hundestreife: { org: "polizei", name: "Diensthundstreife", besatzung: [0, 1], slots: 2, preis: 9000, tempo_kmh: 70, stellplatz: 1, fahrer: "diensthund", hund: true, grundbeladung: {} },
 }
 
@@ -818,6 +870,22 @@ const GEBAEUDE = {
     { name: "Polizeistation", bauzeit_h: 24, stellplaetze: 2, preis: 8000, lager_slots: 12, personal_max: 4 },
     { name: "Polizeikommissariat", bauzeit_h: 72, stellplaetze: 5, preis: 40000, lager_slots: 30, personal_max: 12, rund_um_die_uhr: true },
   ],
+  // Werkstatt und Abschleppdienst (Konzept DORFDIENSTE.md, Abschnitt 9). Stufe 0: Abschleppdienst aus der Stadt.
+  werkstatt: [
+    { name: "kein Betrieb im Dorf", bauzeit_h: 0, stellplaetze: 0, preis: 0, lager_slots: 0, personal_max: 0 },
+    { name: "Pannenhilfe-Unterstand", bauzeit_h: 4, stellplaetze: 1, preis: 3000, lager_slots: 4, personal_max: 1, ab_level: 12 },
+    { name: "Kfz-Werkstatt mit Abschleppwagen", bauzeit_h: 24, stellplaetze: 2, preis: 12000, lager_slots: 10, personal_max: 3, ab_level: 12 },
+    { name: "Abschlepphof mit Verwahrplatz", bauzeit_h: 36, stellplaetze: 3, preis: 20000, lager_slots: 16, personal_max: 4, ab_level: 12 },
+    { name: "Bergungszentrum mit Kran", bauzeit_h: 72, stellplaetze: 4, preis: 40000, lager_slots: 24, personal_max: 5, ab_level: 12 },
+  ],
+  // Bauhof der Gemeinde (Abschnitt 10). Stufe 0: Straßenmeisterei des Kreises.
+  bauhof: [
+    { name: "kein Bauhof im Dorf", bauzeit_h: 0, stellplaetze: 0, preis: 0, lager_slots: 0, personal_max: 0 },
+    { name: "Gemeindearbeiter mit Garage", bauzeit_h: 4, stellplaetze: 1, preis: 3000, lager_slots: 6, personal_max: 1, ab_level: 12 },
+    { name: "Bauhof mit Halle", bauzeit_h: 24, stellplaetze: 2, preis: 10000, lager_slots: 14, personal_max: 2, ab_level: 12 },
+    { name: "Bauhof mit Salzlager und Winterdienst", bauzeit_h: 36, stellplaetze: 3, preis: 18000, lager_slots: 20, personal_max: 3, ab_level: 12, gestreut_h: 4 },
+    { name: "Bauhof mit Werkstatt und Sandsacklager", bauzeit_h: 48, stellplaetze: 4, preis: 30000, lager_slots: 30, personal_max: 4, ab_level: 12, gestreut_h: 4 },
+  ],
   // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
   // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
   sportplatz: [
@@ -835,7 +903,7 @@ const GEBAEUDE = {
 }
 
 /** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
-const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz" }
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -914,7 +982,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 2, geraete: [[{ oelbinder: 2 }], [{ besen_schaufel: 1 }]] },
     optimal: { personen: 4, geraete: [[{ oelbinder: 4 }], [{ leitkegel: 1 }], [{ warnleuchte: 1 }]] },
     regeln: ["verkehrsabsicherung"],
-    folge: ["p_verkehrsregelung"],
+    folge: ["p_verkehrsregelung", "bh_oel"],
     text: "Ein Traktor verliert Hydrauliköl, die Spur zieht sich durch den Ort.",
     verfallen_text: "Der Bauhof hat die Spur übernommen. Ein Radfahrer ist gestürzt.",
   },
@@ -928,6 +996,7 @@ const EINSATZARTEN = {
     optimal: { personen: 6, geraete: [[{ leitkegel: 1 }], [{ warnleuchte: 1 }], [{ beleuchtung: 1 }]] },
     psa: { helm: 2 },
     regeln: ["verkehrsabsicherung", "einheitsfuehrer"],
+    folge: ["bh_absperrung"],
     text: "Eine Pappel ist umgestürzt und blockiert beide Fahrstreifen.",
     verfallen_text: "Die Straße blieb stundenlang gesperrt.",
   },
@@ -1019,7 +1088,7 @@ const EINSATZARTEN = {
     optimal: { personen: 9, einheit: "gruppe", qualifikation: { erste_hilfe: 2 }, geraete: [[{ notfallrucksack: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }], [{ beleuchtung: 1 }], [{ hrt: 2 }]] },
     psa: { helm: 2, jacke: 1, handschuhe: 1, th_kleidung: 1 },
     regeln: ["einheitsfuehrer", "brandschutz_sicherstellen", "verkehrsabsicherung"],
-    folge: ["p_vu_aufnahme"],
+    folge: ["p_vu_aufnahme", "ab_bergung"],
     text: "Zwei Autos sind an der Kreuzung zusammengestoßen, eine Fahrerin ist eingeklemmt.",
     verfallen_text: "Die Nachbarwehr mit Rettungssatz hat übernommen. Die Rettung dauerte lange.",
   },
@@ -1144,6 +1213,7 @@ const EINSATZARTEN = {
     optimal: { personen: 2 },
     wirkung: { feuerwehr_zufahrt_blockiert: true, fahrzeit_faktor: 1.4 },
     quelle: "stvo12",
+    folge: ["ab_umsetzen"],
     text: "Ein Lieferwagen steht in der Feuerwehrzufahrt. Solange er dort steht, kommt die Feuerwehr dort schlechter durch.",
     verfallen_text: "Der Fahrer ist irgendwann weggefahren.",
   },
@@ -1165,6 +1235,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 2 },
     optimal: { personen: 2, qualifikation: { vu_aufnahme: 1 }, geraete: [[{ unfallaufnahme: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
     regeln: ["verkehrsabsicherung"],
+    folge: ["ab_bergung"],
     text: "Auffahrunfall an der Kreuzung, beide Fahrer streiten über die Schuld.",
     verfallen_text: "Die Beteiligten haben Daten getauscht und sind weitergefahren.",
   },
@@ -1236,6 +1307,85 @@ const EINSATZARTEN = {
     verfallen_text: "Das Kind wurde von Anwohnern im Schilf gefunden, unterkühlt.",
   },
   // Folgeeinsätze (werden nicht gekauft, sondern von anderen ausgelöst)
+  // ---------- Werkstatt und Abschleppdienst (ab Level 12, Konzept DORFDIENSTE.md Abschnitt 9) ----------
+  // sperrt: solange der Einsatz offen ist, kostet die Stelle Einsatzfahrten in der Nähe Zeit (wie eine Baustelle)
+  ab_panne: {
+    org: "werkstatt", name: "Panne auf der Dorfstraße", stichwort: "Panne", preis: 200, start_level: 12, harmlos: true, sperrt: true,
+    orte: ["hauptstrasse_ost", "hauptstrasse_west", "kreuzung", "marktplatz"], intervall_min: 1440, ablauf_min: 90, arbeit_min: 20, ziel_eintreffen_min: 20,
+    mindestens: { personen: 1, geraete: [[{ starthilfe: 1 }, { abschleppseil: 1 }]] },
+    optimal: { personen: 1, geraete: [[{ abschleppbrille: 1 }, { plateau: 1 }]] },
+    text: "Ein Auto springt nicht mehr an und steht halb auf der Fahrbahn.",
+    verfallen_text: "Der Fahrer hat einen Abschleppdienst aus der Stadt gerufen, die Straße war lange halb blockiert.",
+  },
+  ab_graben: {
+    org: "werkstatt", name: "PKW im Graben", stichwort: "Bergung", preis: 600, harmlos: true,
+    freischaltung: { nach: "ab_panne", sterne: 3 },
+    orte: ["wiese_deich", "hauptstrasse_west"], intervall_min: 2880, ablauf_min: 120, arbeit_min: 40, ziel_eintreffen_min: 25,
+    bedingung: { wetter: ["glaette", "schnee", "nass"], faktor: 2 },
+    mindestens: { personen: 1, geraete: [[{ seilwinde: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ plateau: 1 }], [{ warnleuchte: 1 }]] },
+    text: "Ein Auto ist von der Straße abgekommen und steckt im Graben fest. Niemand ist verletzt.",
+    verfallen_text: "Ein Landwirt hat das Auto mit dem Traktor herausgezogen. Die Stoßstange ist ab.",
+  },
+  ab_lkw: {
+    org: "werkstatt", name: "LKW festgefahren bei Glätte", stichwort: "Bergung schwer", preis: 1500, sperrt: true,
+    freischaltung: { nach: "ab_graben", sterne: 3 },
+    orte: ["hauptstrasse_ost", "kreuzung"], intervall_min: 1440, ablauf_min: 120, arbeit_min: 50, ziel_eintreffen_min: 30,
+    bedingung: { wetter: ["glaette", "schnee"], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2, qualifikation: { bergung: 1 }, geraete: [[{ drehkran: 1 }], [{ seilwinde: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ warnleuchte: 2 }]] },
+    text: "Ein Sattelzug steht quer und kommt auf der glatten Straße nicht mehr weiter.",
+    verfallen_text: "Ein Bergeunternehmen aus der Stadt kam nach Stunden, die Straße war so lange dicht.",
+  },
+  ab_bergung: {
+    org: "werkstatt", name: "Fahrzeugbergung nach Unfall", stichwort: "Bergung", folge_nur: true, sperrt: true,
+    ablauf_min: 90, arbeit_min: 25, ziel_eintreffen_min: 20,
+    mindestens: { personen: 1, geraete: [[{ abschleppbrille: 1 }, { plateau: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ plateau: 1 }]] },
+    text: "Die Unfallfahrzeuge müssen von der Straße, erst dann ist sie wieder frei.",
+  },
+  ab_umsetzen: {
+    org: "werkstatt", name: "Falschparker umsetzen", stichwort: "Abschleppen", folge_nur: true,
+    ablauf_min: 60, arbeit_min: 10, ziel_eintreffen_min: 20,
+    mindestens: { personen: 1, geraete: [[{ abschleppbrille: 1 }, { plateau: 1 }]] },
+    optimal: { personen: 1, geraete: [[{ plateau: 1 }]] },
+    text: "Die Polizei lässt das Auto aus der Feuerwehrzufahrt umsetzen.",
+  },
+  // ---------- Bauhof (ab Level 12, Abschnitt 10) ----------
+  // wirkung.gestreut_h: so lange gilt auf den Straßen nach dem Streuen bei Glätte und Schnee der Reibwert für "nass"
+  bh_streuen: {
+    org: "bauhof", name: "Glätte: Straßen streuen", stichwort: "Winterdienst", preis: 250, start_level: 12, harmlos: true,
+    orte: ["hauptstrasse_ost", "kreuzung", "hauptstrasse_west"], intervall_min: 240, ablauf_min: 240, arbeit_min: 45, ziel_eintreffen_min: 30,
+    bedingung: { wetter: ["glaette", "schnee"], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 1, geraete: [[{ streuer: 1 }, { streusalz: 4 }]] },
+    optimal: { personen: 2, geraete: [[{ streuer: 1 }], [{ schneeschild: 1 }]] },
+    wirkung: { gestreut_h: 8 },
+    text: "Die Straßen sind glatt. Wer zuerst streut, verhindert Unfälle.",
+    verfallen_text: "Die Straßenmeisterei kam erst spät durch, bis dahin blieb es glatt.",
+  },
+  bh_ast: {
+    org: "bauhof", name: "Ast auf dem Gehweg", stichwort: "Verkehrssicherung", preis: 150, start_level: 12, harmlos: true,
+    orte: ["bibliothek", "schule", "marktplatz"], intervall_min: 1440, ablauf_min: 240, arbeit_min: 15, ziel_eintreffen_min: 60,
+    bedingung: { wetter: ["sturm"], faktor: 3 },
+    mindestens: { personen: 1, geraete: [[{ besen_schaufel: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ absperrschranke: 1 }]] },
+    text: "Ein abgebrochener Ast liegt auf dem Gehweg, Fußgänger müssen auf die Straße.",
+    verfallen_text: "Ein Anwohner hat den Ast zur Seite gezogen.",
+  },
+  bh_oel: {
+    org: "bauhof", name: "Fahrbahn nachreinigen", stichwort: "Reinigung", folge_nur: true, sperrt: true,
+    ablauf_min: 180, arbeit_min: 30, ziel_eintreffen_min: 30,
+    mindestens: { personen: 1, geraete: [[{ besen_schaufel: 1 }, { kehrbesen: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ kehrbesen: 1 }], [{ absperrschranke: 2 }]] },
+    text: "Nach dem Abstreuen bleibt ein Ölfilm. Die Fahrbahn muss gereinigt werden.",
+  },
+  bh_absperrung: {
+    org: "bauhof", name: "Absperrung bei Sturmschaden", stichwort: "Absperrung", folge_nur: true, dauer_wie_ausloeser: true,
+    ablauf_min: 90, arbeit_min: 0, ziel_eintreffen_min: 30,
+    mindestens: { personen: 1, geraete: [[{ absperrschranke: 2 }]] },
+    optimal: { personen: 2, geraete: [[{ absperrschranke: 4 }]] },
+    text: "Die Straße muss abgesperrt werden, bis der Baum weg ist.",
+  },
   // ---------- Gemeinsame Einsätze von Feuerwehr und Polizei (ab Level 8, Konzept DORFDIENSTE.md 13.5) ----------
   // gemeinsam.ziel_min: so viele Minuten nach dem Eintreffen der Feuerwehr soll die Polizei da sein (Zusammenarbeit)
   th_kind_auto: {
@@ -1279,7 +1429,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 2, geraete: [[{ oelbinder: 2 }], [{ besen_schaufel: 1 }]] },
     optimal: { personen: 4, geraete: [[{ oelbinder: 4 }], [{ leitkegel: 1 }], [{ warnleuchte: 1 }]] },
     regeln: ["verkehrsabsicherung"],
-    folge: ["p_fahndung"], gemeinsam: { ziel_min: 10 },
+    folge: ["p_fahndung", "bh_oel"], gemeinsam: { ziel_min: 10 },
     text: "Ein Auto hat einen Zaun gerammt und ist weitergefahren, Öl läuft über die Fahrbahn.",
     verfallen_text: "Der Bauhof hat abgestreut, vom Verursacher fehlt jede Spur.",
   },
@@ -1506,6 +1656,8 @@ const STERNE = {
 /** Personal der Polizei: Beamtinnen und Beamte werden an die Dienststelle versetzt (begrenzt durch personal_max). */
 const PERSONAL = {
   polizei: { name: "Beamtin/Beamter an die Dienststelle versetzen", preis: 600 }, // spielwert
+  werkstatt: { org: "werkstatt", name: "Mechanikerin/Mechaniker einstellen", preis: 500, lehrgaenge: ["kfz"] }, // spielwert
+  bauhof: { org: "bauhof", name: "Gemeindearbeiterin/Gemeindearbeiter einstellen", preis: 400, lehrgaenge: ["gemeindearbeit"] }, // spielwert
 }
 
 /**
@@ -1575,6 +1727,8 @@ module.exports = {
   WETTER,
   ALARMIERUNG,
   HAUS_AUSBAU,
+  ORGANISATIONEN,
+  EXTERN,
   FREISCHALTUNG_LEVEL,
   ARBEITSZEIT,
   BERUFE,

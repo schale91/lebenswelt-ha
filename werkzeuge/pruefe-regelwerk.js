@@ -94,6 +94,11 @@ for (const [id, m] of Object.entries(R.MITGLIEDSCHAFTEN)) {
   if (!(m.eintritt > 0)) f(`MITGLIEDSCHAFTEN.${id}: eintritt fehlt`)
 }
 if (!(R.FITNESS && R.FITNESS.start > 0 && R.FITNESS.max > R.FITNESS.start)) f("FITNESS: start und max prüfen")
+for (const [id, o] of Object.entries(R.ORGANISATIONEN)) {
+  if (!R.GEBAEUDE[o.gebaeude]) f(`ORGANISATIONEN.${id}: unbekanntes Gebäude`)
+  if (R.EXTERN[id] && !(R.EXTERN[id].anfahrt_min > 0 && R.EXTERN[id].max_sterne >= 1)) f(`EXTERN.${id}: anfahrt_min und max_sterne prüfen`)
+}
+for (const [id, P] of Object.entries(R.PERSONAL)) for (const l of P.lehrgaenge || []) if (!R.LEHRGAENGE[l]) f(`PERSONAL.${id}: unbekannter Lehrgang "${l}"`)
 for (const [k, v] of Object.entries(R.FREISCHALTUNG_LEVEL)) if (!(Number.isInteger(v) && v > 0)) f(`FREISCHALTUNG_LEVEL.${k}: ganze Zahl über 0 nötig`)
 for (const nb of R.NEUBAUGEBIETE) if (!(nb.bauzeit_h > 0)) f(`NEUBAUGEBIETE.${nb.id}: bauzeit_h fehlt`)
 if (!Array.isArray(R.SONNE) || R.SONNE.length !== 12) f("SONNE: zwölf Monate nötig")
@@ -129,13 +134,13 @@ for (const [id, g] of Object.entries(R.GERAETE)) {
   quelle(`GERAETE.${id}`, g.quelle)
   if (!(g.slots >= 0)) f(`GERAETE.${id}: slots fehlt`)
   if (!(g.preis > 0)) f(`GERAETE.${id}: preis muss positiv sein`)
-  if (!["feuerwehr", "polizei", "beide"].includes(g.org)) f(`GERAETE.${id}: org ungültig`)
+  if (!["beide"].concat(Object.keys(R.ORGANISATIONEN)).includes(g.org)) f(`GERAETE.${id}: org ungültig`)
 }
 
 // Fahrzeuge: Beladung bekannt, passt in die Slots, Fahrer ist ein Lehrgang
 for (const [id, fz] of Object.entries(R.FAHRZEUGE)) {
   quelle(`FAHRZEUGE.${id}`, fz.quelle)
-  if (!["feuerwehr", "polizei"].includes(fz.org)) f(`FAHRZEUGE.${id}: org ungültig`)
+  if (!R.ORGANISATIONEN[fz.org]) f(`FAHRZEUGE.${id}: org ungültig`)
   if (fz.fahrer !== null && !R.LEHRGAENGE[fz.fahrer]) f(`FAHRZEUGE.${id}: Fahrer-Lehrgang "${fz.fahrer}" unbekannt`)
   if (fz.fahrer && R.LEHRGAENGE[fz.fahrer] && R.LEHRGAENGE[fz.fahrer].org !== fz.org) f(`FAHRZEUGE.${id}: Fahrer-Lehrgang gehört zu einer anderen Organisation`)
   for (const v of fz.voraussetzung_fahrzeug || []) if (!R.FAHRZEUGE[v]) f(`FAHRZEUGE.${id}: unbekanntes Zugfahrzeug "${v}"`)
@@ -181,12 +186,12 @@ const arten = R.EINSATZARTEN
 for (const [id, e] of Object.entries(arten)) {
   const ort = `EINSATZARTEN.${id}`
   quelle(ort, e.quelle)
-  if (!["feuerwehr", "polizei"].includes(e.org)) f(`${ort}: org ungültig`)
+  if (!R.ORGANISATIONEN[e.org]) f(`${ort}: org ungültig`)
   if (!e.folge_nur) {
     if (!(e.preis > 0) && !e.baustelle) f(`${ort}: preis fehlt`)
     if (!(e.intervall_min > 0)) f(`${ort}: intervall_min fehlt`)
     if (!(e.orte && e.orte.length)) f(`${ort}: orte fehlen`)
-    if (!e.start && !e.start_polizei && !e.freischaltung && !e.baustelle) f(`${ort}: weder Start noch Freischaltung`)
+    if (!e.start && !e.start_polizei && !e.start_level && !e.freischaltung && !e.baustelle) f(`${ort}: weder Start noch Freischaltung`)
     if (e.baustelle && e.phasen) for (const ph of e.phasen) if (!R.BAU.phasen.concat(R.BAU.phasen_klein).some((x) => x.id === ph)) f(`${ort}: unbekannte Bauphase "${ph}"`)
   }
   for (const o of e.orte || []) if (!R.ORTE[o] && !(o === "baustelle" && e.baustelle)) f(`${ort}: unbekannter Ort "${o}"`)
@@ -232,7 +237,7 @@ for (const [id, r] of Object.entries(R.REGELN)) {
 // Freischaltbaum: kreisfrei, jede kaufbare Art ist von einem Start aus erreichbar
 const kaufbar = Object.keys(arten).filter((k) => !arten[k].folge_nur && !arten[k].baustelle)
 kreisfrei("Freischaltbaum", kaufbar, (k) => (arten[k].freischaltung ? [arten[k].freischaltung.nach] : []))
-const erreichbar = new Set(kaufbar.filter((k) => arten[k].start || arten[k].start_polizei))
+const erreichbar = new Set(kaufbar.filter((k) => arten[k].start || arten[k].start_polizei || arten[k].start_level))
 let neu = true
 while (neu) {
   neu = false
