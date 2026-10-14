@@ -22,6 +22,7 @@ const PREIS_MINIMUM = 10 // spielwert: nichts kostet weniger (außer Kostenlosem
 
 /** Quellen, auf die sich Einträge über `quelle` beziehen. Stand der Recherche: Oktober 2026. */
 const QUELLEN = {
+  nkatsg_mitwirkung: { titel: "MI Niedersachsen: Gliederung und Sollstärke der Einheiten im Sanitäts- und Betreuungsdienst", url: "https://www.mi.niedersachsen.de/startseite/themen/innere_sicherheit/brand_katastrophenschutz/katastrophenschutz/gliederung-und-sollstarke-der-einheiten-des-katastrophenschutzes-im-sanitats-und-betreuungsdienst-221740.html" },
   bedarfvo_rettd: { titel: "Verordnung über die Bemessung des Bedarfs an Einrichtungen des Rettungsdienstes (BedarfVO-RettD), Nds. GVBl. Nr. 18/2023", url: "https://www.niedersachsen.de/download/199212/Nds._GVBl._Nr._18_2023_vom_19.09.2023_S._201-215.pdf" },
   nrettdg_besetzung: { titel: "Landtag Niedersachsen Drs. 18/10734, Besetzung der Rettungsmittel nach § 10 NRettDG", url: "https://www.landtag-niedersachsen.de/Drucksachen/Drucksachen_18_12500/10501-11000/18-10734.pdf" },
   notsang: { titel: "§ 5 Notfallsanitätergesetz (Ausbildung)", url: "https://www.gesetze-im-internet.de/notsang/__5.html" },
@@ -309,6 +310,7 @@ const ORTE = {
   werkstatt_dorf: { name: "Kfz-Werkstatt", x: 20, z: 82, fest: true },
   bauhof: { name: "Bauhof", x: -62, z: 32, fest: true },
   rettungswache: { name: "Rettungswache", x: 56, z: 86, fest: true },
+  drk_unterkunft: { name: "DRK-Unterkunft", x: -52, z: 74, fest: true },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -404,6 +406,7 @@ const ORGANISATIONEN = {
   werkstatt: { name: "Werkstatt und Abschleppdienst", gebaeude: "werkstatt", ab_level: 12 },
   bauhof: { name: "Bauhof", gebaeude: "bauhof", ab_level: 12 },
   rettungsdienst: { name: "Rettungsdienst", gebaeude: "rettungswache", ab_level: 16, reaktion_s: 60 },
+  drk: { name: "DRK-Ortsverein", gebaeude: "drk_unterkunft", ab_level: 20, reaktion_s: 300 },
 }
 
 /**
@@ -414,6 +417,7 @@ const EXTERN = {
   werkstatt: { name: "Abschleppdienst aus der Stadt", anfahrt_min: 35, max_sterne: 3, ab_level: 12 }, // spielwert
   bauhof: { name: "Straßenmeisterei des Kreises", anfahrt_min: 60, max_sterne: 3, ab_level: 12 }, // spielwert
   rettungsdienst: { name: "RTW der Nachbarwache", anfahrt_min: 14, max_sterne: 3, ab_level: 16 }, // spielwert
+  drk: { name: "Schnelleinsatzgruppe aus dem Nachbarort", anfahrt_min: 30, max_sterne: 3, ab_level: 20 }, // spielwert
 }
 
 /**
@@ -451,6 +455,8 @@ const ARBEITGEBER = {
 const MITGLIEDSCHAFTEN = {
   feuerwehr: { name: "Freiwillige Feuerwehr", eintritt: 150, grundausbildung: "tm1", grundausbildung_h: 16, fuer_org: ["polizei", "rettungsdienst"], braucht_haus: true },
   sportverein: { name: "Sportverein", eintritt: 200, ab_level: 5 },
+  // Ehrenamt im DRK-Ortsverein, wie die Feuerwehr von zu Hause alarmiert (zweite Organisation neben der Hauptorganisation)
+  drk: { name: "DRK-Ortsverein", eintritt: 120, ab_level: 20, grundausbildung: "sanitaetshelfer", grundausbildung_h: 16, fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
 }
 
 /**
@@ -586,6 +592,11 @@ const LEHRGAENGE = {
   rs: { org: "rettungsdienst", name: "Rettungssanitäterin/Rettungssanitäter", dauer_h: 48, preis: 800, hinweis: "Bewohner und Eingestellte bringen ihn mit" },
   nfs: { org: "rettungsdienst", name: "Notfallsanitäterin/Notfallsanitäter", dauer_h: 240, preis: 4000, voraussetzung: ["rs"], gebaeude: { rettungswache: 4 }, quelle: "notsang", hinweis: "nur an der Lehrrettungswache" },
   desinfektor: { org: "rettungsdienst", name: "Desinfektorin/Desinfektor", dauer_h: 24, preis: 400, voraussetzung: ["rs"], hinweis: "halbiert die Wiederherstellung nach Infektionstransporten" },
+  // DRK (Spielwerte)
+  sanitaetshelfer: { org: "drk", name: "Sanitätshelferin/Sanitätshelfer", dauer_h: 16, preis: 0, hinweis: "Grundausbildung beim Eintritt" },
+  betreuungshelfer: { org: "drk", name: "Betreuungshelferin/Betreuungshelfer", dauer_h: 16, preis: 200, voraussetzung: ["sanitaetshelfer"] },
+  verpflegungshelfer: { org: "drk", name: "Verpflegungshelferin/Verpflegungshelfer (Feldkoch)", dauer_h: 16, preis: 200, voraussetzung: ["sanitaetshelfer"] },
+  drk_gruppenfuehrer: { org: "drk", name: "Gruppenführerin/Gruppenführer Sanitätsdienst", dauer_h: 40, preis: 600, voraussetzung: ["sanitaetshelfer"] },
   pk: { org: "polizei", name: "Bachelorstudium Polizeivollzugsdienst (Polizeiakademie Niedersachsen)", dauer_h: 0, preis: 0, quelle: "polizeiakademie", hinweis: "beim Einzug abgeschlossen" },
   einsatztraining: { org: "polizei", name: "Einsatztraining (jährlich)", dauer_h: 8, preis: 150, voraussetzung: ["pk"], verfaellt_tage: 365 },
   vu_aufnahme: { org: "polizei", name: "Verkehrsunfallaufnahme", dauer_h: 16, preis: 300, voraussetzung: ["pk"] },
@@ -640,6 +651,7 @@ const MERKMALE = {
   boot_fahrzeug: { name: "Boot", aus: { fahrzeug: ["mzb"] } },
   rtw_fahrzeug: { name: "Rettungswagen", aus: { fahrzeug: ["rtw"] } },
   ktw_fahrzeug: { name: "Krankentransportwagen", aus: { fahrzeug: ["ktw"] } },
+  feldkueche_fahrzeug: { name: "Feldküche", aus: { fahrzeug: ["feldkueche"] } },
   polizei_vor_ort: { name: "Polizei an der Einsatzstelle", aus: { lage: "polizei_eingetroffen" } },
 }
 
@@ -745,6 +757,10 @@ const GERAETE = {
   defi_monitor: { name: "Defibrillator mit EKG-Monitor", slots: 1, preis: 4500, org: "rettungsdienst", kategorie: "monitoring" },
   beatmung: { name: "Beatmungsgerät", slots: 1, preis: 3500, org: "rettungsdienst", kategorie: "monitoring" },
   thoraxkompression: { name: "Mechanische Thoraxkompressionshilfe", slots: 1, preis: 6000, org: "rettungsdienst", kategorie: "monitoring" },
+  // DRK: Betreuung und Verpflegung
+  betreuungsset: { name: "Betreuungsset (Decken, Feldbetten, Getränke)", slots: 2, preis: 400, org: "drk", kategorie: "betreuung" },
+  thermobehaelter: { name: "Thermobehälter für Verpflegung", slots: 0.5, preis: 120, org: "drk", kategorie: "betreuung" },
+  sanitaetszelt: { name: "Sanitätszelt", slots: 2, preis: 1200, org: "drk", kategorie: "betreuung" },
   // Werkstatt und Abschleppdienst
   starthilfe: { name: "Starthilfegerät", slots: 0.5, preis: 150, org: "werkstatt", kategorie: "pannenhilfe" },
   abschleppseil: { name: "Abschleppseil und Abschleppstange", slots: 0.5, preis: 60, org: "werkstatt", kategorie: "pannenhilfe" },
@@ -845,6 +861,11 @@ const FAHRZEUGE = {
   ktw: { org: "rettungsdienst", name: "Krankentransportwagen (KTW, Typ A2)", besatzung: [0, 2], slots: 5, preis: 7000, tempo_kmh: 60, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { tragestuhl: 1 } },
   rtw: { org: "rettungsdienst", name: "Rettungswagen (RTW, Typ C)", besatzung: [0, 2], slots: 9, preis: 14000, tempo_kmh: 65, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { notfallrucksack: 1, sauerstoff: 1 } },
   nef: { org: "rettungsdienst", name: "Notarzteinsatzfahrzeug (NEF)", besatzung: [0, 1], slots: 4, preis: 6500, tempo_kmh: 75, stellplatz: 1, fahrer: "rs", quelle: "din_75079", nef: true, grundbeladung: { defi_monitor: 1 }, hinweis: "bringt den Notarzt, wenn es einen Notarztvertrag gibt" },
+  // DRK-Ortsverein (Katastrophenschutz, ohne Logo und ohne Kreuz in der Darstellung)
+  hvo_pkw: { org: "drk", name: "PKW Helfer vor Ort", besatzung: [0, 2], slots: 3, preis: 4500, tempo_kmh: 70, stellplatz: 1, fahrer: "sanitaetshelfer", grundbeladung: { notfallrucksack: 1 } },
+  mtw_drk: { org: "drk", name: "Mannschaftstransportwagen (MTW)", besatzung: [1, 7], slots: 6, preis: 6000, tempo_kmh: 60, stellplatz: 1, fahrer: "sanitaetshelfer", grundbeladung: {} },
+  gw_san: { org: "drk", name: "Gerätewagen Sanitätsdienst", besatzung: [1, 3], slots: 12, preis: 14000, tempo_kmh: 55, stellplatz: 1, fahrer: "sanitaetshelfer", grundbeladung: { notfallrucksack: 2, sanitaetszelt: 1 } },
+  feldkueche: { org: "drk", name: "Feldküche (Anhänger)", besatzung: [0, 0], anhaenger: true, slots: 4, preis: 9000, tempo_kmh: 40, stellplatz: 1, fahrer: null, voraussetzung_fahrzeug: ["mtw_drk", "gw_san"], grundbeladung: { thermobehaelter: 2 } },
   hundestreife: { org: "polizei", name: "Diensthundstreife", besatzung: [0, 1], slots: 2, preis: 9000, tempo_kmh: 70, stellplatz: 1, fahrer: "diensthund", hund: true, grundbeladung: {} },
 }
 
@@ -928,6 +949,13 @@ const GEBAEUDE = {
     { name: "Rettungswache", bauzeit_h: 72, stellplaetze: 3, preis: 35000, lager_slots: 22, personal_max: 8, ab_level: 16 },
     { name: "Rettungswache mit Lehrrettungswache", bauzeit_h: 96, stellplaetze: 4, preis: 60000, lager_slots: 30, personal_max: 10, ab_level: 27, hinweis: "Ausbildung zur Notfallsanitäterin und zum Notfallsanitäter im Dorf" },
   ],
+  // DRK-Unterkunft (Abschnitt 6). Stufe 0: Gruppenraum im Gemeindehaus (an der Bibliothek), ab Level 20 sofort da.
+  drk_unterkunft: [
+    { name: "Gruppenraum im Gemeindehaus", bauzeit_h: 0, stellplaetze: 1, preis: 0, lager_slots: 6, ort: "bibliothek" },
+    { name: "Unterkunft mit Garage", bauzeit_h: 24, stellplaetze: 2, preis: 6000, lager_slots: 12, ab_level: 20 },
+    { name: "Unterkunft mit Fahrzeughalle und Lager", bauzeit_h: 48, stellplaetze: 4, preis: 18000, lager_slots: 24, ab_level: 20 },
+    { name: "Katastrophenschutzzentrum", bauzeit_h: 96, stellplaetze: 6, preis: 45000, lager_slots: 40, ab_level: 24, hinweis: "später auch für die Wasserrettung" },
+  ],
   // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
   // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
   sportplatz: [
@@ -945,7 +973,7 @@ const GEBAEUDE = {
 }
 
 /** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
-const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache" }
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -978,6 +1006,7 @@ const AUSBAU = {
   aed_schule: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator an der Schule", preis: 1500, effekt: { aed_ort: "schule" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
   aed_sportplatz: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator am Sportplatz", preis: 1500, effekt: { aed_ort: "sportplatz" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
   landestelle: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Landestelle am Sportplatz", preis: 4000, effekt: { rth_min: -3 }, bauzeit_h: 12, ab_stufe: 0, quelle: "luftvg25", hinweis: "der Rettungshubschrauber landet näher" },
+  hvo_parallel: { gebaeude: "ort", bereich: "drk", ab_level: 20, name: "Paralleler Alarm Helfer vor Ort", preis: 2500, effekt: { hvo_parallel: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 0, hinweis: "die Leitstelle alarmiert den Helfer vor Ort gleichzeitig mit dem RTW" },
 }
 
 /**
@@ -1179,7 +1208,7 @@ const EINSATZARTEN = {
     optimal: { personen: 22, einheit: "zug", qualifikation: { gf: 1 }, geraete: [[{ waermebildkamera: 1 }], [{ dlak_fahrzeug: 1 }, { schiebleiter: 1 }], [{ luefter: 1 }], [{ rauchvorhang: 1 }], [{ sprungpolster: 1 }], [{ hrt: 4 }], [{ rettungstuch: 1 }]] },
     psa: { helm: 2, jacke: 2, handschuhe: 1, haube: 1, stiefel: 1 },
     regeln: ["einheitsfuehrer", "atemschutz_ueberwachung", "sicherheitstrupp", "maschinist_pumpe", "zweiter_rettungsweg"],
-    folge: ["p_absperrung", "rd_versorgung"],
+    folge: ["p_absperrung", "rd_versorgung", "drk_betreuung"],
     text: "Aus dem Obergeschoss dringt Rauch, eine Person ist am Fenster zu sehen.",
     verfallen_text: "Die Nachbarfeuerwehren haben übernommen. Die Wohnung ist ausgebrannt.",
   },
@@ -1214,7 +1243,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 20, qualifikation: { zf: 1 }, geraete: [[{ sandsack: 10 }], [{ beleuchtung: 2 }]] },
     optimal: { personen: 40, geraete: [[{ sandsack: 20 }], [{ elw_fahrzeug: 1 }], [{ stromerzeuger: 2 }], [{ drohne: 1 }]] },
     regeln: ["einheitsfuehrer", "eigenschutz_wasser"],
-    folge: ["p_absperrung"],
+    folge: ["p_absperrung", "drk_verpflegung"],
     text: "Der Pegel steigt, am Deichfuß tritt Wasser aus (Qualmwasser). Eine Sandsackauflast muss her.",
     verfallen_text: "Das Technische Hilfswerk hat übernommen, der Deich hielt knapp.",
   },
@@ -1554,6 +1583,57 @@ const EINSATZARTEN = {
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }], [{ vakuummatratze: 1 }, { spineboard: 1 }]] },
     text: "Eine schwer verletzte oder lebensbedrohlich erkrankte Person braucht Rettungsdienst und Notarzt.",
   },
+  // ---------- DRK-Ortsverein (ab Level 20, Konzept DORFDIENSTE.md Abschnitt 6) ----------
+  drk_hvo: {
+    org: "drk", name: "Helfer vor Ort: Person kollabiert", stichwort: "HvO", preis: 300, start_level: 20, quelle: "nkatsg_mitwirkung",
+    orte: ["marktplatz", "bibliothek", "schule", "hauptstrasse_ost"], intervall_min: 1440, ablauf_min: 20, arbeit_min: 15, ziel_eintreffen_min: 6,
+    mindestens: { personen: 1, geraete: [[{ notfallrucksack: 1 }]] },
+    optimal: { personen: 2, qualifikation: { sanitaetshelfer: 1 }, geraete: [[{ aed: 1 }]] },
+    folge: ["rd_versorgung"],
+    text: "Ein Nachbar ist im Garten kollabiert. Der Helfer vor Ort ist in wenigen Minuten da, der RTW kommt dazu.",
+    verfallen_text: "Niemand vom Ortsverein war erreichbar.",
+  },
+  drk_sanwache: {
+    org: "drk", name: "Sanitätswachdienst beim Dorffest", stichwort: "SanWD", preis: 500, harmlos: true,
+    freischaltung: { nach: "drk_hvo", sterne: 3 },
+    orte: ["festplatz"], intervall_min: 90, ablauf_min: 120, arbeit_min: 240, ziel_eintreffen_min: 60, wache: true,
+    bedingung: { wochentage: [6], stunden: [13], monate: [5, 6, 7, 8, 9], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2, qualifikation: { sanitaetshelfer: 2 }, geraete: [[{ notfallrucksack: 1 }]] },
+    optimal: { personen: 4, geraete: [[{ sanitaetszelt: 1 }], [{ aed: 1 }]] },
+    text: "Samstag ist Dorffest. Der Sanitätsdienst steht bereit, bis der letzte Gast nach Hause geht.",
+    verfallen_text: "Das Fest lief ohne Sanitätsdienst.",
+  },
+  drk_sanwache_sport: {
+    org: "drk", name: "Sanitätswachdienst beim Sportfest", stichwort: "SanWD", preis: 700, harmlos: true,
+    freischaltung: { nach: "drk_sanwache", sterne: 3 }, braucht_gebaeude: { sportplatz: 6 },
+    orte: ["sportplatz"], intervall_min: 90, ablauf_min: 120, arbeit_min: 180, ziel_eintreffen_min: 60, wache: true,
+    bedingung: { wochentage: [6], stunden: [10], monate: [4, 5, 6, 7, 8, 9, 10], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2, qualifikation: { sanitaetshelfer: 2 }, geraete: [[{ notfallrucksack: 1 }]] },
+    optimal: { personen: 3, geraete: [[{ sanitaetszelt: 1 }], [{ aed: 1 }]] },
+    text: "Sportfest am Sportplatz: Der Sanitätsdienst ist vor Ort, falls sich jemand verletzt.",
+    verfallen_text: "Das Sportfest lief ohne Sanitätsdienst.",
+  },
+  drk_hvo_parallel: {
+    org: "drk", name: "Helfer vor Ort bis zum RTW", stichwort: "HvO", folge_nur: true, dauer_wie_ausloeser: true,
+    ablauf_min: 15, arbeit_min: 0, ziel_eintreffen_min: 6,
+    mindestens: { personen: 1, geraete: [[{ notfallrucksack: 1 }]] },
+    optimal: { personen: 2, qualifikation: { sanitaetshelfer: 1 }, geraete: [[{ aed: 1 }]] },
+    text: "Der Helfer vor Ort überbrückt die Zeit bis zum Rettungswagen.",
+  },
+  drk_betreuung: {
+    org: "drk", name: "Betreuung der Betroffenen", stichwort: "Betreuung", folge_nur: true,
+    ablauf_min: 60, arbeit_min: 90, ziel_eintreffen_min: 30,
+    mindestens: { personen: 2, geraete: [[{ betreuungsset: 1 }]] },
+    optimal: { personen: 3, qualifikation: { betreuungshelfer: 1 }, geraete: [[{ thermobehaelter: 1 }]] },
+    text: "Die Bewohner stehen auf der Straße. Sie brauchen Decken, etwas Warmes und jemanden, der sich kümmert.",
+  },
+  drk_verpflegung: {
+    org: "drk", name: "Verpflegung der Einsatzkräfte", stichwort: "Verpflegung", folge_nur: true, dauer_wie_ausloeser: true,
+    ablauf_min: 120, arbeit_min: 0, ziel_eintreffen_min: 60,
+    mindestens: { personen: 2, qualifikation: { verpflegungshelfer: 1 }, geraete: [[{ feldkueche_fahrzeug: 1 }, { thermobehaelter: 4 }]] },
+    optimal: { personen: 3, geraete: [[{ feldkueche_fahrzeug: 1 }]] },
+    text: "Lange Einsätze zehren an den Kräften. Die Feldküche versorgt alle mit Essen und Getränken.",
+  },
   // ---------- Feuerwehr, Polizei und Rettungsdienst (ab Level 16, Konzept DORFDIENSTE.md 13.6) ----------
   th_vu_mehrere: {
     org: "feuerwehr", name: "Verkehrsunfall mit mehreren Verletzten", stichwort: "TH VU 2", preis: 2500, ab_level: 16,
@@ -1666,7 +1746,7 @@ const EINSATZARTEN = {
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ luefter: 1 }], [{ hrt: 2 }]] },
     psa: { jacke: 2 },
     regeln: ["einheitsfuehrer", "atemschutz_ueberwachung", "sicherheitstrupp"],
-    folge: ["p_raeumung"], gemeinsam: { ziel_min: 8 },
+    folge: ["p_raeumung", "drk_betreuung"], gemeinsam: { ziel_min: 8 },
     text: "In der Straße riecht es überall nach Gas. Die Nachbarhäuser müssen geräumt werden.",
     verfallen_text: "Der Netzbetreiber hat die Leitung abgesperrt, die Bewohner standen lange auf der Straße.",
   },
@@ -1690,7 +1770,7 @@ const EINSATZARTEN = {
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ verteiler: 1 }], [{ b_schlauch: 2 }], [{ waermebildkamera: 1 }]] },
     psa: { helm: 1, jacke: 2, handschuhe: 1 },
     regeln: ["einheitsfuehrer", "maschinist_pumpe"],
-    folge: ["p_brandermittlung"], gemeinsam: { ziel_min: 15 },
+    folge: ["p_brandermittlung", "drk_betreuung"], gemeinsam: { ziel_min: 15 },
     text: "Aus einem leerstehenden Haus schlagen Flammen. Ob jemand drin war, weiß niemand.",
     verfallen_text: "Die Nachbarwehren haben gelöscht, vom Haus blieb nur die Hülle.",
   },
@@ -1890,6 +1970,8 @@ const STERNE = {
  * oder aus der Stadt. Patient: Minuten bis zur Versorgung je Dringlichkeit [stabil bis, verzögert bis].
  */
 const RETTUNG = {
+  verpflegung_ab_min: 180, // spielwert: danach arbeiten die Kräfte mit Verpflegung durch das DRK schneller
+  verpflegung_faktor: 0.85,
   hilfsfrist_min: 8,
   erreichungsgrad_ziel: 0.95,
   notarzt_ziel_min: 15,

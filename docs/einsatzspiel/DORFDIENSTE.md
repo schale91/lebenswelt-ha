@@ -843,7 +843,9 @@ Offen ist derzeit nichts.
 
 **Umgesetzt: D5 Rettungsdienst** (Add-on 0.11.0). Nachbarwache, Rettungswache in vier Stufen, KTW, RTW, NEF, Patienten mit Dringlichkeit und Transport, Notarzt über NEF, Hubschrauber oder Stadt, Erreichungsgrad der Hilfsfrist, Landestelle, Leitstelle mit Notrufabfrage und Telefonreanimation, öffentliche Defibrillatoren, Rettungsdienst-Teil in bestehenden Einsätzen und fünf gemeinsame Einsätze aus 13.6. Abnahme laut Abschnitt 20 in `test/rettungsdienst.test.js`: Reanimation mit und ohne Defibrillator, zweiter Notfall bekommt die Nachbarwache, vor Level 16 unverändert. Vereinfacht gegenüber dem Konzept: Der Rettungshubschrauber fliegt nur tagsüber und kommt ohne eigenen Kauf; Praxisanleiter, Ruheraum und Waschhalle fehlen noch; „Tragehilfe“ und „Schlägerei beim Schützenfest“ sind nicht umgesetzt; der Rettungsdienst-Teil ist ein Folgeeinsatz mit eigenen Sternen, eine eigene Bewertung der Übergabe (Zusammenarbeit) gibt es dafür noch nicht.
 
-**Als Nächstes:** D6 DRK (Level 20).
+**Umgesetzt: D6 DRK** (Add-on 0.13.0). Mitgliedschaft für Bewohner, Unterkunft in vier Stufen, Helfer vor Ort, Sanitätswachdienst bei Dorffest und Sportfest, Betreuung nach Brand und Räumung, Verpflegung bei langen Einsätzen, paralleler Alarm des Helfers vor Ort über die Leitstelle. Abnahme „Verpflegung verhindert Leistungsabfall“ in `test/drk.test.js`; umgesetzt als schnellere Arbeit nach drei Stunden mit Verpflegung, damit niemand beim Erreichen von Level 20 schlechter dasteht als vorher. Nicht umgesetzt: KTW im Katastrophenschutz, Betreuungs-LKW, Behandlungsplatz (kommt mit den Großlagen in D9), Abzug bei der Feuerwehr ohne Betreuung.
+
+**Als Nächstes:** D7 DLRG (Level 24).
 
 ---
 

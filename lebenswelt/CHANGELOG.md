@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.13.0
+
+- Einsatzspiel, DRK-Ortsverein (ab Level 20, `ORGANISATIONEN.drk`): Ehrenamtliche aus dem Dorf treten über `kaufen` mit `art: "mitgliedschaft"`, `id: "drk"` ein (zweite Organisation neben Feuerwehr, Polizei oder Rettungsdienst, Grundausbildung Sanitätsdienst) und werden wie die Feuerwehr von zu Hause alarmiert. Unterkunft in vier Stufen (Stufe 0 als Gruppenraum im Gemeindehaus an der Bibliothek, Stufe 3 als Katastrophenschutzzentrum ab Level 24), Fahrzeuge PKW Helfer vor Ort, MTW, Gerätewagen Sanitätsdienst und Feldküche (Anhänger), Lehrgänge Betreuung, Verpflegung und Gruppenführung. Ohne Mitglieder kommt die Schnelleinsatzgruppe aus dem Nachbarort.
+- Einsätze: Helfer vor Ort (mit Rettungsdienst-Teil), Sanitätswachdienst beim Dorffest (samstags im Sommer) und beim Sportfest (ab Sportplatz Stufe 6), Betreuung nach Wohnungsbrand, Räumung und Brand im Leerstand, Verpflegung beim Deicheinsatz.
+- Erste Hilfe für Patienten: vom DRK wie von der Feuerwehr, sofort während eines Sanitätswachdienstes am selben Ort (`wache`), und mit dem Kauf „Paralleler Alarm Helfer vor Ort“ fährt der Helfer vor Ort bei jedem Notfall gleichzeitig mit dem RTW los.
+- Lange Einsätze: Mit Verpflegung durch das DRK (Feldküche und Feldkoch frei) geht die Arbeit nach drei Stunden schneller (`RETTUNG.verpflegung_ab_min`).
+- Anhänger brauchen ihr eigenes Zugfahrzeug (vorher galt die Liste des Tragkraftspritzenanhängers für alle).
+
 ## 0.12.0
 
 - Benachrichtigungen ohne Firebase: Neue Option `ha_benachrichtigung` (notify-Dienst der Home-Assistant-App, z. B. `mobile_app_alex_handy`). Wünsche zur Freigabe, Spaziergänge mit Nilo und fällige Wiedervorlagen beim LKA gehen dann zusätzlich als Benachrichtigung der Home-Assistant-App an die Person mit voller Lebenswelt. Einsätze und Garmin bleiben in der eigenen App. Logik in `pb_hooks/benachrichtigung.js`.
