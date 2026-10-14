@@ -70,10 +70,11 @@ function erlaubt(e) {
   return quelle(e) !== null
 }
 
-/** Die einzige bekannte Person, falls es genau eine gibt (Einzelbetrieb). */
+/** Die einzige bekannte Person mit voller Lebenswelt, falls es genau eine gibt (Einzelbetrieb). */
 function einzigePerson(app) {
   try {
-    const liste = app.findRecordsByFilter("spielstaende", "benutzer != ''", "", 2, 0)
+    // Personen mit Fitness-Welt (Papa) zählen nicht mit: Claude arbeitet für die volle Lebenswelt
+    const liste = app.findRecordsByFilter("spielstaende", "benutzer != '' && profil != 'fitness'", "", 2, 0)
     if (liste.length === 1) return { id: liste[0].getString("benutzer"), name: liste[0].getString("name") }
   } catch (_) {
     // noch keine Personen
@@ -102,6 +103,11 @@ function benutzer(e) {
     if (einzig) return { id: einzig.id, name: "", anzeige: einzig.name, art: art }
   }
   return null
+}
+
+/** "fitness" für Personen in der Option fitness_personen (Fitness-Welt), sonst "voll". */
+function profilVon(ich) {
+  return require(`${__hooks}/familie.js`).istFitness(ich, optionen().fitness_personen || []) ? "fitness" : "voll"
 }
 
 function spielstandVon(app, id) {
@@ -154,4 +160,4 @@ function spielDokument(typ) {
 }
 const NUR_LESEN = { fehler: "Dokumente des Einsatzspiels sind nur lesbar. Kaufen und Ändern geht über /api/lebenswelt/einsatz/." }
 
-module.exports = { optionen, erlaubt, benutzer, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }
+module.exports = { optionen, erlaubt, benutzer, profilVon, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }

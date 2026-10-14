@@ -71,6 +71,16 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
       ergebnis.push(h.alsDokument(r))
     }
   })
+  // Neue Wünsche zur Freigabe (Samstags-Routine): Push an die Person, die freigeben soll
+  const offen = require(`${__hooks}/familie.js`).offeneFreigaben(ergebnis)
+  if (offen) {
+    require(`${__hooks}/push.js`).sende(e.app, ich.id, {
+      titel: "Wünsche zur Freigabe",
+      text: offen === 1 ? "Ein Wunsch aus der Fitness-Welt wartet auf dich (Store)." : `${offen} Wünsche aus der Fitness-Welt warten auf dich (Store).`,
+      kanal: "allgemein",
+      id: "freigabe",
+    })
+  }
   return e.json(200, { dokumente: ergebnis })
 })
 
@@ -154,12 +164,18 @@ routerAdd("GET", "/api/lebenswelt/app-paket", (e) => {
 })
 routerAdd("POST", "/api/lebenswelt/app-paket", (e) => {
   const h = require(`${__hooks}/hilfen.js`)
-  if (!h.benutzer(e)) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  // Fitness-Welt (Papa) spielt keine Updates ein, das bleibt bei der vollen Lebenswelt
+  if (h.profilVon(ich) === "fitness") return e.json(403, { fehler: "Updates spielt nur die volle Lebenswelt ein." })
   return e.json(200, require(`${__hooks}/app_paket.js`).pruefe())
 })
 routerAdd("POST", "/api/lebenswelt/app-paket/installieren", (e) => {
   const h = require(`${__hooks}/hilfen.js`)
-  if (!h.benutzer(e)) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
+  // Fitness-Welt (Papa) spielt keine Updates ein, das bleibt bei der vollen Lebenswelt
+  if (h.profilVon(ich) === "fitness") return e.json(403, { fehler: "Updates spielt nur die volle Lebenswelt ein." })
   const z = require(`${__hooks}/app_paket.js`).installiere()
   return e.json(z.fehler ? 500 : 200, z)
 })

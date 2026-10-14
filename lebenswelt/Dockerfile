@@ -4,8 +4,9 @@ ARG BUILD_ARCH
 ARG PB_VERSION=0.40.4
 
 # PocketBase aus dem offiziellen Release, geprüft gegen die veröffentlichte Prüfsumme.
-# openssl signiert die Anmeldung bei Firebase (Push-Nachrichten an die Android-App)
-RUN apk add --no-cache ca-certificates openssl \
+# openssl signiert die Anmeldung bei Firebase (Push-Nachrichten an die Android-App),
+# python3 mit websockets empfängt den Schiffsverkehr (AIS, ais/ais.py)
+RUN apk add --no-cache ca-certificates openssl python3 py3-websockets \
     && apk add --no-cache --virtual .laden unzip wget \
     && case "${BUILD_ARCH}" in \
         amd64) PB_ARCH=amd64; PB_SHA=9042ec818570e79c3628dadcd0a756c1496d9e1173918ec409d133c02f82e5fa ;; \
@@ -20,6 +21,8 @@ RUN apk add --no-cache ca-certificates openssl \
 
 COPY pb_hooks /pb_hooks
 COPY pb_migrations /pb_migrations
+COPY ais /ais
+COPY start.sh /start.sh
 
 # /data ist der dauerhafte Speicher der App und steckt in jedem Home-Assistant-Backup.
-CMD ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/data/pb_data", "--hooksDir=/pb_hooks", "--migrationsDir=/pb_migrations"]
+CMD ["/start.sh"]

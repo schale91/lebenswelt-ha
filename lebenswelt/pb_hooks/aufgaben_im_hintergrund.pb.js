@@ -3,6 +3,7 @@
 // - Garmin: alle 15 Minuten die letzten Aktivitäten aus Home Assistant übernehmen (ohne GPS-Koordinaten).
 // - Sonntags: erledigte Vorgänge anonymisieren (Titel = Vorgangsnummer, Nächster Schritt und Warten auf leeren).
 // - Morgens: an Vorgänge beim LKA erinnern, deren Wiedervorlage heute fällig ist (Push ohne dienstliche Inhalte).
+// - Fitness-Welt: um 19 Uhr Ortszeit erinnern, wenn heute noch keine Bewegung eingetragen ist.
 
 cronAdd("garmin", "*/15 * * * *", () => {
   try {
@@ -55,5 +56,29 @@ onBootstrap((e) => {
     require(`${__hooks}/app_paket.js`).pruefe()
   } catch (_) {
     // beim Start nicht kritisch
+  }
+})
+
+// Fitness-Welt: stündlich nachsehen, um 19 Uhr Ortszeit (MEZ/MESZ) einmal erinnern, wer heute noch nichts eingetragen hat
+cronAdd("bewegung_erinnern", "5 * * * *", () => {
+  try {
+    const S = require(`${__hooks}/einsatz/simulation.js`)
+    const jetzt = Date.now()
+    if (S.ortszeit(jetzt).stunde !== 19) return
+    const heute = S._intern.tagVon(jetzt)
+    const f = require(`${__hooks}/familie.js`)
+    const p = require(`${__hooks}/push.js`)
+    for (const r of $app.findRecordsByFilter("spielstaende", "profil = 'fitness'", "", 0, 0)) {
+      let daten = null
+      try {
+        daten = JSON.parse(toString(r.get("daten")) || "null")
+      } catch (_) {
+        continue
+      }
+      if (!f.braucheErinnerung(daten, heute)) continue
+      p.sende($app, r.getString("benutzer"), { titel: "Heute schon bewegt?", text: "Noch nichts eingetragen. Schon ein kurzer Spaziergang am Deich zählt.", kanal: "allgemein", id: "erinnerung-" + heute })
+    }
+  } catch (err) {
+    console.log("Erinnerung fehlgeschlagen", err)
   }
 })
