@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.5.2
+
+- Einsätze ohne freie Kräfte verfallen nicht mehr sofort: Sie bleiben offen (`wartet: true`, mit Grund), werden zu jeder vollen Minute und direkt nach jedem Kauf neu alarmiert und verfallen erst, wenn ihre Frist abläuft. Wer spät alarmiert wird, kommt entsprechend später an (das kostet wie bisher Sterne).
+
 ## 0.5.1
 
 - Schutzzonen im Einsatzspiel: Einsatzarten mit `harmlos: true` (Katze auf Baum, Ruhestörung, Falschparker, Baulärm) dürfen überall stattfinden, alle anderen (Brände, Verletzte, Wasser) nie in einer Schutzzone. Auch Folgeeinsätze und Baustellen-Einsätze halten sich daran. Die Zonen kommen nur aus der privaten Karte (Feld `schutz`), im Regelwerk ist die Liste leer.

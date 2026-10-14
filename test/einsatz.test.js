@@ -381,3 +381,28 @@ test("Schutzzonen: dort nur harmlose Einsätze, dramatische weichen auf andere O
   // ohne Zonen (öffentliches Regelwerk) ist alles erlaubt
   assert.equal(S._intern.ortErlaubt(R, s, R.EINSATZARTEN.b_hecke, "hecke_werkstatt"), true)
 })
+
+test("Ohne Kräfte wartet ein Einsatz und wird alarmiert, sobald jemand da ist; sonst verfällt er nach der Frist", () => {
+  // Mit längerer Frist, damit die erste Kraft zu Fuß rechtzeitig ankommt
+  const RL = JSON.parse(JSON.stringify(R))
+  RL.EINSATZARTEN.tier_katze.ablauf_min = 60
+  let s = S.neuerStand(RL, T0, 41)
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const r = S.sofort(s, "tier_katze", T0 + MIN, trocken, RL)
+  const e = r.einsatz
+  assert.equal(e.status, "gemeldet")
+  assert.ok(e.wartet)
+  // Nach einer Minute: Kraft und Leiter sind da (schnell gekauft)
+  let k = S.kaufe(r.stand, { art: "bauplatz", id: "bp01" }, T0 + 2 * MIN, RL).stand
+  for (const b of k.baustellen.slice()) S._intern.fertigstellen(RL, k, b, T0 + 2 * MIN)
+  s = S.kaufe(k, { art: "geraet", id: "klappleiter" }, T0 + 2 * MIN, RL).stand
+  const weiter = S.fortschreiben(s, T0 + 4 * MIN, trocken, RL)
+  const jetzt = weiter.laufend.find((x) => x.id === e.id) || weiter.abgeschlossen.find((x) => x.id === e.id)
+  assert.ok(!jetzt.wartet)
+  assert.notEqual(jetzt.status, "verfallen")
+  // Ohne Kauf: verfällt nach der Frist mit Grund
+  const ohne = S.fortschreiben(r.stand, T0 + 90 * MIN, trocken, RL)
+  const v = ohne.abgeschlossen.find((x) => x.id === e.id)
+  assert.equal(v.status, "verfallen")
+  assert.equal(v.grund, "Keine Einsatzkraft verfügbar.")
+})

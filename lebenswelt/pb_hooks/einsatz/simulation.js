@@ -857,7 +857,12 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     folgen_erzeugt: false,
   }
   const ergebnis = plane(R, s, e, t, umwelt)
-  if (ergebnis.grund || ergebnis.plan.eintreffen > e.verfall) {
+  if (ergebnis.grund && !ergebnis.plan) {
+    // Niemand frei oder Gerät fehlt: Der Einsatz bleibt offen und wartet. Jede volle Minute und nach jedem Kauf wird
+    // neu alarmiert; erst wenn die Frist abläuft, verfällt er.
+    e.wartet = true
+    e.grund = ergebnis.grund
+  } else if (ergebnis.grund || ergebnis.plan.eintreffen > e.verfall) {
     e.status = "verfallen"
     e.grund = ergebnis.grund || "Zu spät: Eintreffen nach " + komma((ergebnis.plan.eintreffen - t) / MIN) + " Minuten, verfallen nach " + art.ablauf_min + "."
     if (ergebnis.plan) {
@@ -883,6 +888,29 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   }
   s.laufend.push(e)
   return e
+}
+
+/** Wartende Einsätze erneut alarmieren (wenn inzwischen jemand frei ist oder etwas gekauft wurde). */
+function versucheWartende(R, s, t, umwelt) {
+  for (const e of s.laufend) {
+    if (!e.wartet || t >= e.verfall) continue
+    const ergebnis = plane(R, s, e, t, umwelt)
+    if (ergebnis.grund || !ergebnis.plan) {
+      if (ergebnis.grund) e.grund = ergebnis.grund
+      continue
+    }
+    if (ergebnis.plan.eintreffen > e.verfall) {
+      e.grund = "Zu spät: Eintreffen erst nach " + komma((ergebnis.plan.eintreffen - e.meldung) / MIN) + " Minuten, verfallen nach " + R.EINSATZARTEN[e.art].ablauf_min + "."
+      continue
+    }
+    e.wartet = false
+    delete e.grund
+    e.alarm_spaeter_s = Math.round((t - e.meldung) / 1000)
+    e.plan = ergebnis.plan
+    e.status = "alarmiert"
+    belege(R, s, e, e.plan.einsatzbereit)
+    e.ende = e.plan.arbeit_ende
+  }
 }
 
 function belege(R, s, e, bis) {
@@ -1037,20 +1065,26 @@ function aufraeumen(s, t) {
 }
 
 /** Nächstes Ereignis bis `bis`: {t, typ, id}. Reihenfolge bei Gleichstand: Ende, Eintreffen, Meldung; dann nach ID. */
-function naechstesEreignis(s, bis) {
+function naechstesEreignis(s, bis, vorher) {
   let best = null
   const nimm = (t, typ, rang, id) => {
     if (t > bis) return
     if (!best || t < best.t || (t === best.t && (rang < best.rang || (rang === best.rang && id < best.id)))) best = { t, typ, rang, id }
   }
+  let wartet = false
   for (const e of s.laufend) {
-    if (e.status === "verfallen") nimm(e.ende, "ende", 0, e.id)
+    if (e.wartet) {
+      wartet = true
+      nimm(e.verfall, "verfall", 0, e.id)
+    } else if (e.status === "verfallen") nimm(e.ende, "ende", 0, e.id)
     else if (!e.folgen_erzeugt) nimm(e.plan.eintreffen, "eintreffen", 1, e.id)
     else nimm(e.ende, "ende", 0, e.id)
   }
   for (const [id, a] of Object.entries(s.einsatzarten)) nimm(a.naechster, "meldung", 2, id)
   for (const b of s.baustellen || []) nimm(b.ende, "bau", 3, b.id)
   for (const [tag, d] of Object.entries(s.tage || {})) if (!d.abgerechnet) nimm(tagesende(tag), "tag", 4, tag)
+  // Solange ein Einsatz wartet: zu jeder vollen Minute neu alarmieren (festes Raster, damit Teilrechnungen gleich bleiben)
+  if (wartet) nimm(Math.floor(vorher / MIN) * MIN + MIN, "warten", 5, "")
   return best
 }
 
@@ -1064,9 +1098,11 @@ function fortschreiben(stand, bis, umwelt, R) {
   if (bis <= s.bis) return s
   const wetter = umwelt || ((t) => wetterBei(null, t))
   let schutz = 0
+  let vorher = s.bis
   for (;;) {
-    const ev = naechstesEreignis(s, bis)
+    const ev = naechstesEreignis(s, bis, vorher)
     if (!ev) break
+    vorher = ev.t
     if (++schutz > 200000) throw new Error("Simulation: zu viele Ereignisse")
     aufraeumen(s, ev.t)
     if (ev.typ === "meldung") {
@@ -1079,6 +1115,14 @@ function fortschreiben(stand, bis, umwelt, R) {
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
       if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
+    } else if (ev.typ === "warten") {
+      versucheWartende(R, s, ev.t, wetter)
+    } else if (ev.typ === "verfall") {
+      const e = s.laufend.find((x) => x.id === ev.id)
+      e.wartet = false
+      e.status = "verfallen"
+      e.grund = e.grund || "Keine Einsatzkraft verfügbar."
+      e.ende = e.verfall
     } else if (ev.typ === "tag") {
       tagesabschluss(R, s, ev.id)
     } else if (ev.typ === "bau") {
@@ -1256,6 +1300,8 @@ function kaufe(stand, auftrag, jetzt, R) {
     s.personal.push(neuePerson(s, "polizei", null, jetzt))
   } else return fehler("Unbekannte Kaufart.")
 
+  // Vielleicht kann ein wartender Einsatz jetzt alarmiert werden
+  versucheWartende(R, s, jetzt, (t) => wetterBei(null, t))
   return { stand: s, preis: preis(R, roh) }
 }
 
