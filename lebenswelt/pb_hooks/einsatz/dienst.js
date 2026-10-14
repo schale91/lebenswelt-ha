@@ -119,6 +119,19 @@ function karteGueltig(k) {
   return true
 }
 
+/** Level der Person aus den Skill-XP im gespeicherten Spielstand (wie levelAusXp in der App). */
+function levelVon(app, besitzer) {
+  try {
+    const h = require(`${__hooks}/hilfen.js`)
+    const r = h.spielstandVon(app, besitzer)
+    const daten = r ? JSON.parse(toString(r.get("daten")) || "null") : null
+    const xp = daten && daten.state && daten.state.skillXp ? Object.values(daten.state.skillXp).reduce((n, x) => n + (Number(x) || 0), 0) : 0
+    return S.levelAusXp(xp)
+  } catch (_) {
+    return 0
+  }
+}
+
 /** Stand laden, bis jetzt fortschreiben, Abgeschlossenes ins Protokoll verschieben, speichern. */
 function aktuell(app, besitzer, jetzt) {
   const R = regelwerkFuer(app, besitzer)
@@ -130,6 +143,8 @@ function aktuell(app, besitzer, jetzt) {
     schreibe(app, besitzer, WELT, "defekt_" + jetzt, { roh: stand })
     stand = S.neuerStand(R, jetzt)
   }
+  // Level der Lebenswelt aus dem Spielstand (nur steigend, XP gehen nie verloren); schaltet Dienste frei
+  stand.level = Math.max(stand.level || 0, levelVon(app, besitzer))
   const verlauf = wetterVerlauf(app, besitzer)
   const bekannt = new Set(stand.laufend.map((e) => e.id))
   stand = S.fortschreiben(stand, jetzt, (t) => S.wetterBei(verlauf, t), R)

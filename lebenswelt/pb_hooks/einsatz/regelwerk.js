@@ -14,7 +14,7 @@
 //   [[{steckleiter_teil: 2}, {klappleiter: 1}], [{handschuhe_tier: 1}]]
 //   = (2 Steckleiterteile ODER 1 Klappleiter) UND 1 Paar Tierschutzhandschuhe
 
-const VERSION = 1
+const VERSION = 2
 
 // Entscheidung 13.10.2026: ein normaler Tag bringt etwa 30 Münzen; mit 0,05 kostet alles zusammen rund 60 000 (etwa fünf Jahre)
 const PREISFAKTOR = 0.05 // spielwert
@@ -298,6 +298,7 @@ const ORTE = {
   scheune: { name: "Scheune am Ortsrand", x: 62, z: -28 },
   schule: { name: "Grundschule", x: -40, z: 40 },
   festplatz: { name: "Festplatz", x: 40, z: 74 },
+  sportplatz: { name: "Sportplatz", x: 70, z: 84, fest: true },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -365,6 +366,74 @@ const HAUS_AUSBAU = {
   auto: { name: "Auto", tempo_ms: 11, extra_s: 35, preis: 1500 },
   einliegerwohnung: { name: "Einliegerwohnung (eine weitere Einsatzkraft zieht ein)", bewohner: 1, preis: 2500, bauzeit_h: 6 },
   // extra_s beim Auto: einsteigen und am Gerätehaus parken. Der Parkplatz im Gebäudeausbau senkt das.
+}
+
+/**
+ * Freischaltung nach dem Level der Lebenswelt (XP aus dem Alltag, gleiche Kurve wie in der App: der Schritt von Level n
+ * auf n + 1 kostet round(100 · (n + 1)^1,4) XP, Start bei Level 0). Vor seinem Level gibt es einen Dienst nicht, auch
+ * keine gemeinsamen Einsätze mit ihm. Konzept: docs/einsatzspiel/DORFDIENSTE.md, Abschnitt 14.3.
+ */
+const FREISCHALTUNG_LEVEL = {
+  sportverein: 5,
+  zusammenarbeit: 8,
+  werkstatt: 12,
+  bauhof: 12,
+  rettungsdienst: 16,
+  drk: 20,
+  dlrg: 24,
+  thw: 27,
+  alle: 30,
+}
+
+/**
+ * Berufe der Bewohner. Wer auswärts arbeitet, fehlt der Feuerwehr in der Arbeitszeit (Tagesalarmsicherheit). Wer im Dorf
+ * arbeitet, kommt in der Arbeitszeit vom Arbeitsplatz aus und braucht einen Moment, um die Arbeit zu unterbrechen
+ * (Freistellung nach § 12 NBrandSchG). Beim Schichtdienst an der Dienststelle wird während der Schicht nicht für die
+ * Feuerwehr alarmiert. "frei" haben nur Einsatzkräfte, die vor Einführung der Berufe eingezogen sind (wie bisher).
+ */
+const ARBEITSZEIT = { tage: [1, 2, 3, 4, 5], von: 7, bis: 17 } // spielwert, Ortszeit
+const BERUFE = {
+  frei: { name: "wie bisher, immer verfügbar", nur_bestand: true },
+  dorf: { name: "arbeitet im Dorf", extra_s: 60, arbeitgeber: true }, // spielwert: Arbeit unterbrechen
+  auswaerts: { name: "pendelt zur Arbeit", abwesend: true },
+  schicht: { name: "Schichtdienst an der Dienststelle", org: "polizei", schichtplan: ["frueh", "spaet", "nacht", "frei", "frei"] },
+}
+/** Schichten in Ortszeit (Stunden); die Nachtschicht geht bis 6 Uhr am Folgetag. */
+const SCHICHTEN = { frueh: [6, 14], spaet: [14, 22], nacht: [22, 30] }
+
+/** Arbeitsplätze im Dorf. Später kommen Werkstatt, Bauhof, Rettungswache und andere dazu. */
+const ARBEITGEBER = {
+  markt: { name: "Markt", ort: "marktplatz", stellen: 2 },
+  schule: { name: "Grundschule", ort: "schule", stellen: 2 },
+  hof: { name: "Hof am Ortsrand", ort: "scheune", stellen: 1 },
+  bibliothek: { name: "Bibliothek", ort: "bibliothek", stellen: 1 },
+  platzwart: { name: "Platzwart am Sportplatz", ort: "sportplatz", stellen: 1, gebaeude: "sportplatz", ab_stufe: 5 },
+}
+
+/**
+ * Mitgliedschaften zusätzlich zur Hauptorganisation. Polizistinnen und Polizisten, die im Dorf wohnen, können in die
+ * Freiwillige Feuerwehr eintreten; außerhalb ihrer Schicht rücken sie dann mit aus. Der Sportverein hebt die Fitness.
+ */
+const MITGLIEDSCHAFTEN = {
+  feuerwehr: { name: "Freiwillige Feuerwehr", eintritt: 150, grundausbildung: "tm1", grundausbildung_h: 16, fuer_org: ["polizei"], braucht_haus: true },
+  sportverein: { name: "Sportverein", eintritt: 200, ab_level: 5 },
+}
+
+/**
+ * Fitness 0 bis 100, Start 50 (dann wirkt sie neutral). Training im Sportverein hebt sie, ohne Training sinkt sie sehr
+ * langsam, aber nie unter den Startwert. Wirkung (spielwert): Tempo zu Fuß und mit dem Rad 1 + tempo · (f - 50) / 100,
+ * Arbeitszeit vor Ort 1 + arbeit · (f - 50) / 100. Training dienstags und donnerstags um 19 Uhr Ortszeit.
+ */
+const FITNESS = {
+  start: 50,
+  max: 100,
+  tempo: 0.3,
+  arbeit: -0.2,
+  training: { tage: [2, 4], stunde: 19 },
+  joggen: 0.3, // Gewinn je Training ohne Sportplatz oder im Winter ohne Flutlicht
+  trimm: 0.2, // Bewohner ohne Verein am Trimm-dich-Pfad
+  abbau: 0.1, // je Trainingstermin ohne Training, bis zum Startwert
+  winter_monate: [11, 12, 1, 2],
 }
 
 /**
@@ -713,6 +782,15 @@ const BAU = {
     { id: "einbau", name: "Einbau", anteil: 0.6, fahrzeuge: ["transporter"] },
     { id: "abnahme", name: "Abnahme", anteil: 0.1, fahrzeuge: [] },
   ],
+  // Rasenplatz: nach dem Säen muss der Rasen anwachsen, bevor die Linien kommen
+  phasen_rasen: [
+    { id: "erdarbeiten", name: "Bodenaustausch", anteil: 0.2, fahrzeuge: ["bagger", "kipper"], laut: true },
+    { id: "drainage", name: "Drainage", anteil: 0.15, fahrzeuge: ["bagger"], laut: true },
+    { id: "einsaat", name: "Einsaat", anteil: 0.1, fahrzeuge: ["traktor"] },
+    { id: "anwachsen", name: "Rasen wächst an", anteil: 0.45, fahrzeuge: [] },
+    { id: "linierung", name: "Linierung", anteil: 0.05, fahrzeuge: ["linierwagen"] },
+    { id: "abnahme", name: "Abnahme", anteil: 0.05, fahrzeuge: [] },
+  ],
   // Behelfsbetrieb, solange am Gerätehaus bzw. an der Dienststelle gebaut wird (Container-Umkleide, enge Zufahrt)
   behelf: { umziehen_s: 30, ausruecken_s: 20, reaktion_s: 20 },
   // Baustellenampel und Baufahrzeuge auf der Straße in lauten Phasen: wer in der Nähe vorbei muss, verliert Zeit
@@ -740,7 +818,24 @@ const GEBAEUDE = {
     { name: "Polizeistation", bauzeit_h: 24, stellplaetze: 2, preis: 8000, lager_slots: 12, personal_max: 4 },
     { name: "Polizeikommissariat", bauzeit_h: 72, stellplaetze: 5, preis: 40000, lager_slots: 30, personal_max: 12, rund_um_die_uhr: true },
   ],
+  // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
+  // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
+  sportplatz: [
+    { name: "kein Sportplatz", bauzeit_h: 0, preis: 0 },
+    { name: "Brachfläche", bauzeit_h: 1, preis: 2000, ab_level: 5 },
+    { name: "Bolzwiese mit zwei Toren", bauzeit_h: 4, preis: 1500, ab_level: 5, fitness: 0.5 },
+    { name: "Trimm-dich-Pfad", bauzeit_h: 8, preis: 3000, ab_level: 5, fitness: 0.5, trimm: true },
+    { name: "Rasenplatz mit Drainage", bauzeit_h: 48, bauzeit_winter_h: 120, phasen: "rasen", preis: 12000, ab_level: 5, fitness: 0.8, trimm: true, hinweis: "Rasen wächst im Winter langsamer an" },
+    { name: "Vereinsheim mit Umkleiden und Duschen", bauzeit_h: 48, preis: 15000, ab_level: 12, fitness: 0.8, trimm: true },
+    { name: "Flutlicht", bauzeit_h: 12, preis: 8000, ab_level: 12, fitness: 0.8, trimm: true, licht: true },
+    { name: "400-m-Laufbahn mit Tribüne und Kiosk", bauzeit_h: 72, preis: 30000, ab_level: 20, fitness: 1, trimm: true, licht: true },
+    { name: "Übungsbahn der Feuerwehr und Kraftraum", bauzeit_h: 36, preis: 20000, ab_level: 24, fitness: 1, trimm: true, licht: true },
+    { name: "Sporthalle mit Lehrschwimmbecken", bauzeit_h: 120, preis: 60000, ab_level: 27, fitness: 1, trimm: true, licht: true },
+  ],
 }
+
+/** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -1339,6 +1434,13 @@ module.exports = {
   WETTER,
   ALARMIERUNG,
   HAUS_AUSBAU,
+  FREISCHALTUNG_LEVEL,
+  ARBEITSZEIT,
+  BERUFE,
+  SCHICHTEN,
+  ARBEITGEBER,
+  MITGLIEDSCHAFTEN,
+  FITNESS,
   PSA_FEUERWEHR,
   PSA_POLIZEI,
   PSA_NAMEN,
@@ -1352,6 +1454,7 @@ module.exports = {
   FAHRZEUGE,
   BAU,
   GEBAEUDE,
+  GEBAEUDE_ORT,
   AUSBAU,
   EINSATZARTEN,
   REGELN,
