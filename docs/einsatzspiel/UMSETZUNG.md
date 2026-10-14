@@ -291,3 +291,22 @@ E2 bis E7 sind im Frontend (Repository `Claude`, Ordner `app/`) umgesetzt. Am Se
     | Handy | 393 | 241 |
 
   - Die Bildrate selbst lässt sich in der Testumgebung nicht messen, weil sie ohne Grafikkarte rechnet. Auf dem echten Gerät zeigt `?fps=1` die Bildrate an. Mit `?verschmelzen=0` lässt sich das Verschmelzen zum Vergleich abschalten.
+
+## 15. Nachttest im Vollausbau (14.10.2026, Add-on 0.20.0)
+
+Getestet mit einem voll ausgebauten Dorf (Level 30, 44 Feuerwehrleute, 42 Fahrzeuge voll beladen, alle Dienste) bei Nacht mit 19 gleichzeitigen Einsätzen und am Werktag. Die Darstellung wurde im Browser im Zeitraffer geprüft, jedes Bild auf Zusammenstöße zwischen Fahrzeugen und Menschen.
+
+Server (dieses Repository):
+
+- Rechenzeit je Spieltag von 9,5 s auf unter 1 s (Wege zwischengespeichert, Geräteprüfung vor der Fahrzeugsuche).
+- Auswahl nach frühester Fertigzeit statt nach erster passender Besetzung.
+- Nachbarfeuerwehr übernimmt ernste Einsätze, wenn 30 Minuten niemand frei ist.
+- Heimweg der Kräfte nach dem Einsatz, neuer Alarm auf dem Heimweg.
+
+App (Repository `Claude`, Ordner `app/`):
+
+- Zusammenstöße im Zeitraffer von 21 auf 0. Ursachen: Durchgangsverkehr fuhr durch Einsatzstellen (jetzt Sperrung, warten, wenden), Einsatzfahrzeuge prüften nur einen Punkt voraus statt der ganzen Strecke eines Bildes, Register vergaßen Menschen bei wenigen Bildern je Sekunde, Kräfte stiegen nach Plan aus, obwohl ihr Fahrzeug noch unterwegs war, Einsatzstellen sprangen, wenn ein früherer Einsatz am selben Ort endete.
+- Einsatzfahrzeuge weichen über die Gegenspur aus, Kräfte und Zuschauer machen Platz, an vollen Einsatzstellen parkt das Fahrzeug am Rand. Der Rettungswagen fährt mit dem Patienten von seinem Parkplatz los.
+- Heimweg der Kräfte vom Gerätehaus nach Hause sichtbar, gestaffelt (zu Fuß zuerst, Autos zuletzt).
+- Für Abwechslung: Schaulustige mit Handy, ab und zu rutscht jemand auf der Ölspur aus, eine Entenfamilie überquert gelegentlich die Hauptstraße und der Verkehr wartet.
+
