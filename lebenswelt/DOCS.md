@@ -101,7 +101,7 @@ Routen: `GET /api/lebenswelt/push` (eingerichtet, Zahl der Geräte), `POST /api/
 | GET | `/api/lebenswelt/einsatz/regelwerk` | Regelwerk des Einsatzspiels |
 | GET | `/api/lebenswelt/einsatz/stand` | bis jetzt fortgeschriebener Stand mit laufenden Einsätzen und Wetter |
 | GET | `/api/lebenswelt/einsatz/protokoll?seit=…` | abgeschlossene Einsätze mit Sternen und Abzügen |
-| POST | `/api/lebenswelt/einsatz/kaufen` | `{art, id, ziel?, anzahl?, stufe?}`; bucht Münzen im Spielstand ab |
+| POST | `/api/lebenswelt/einsatz/kaufen` | `{art, id, ziel?, anzahl?, stufe?, org?, bewohner?}`; bucht Münzen im Spielstand ab. `art` auch `mitgliedschaft` (Feuerwehr für Polizei im Dorf, Sportverein); `bewohner: {org, beruf, arbeitgeber}` beim Bauplatz |
 | POST | `/api/lebenswelt/einsatz/einraeumen` | `{fahrzeug, geraet, anzahl, richtung: "ein"\|"aus"}` |
 | POST | `/api/lebenswelt/einsatz/personal` | `{ziel, name?, anrede?}` |
 

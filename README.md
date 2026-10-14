@@ -16,7 +16,7 @@ Personen in der Option `fitness_personen` bekommen dieselbe App als Fitness-Welt
 
 ## Einsatzspiel
 
-Feuerwehr und Polizei als Teil der Hauptkarte, im Hintergrund simuliert. Konzept, Umsetzungsplan und Bestandsaufnahme stehen in [`docs/einsatzspiel/`](docs/einsatzspiel/), die Spielwerte in [`lebenswelt/pb_hooks/einsatz/regelwerk.js`](lebenswelt/pb_hooks/einsatz/regelwerk.js), die Simulation in [`lebenswelt/pb_hooks/einsatz/simulation.js`](lebenswelt/pb_hooks/einsatz/simulation.js).
+Feuerwehr und Polizei als Teil der Hauptkarte, im Hintergrund simuliert. Konzept, Umsetzungsplan und Bestandsaufnahme stehen in [`docs/einsatzspiel/`](docs/einsatzspiel/), die Spielwerte in [`lebenswelt/pb_hooks/einsatz/regelwerk.js`](lebenswelt/pb_hooks/einsatz/regelwerk.js), die Simulation in [`lebenswelt/pb_hooks/einsatz/simulation.js`](lebenswelt/pb_hooks/einsatz/simulation.js). Die geplante Erweiterung um weitere Dienste und den Sportplatz: [`docs/einsatzspiel/DORFDIENSTE.md`](docs/einsatzspiel/DORFDIENSTE.md).
 
 Prüfen:
 

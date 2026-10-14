@@ -84,6 +84,23 @@ function komma(n) {
   return n.toFixed(1).replace(".", ",")
 }
 
+/** Level der Lebenswelt aus allen XP, wie levelAusXp in der App (Start bei 0, Schritt n auf n + 1 kostet round(100 · (n + 1)^1,4)). */
+function levelAusXp(xp) {
+  let level = 0
+  let rest = Math.max(0, Number(xp) || 0)
+  for (;;) {
+    const schritt = Math.round(100 * Math.pow(level + 1, 1.4))
+    if (rest < schritt) return level
+    rest -= schritt
+    level++
+  }
+}
+
+/** Ist etwas mit diesem Level schon freigeschaltet? */
+function levelReicht(s, ab) {
+  return !ab || (s.level || 0) >= ab
+}
+
 function preis(R, roh) {
   if (!roh) return 0
   return Math.max(R.PREIS_MINIMUM || 10, Math.round(roh * R.PREISFAKTOR))
@@ -203,7 +220,8 @@ function wetterBei(verlauf, ms) {
 /** Neuer, leerer Stand. "Katze auf Baum" ist von Anfang an gekauft (Entscheidung vom 13.10.2026). */
 function neuerStand(R, jetzt, saat) {
   const s = {
-    version: 1,
+    version: 2,
+    level: 0,
     bis: jetzt,
     zufall: saat === undefined ? jetzt % 100000 : saat,
     einsatzarten: {},
@@ -213,7 +231,7 @@ function neuerStand(R, jetzt, saat) {
     fahrzeuge: [],
     lager: { feuerwehr: {}, polizei: {} },
     pflege: [],
-    gebaeude: { geraetehaus: 0, dienststelle: 0 },
+    gebaeude: { geraetehaus: 0, dienststelle: 0, sportplatz: 0 },
     ausbau: [],
     neubaugebiete: [],
     laufend: [],
@@ -248,6 +266,93 @@ function hatLehrgang(p, id, t) {
 
 function verfuegbar(p, t) {
   return frei(p, t) && !(p.lehrgang_laeuft && p.lehrgang_laeuft.bis > t)
+}
+
+/** Gehört die Person zu dieser Organisation (Hauptorganisation oder zusätzliche Mitgliedschaft)? */
+function istMitglied(p, org) {
+  return p.org === org || (p.mitglied || []).indexOf(org) >= 0
+}
+
+/** Werktags in der Arbeitszeit (Ortszeit)? */
+function inArbeitszeit(R, t) {
+  const z = ortszeit(t)
+  const a = R.ARBEITSZEIT || { tage: [], von: 0, bis: 0 }
+  return a.tage.indexOf(z.wochentag) >= 0 && z.stunde >= a.von && z.stunde < a.bis
+}
+
+/** Hat die Person gerade Schicht? Der Schichtplan wiederholt sich, versetzt je Person. */
+function inSchicht(R, p, t) {
+  const b = R.BERUFE[p.beruf]
+  if (!b || !b.schichtplan) return false
+  const plan = b.schichtplan
+  const versatz = (parseInt(String(p.id).replace(/\D/g, ""), 10) || 0) % plan.length
+  const tag = Math.floor((t + ortsversatz(t)) / (24 * STD))
+  const h = ortszeit(t).stunde
+  const heute = R.SCHICHTEN[plan[(tag + versatz) % plan.length]]
+  const gestern = R.SCHICHTEN[plan[(tag + versatz + plan.length - 1) % plan.length]]
+  if (heute && h >= heute[0] && h < Math.min(24, heute[1])) return true
+  return Boolean(gestern && gestern[1] > 24 && h < gestern[1] - 24)
+}
+
+/**
+ * Kann die Person zum Zeitpunkt t für diese Organisation ausrücken? Die Polizei an der Dienststelle ist immer besetzt
+ * (wie bisher). Für die Feuerwehr zählen Beruf und Schicht: Pendler fehlen in der Arbeitszeit, wer Schicht hat, auch.
+ */
+function einsatzbereitFuer(R, p, org, t) {
+  if (!verfuegbar(p, t) || !istMitglied(p, org)) return false
+  if (org === "polizei" && p.org === "polizei") return true
+  const b = R.BERUFE[p.beruf] || {}
+  if (b.abwesend && inArbeitszeit(R, t)) return false
+  if (b.schichtplan && b.org !== org && inSchicht(R, p, t)) return false
+  return true
+}
+
+/** Fitness der Person (Start 50, ohne Angabe ebenfalls 50). */
+function fitnessVon(R, p) {
+  return typeof p.fitness === "number" ? p.fitness : (R.FITNESS ? R.FITNESS.start : 50)
+}
+
+/** Tempo zu Fuß und mit dem Rad: 1 bei Startfitness. */
+function fitnessTempo(R, p) {
+  return R.FITNESS ? 1 + (R.FITNESS.tempo * (fitnessVon(R, p) - R.FITNESS.start)) / 100 : 1
+}
+
+/** Faktor auf die Arbeitszeit vor Ort: 1 bei Startfitness, unter 1 schneller. */
+function fitnessArbeit(R, p) {
+  return R.FITNESS ? 1 + (R.FITNESS.arbeit * (fitnessVon(R, p) - R.FITNESS.start)) / 100 : 1
+}
+
+/** Nächster Trainingstermin nach t (Ortszeit, Tage und Stunde aus FITNESS.training). */
+function naechstesTraining(R, t) {
+  const tr = R.FITNESS.training
+  let tag = tagVon(t)
+  for (let i = 0; i < 9; i++) {
+    const beginn = tagesende(tag) - 24 * STD
+    const termin = beginn + tr.stunde * STD
+    if (termin > t && tr.tage.indexOf(ortszeit(termin).wochentag) >= 0) return termin
+    tag = tagVon(tagesende(tag) + STD)
+  }
+  return t + 7 * 24 * STD
+}
+
+/** Trainingsabend: Mitglieder im Sportverein trainieren, am Trimm-dich-Pfad auch alle anderen; sonst baut Fitness ab. */
+function training(R, s, t) {
+  const F = R.FITNESS
+  const stufe = R.GEBAEUDE.sportplatz[s.gebaeude.sportplatz || 0] || {}
+  const winter = F.winter_monate.indexOf(ortszeit(t).monat) >= 0 && !stufe.licht
+  const runde = (x) => Math.round(x * 10) / 10
+  for (const p of s.personal) {
+    const f = fitnessVon(R, p)
+    let gewinn = 0
+    if (verfuegbar(p, t)) {
+      if (p.sportverein) gewinn = winter || !stufe.fitness ? F.joggen : stufe.fitness
+      else if (stufe.trimm && !winter) gewinn = F.trimm
+    }
+    if (gewinn) p.fitness = runde(Math.min(F.max, f + gewinn))
+    else if (f > F.start) p.fitness = runde(Math.max(F.start, f - F.abbau))
+  }
+  s.training_letztes = t
+  s.training_naechster = naechstesTraining(R, t)
 }
 
 /** Gerät in Pflege an einem Ort (Fahrzeug-ID oder "lager:<org>"). */
@@ -422,9 +527,17 @@ function bauFelder(s) {
   if (!s.baustellen) s.baustellen = []
   if (!s.bauchronik) s.bauchronik = []
   if (!s.tage) s.tage = {}
+  // Version 2: Bewohner mit Beruf, Level, Sportplatz. Wer schon da war, bleibt "wie bisher" verfügbar.
+  if (!s.version || s.version < 2) {
+    for (const p of s.personal || []) if (!p.beruf) p.beruf = "frei"
+    s.version = 2
+  }
+  if (s.level === undefined) s.level = 0
+  if (s.gebaeude && s.gebaeude.sportplatz === undefined) s.gebaeude.sportplatz = 0
 }
 
 function bauPhasen(R, b) {
+  if (b.phasen && R.BAU["phasen_" + b.phasen]) return R.BAU["phasen_" + b.phasen]
   return b.klein ? R.BAU.phasen_klein : R.BAU.phasen
 }
 
@@ -493,14 +606,16 @@ function fertigstellen(R, s, b, t) {
     const h = s.haeuser.find((x) => x.id === b.ziel)
     if (h) {
       h.im_bau = false
-      s.personal.push(neuePerson(s, "feuerwehr", h.id, t))
+      const bw = b.bewohner || { org: "feuerwehr", beruf: "frei" }
+      s.personal.push(neuePerson(s, bw.org, h.id, t, bw))
     }
   } else if (b.art === "haus_ausbau") {
     const h = s.haeuser.find((x) => x.id === b.ziel)
     const a = R.HAUS_AUSBAU[b.ausbau]
     if (h && a) {
       if (h.ausbau.indexOf(b.ausbau) < 0) h.ausbau.push(b.ausbau)
-      for (let i = 0; i < (a.bewohner || 0); i++) s.personal.push(neuePerson(s, "feuerwehr", h.id, t))
+      const bw = b.bewohner || { org: "feuerwehr", beruf: "frei" }
+      for (let i = 0; i < (a.bewohner || 0); i++) s.personal.push(neuePerson(s, bw.org, h.id, t, bw))
     }
   } else if (b.art === "neubaugebiet") {
     if (s.neubaugebiete.indexOf(b.ziel) < 0) s.neubaugebiete.push(b.ziel)
@@ -520,8 +635,8 @@ function wetterVerzug(R, b, wetter) {
 // ---------- Ausrüstung und Licht ----------
 
 /** Wirkung der persönlichen Ausrüstung einer Person: Werte der jeweils gekauften Stufe, fehlende Werte neutral. */
-function psaEffekt(R, p) {
-  const tabelle = p.org === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR
+function psaEffekt(R, p, org) {
+  const tabelle = (org || p.org) === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR
   const e = { tempo: 1, stolpern: 0, arbeit: 1, arbeit_th: 1, nacht: 0, umziehen_s: 0, reaktion_s: 0 }
   for (const [teil, stufen] of Object.entries(tabelle || {})) {
     const st = stufen[Math.min(stufen.length - 1, (p.psa && p.psa[teil]) || 0)]
@@ -534,12 +649,15 @@ function psaEffekt(R, p) {
     if (w.umziehen_s !== undefined) e.umziehen_s += w.umziehen_s
     if (w.reaktion_s !== undefined) e.reaktion_s += w.reaktion_s
   }
+  // Fitness: schneller zu Fuß und bei der Arbeit (bei Startfitness neutral)
+  e.tempo *= fitnessTempo(R, p)
+  e.arbeit *= fitnessArbeit(R, p)
   return e
 }
 
 /** Ausrüstung eines Trupps: der Langsamste und Unsicherste bestimmen den Weg, die Arbeit im Mittel. */
-function truppEffekt(R, leute) {
-  const alle = leute.map((p) => psaEffekt(R, p))
+function truppEffekt(R, leute, org) {
+  const alle = leute.map((p) => psaEffekt(R, p, org))
   const mittel = (k) => alle.reduce((n, x) => n + x[k], 0) / Math.max(1, alle.length)
   return {
     tempo: Math.min.apply(null, alle.map((x) => x.tempo).concat([1])),
@@ -573,7 +691,11 @@ function licht(R, bestand, leute, trupp) {
 
 function feuerwehrBereit(R, s, p, alarm, wetter) {
   const haus = s.haeuser.find((h) => h.id === p.haus)
-  const start = haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
+  const beruf = R.BERUFE[p.beruf] || {}
+  const ag = beruf.arbeitgeber && R.ARBEITGEBER[p.arbeitgeber]
+  // In der Arbeitszeit kommt, wer im Dorf arbeitet, vom Arbeitsplatz und muss erst die Arbeit unterbrechen
+  const vonArbeit = Boolean(ag && R.ORTE[ag.ort] && inArbeitszeit(R, alarm))
+  const start = vonArbeit ? R.ORTE[ag.ort] : haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
   const al = R.ALARMIERUNG[(haus && haus.alarmierung) || "sirene"]
   const reaktion = Math.max(5, al.reaktion_s + ausbauEffekt(R, s, "reaktion_s"))
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
@@ -585,11 +707,13 @@ function feuerwehrBereit(R, s, p, alarm, wetter) {
     let extra = a.extra_s || 0
     if (art === "auto") extra += ausbauEffekt(R, s, "auto_extra_s")
     if (art === "fahrrad" || art === "ebike") extra += ausbauEffekt(R, s, "fahrrad_extra_s")
-    beste = Math.min(beste, m / (a.tempo_ms * wf) + Math.max(0, extra))
+    if (vonArbeit) extra += beruf.extra_s || 0
+    const ft = art === "auto" ? 1 : fitnessTempo(R, p)
+    beste = Math.min(beste, m / (a.tempo_ms * wf * ft) + Math.max(0, extra))
   }
   const stufe = R.GEBAEUDE.geraetehaus[s.gebaeude.geraetehaus]
   const behelf = behelfAktiv(R, s, "geraetehaus", alarm) ? R.BAU.behelf.umziehen_s : 0
-  const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s") + psaEffekt(R, p).umziehen_s + behelf)
+  const umziehen = Math.max(10, stufe.umziehen_s + ausbauEffekt(R, s, "umziehen_s") + psaEffekt(R, p, "feuerwehr").umziehen_s + behelf)
   return alarm + Math.round((reaktion + beste + umziehen) * 1000)
 }
 
@@ -646,12 +770,12 @@ function plane(R, s, e, alarm, umwelt) {
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
   const ort = punktVon(R, s, e.ort)
   const basis = org === "polizei" ? R.ORTE.dienststelle : R.ORTE.feuerwehrhaus
-  const personen = s.personal.filter((p) => p.org === org && verfuegbar(p, alarm))
+  const personen = s.personal.filter((p) => einsatzbereitFuer(R, p, org, alarm))
   if (!personen.length) return { grund: org === "polizei" ? "Keine Beamtin und kein Beamter verfügbar." : "Keine Einsatzkraft verfügbar." }
 
   // Bereitschaftszeit je Person
   const bereit = personen
-    .map((p) => ({ p, t: org === "polizei" ? alarm + (POLIZEI_REAKTION_S + psaEffekt(R, p).reaktion_s + (behelfAktiv(R, s, "dienststelle", alarm) ? R.BAU.behelf.reaktion_s : 0)) * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
+    .map((p) => ({ p, t: org === "polizei" ? alarm + (POLIZEI_REAKTION_S + psaEffekt(R, p, "polizei").reaktion_s + (behelfAktiv(R, s, "dienststelle", alarm) ? R.BAU.behelf.reaktion_s : 0)) * 1000 : feuerwehrBereit(R, s, p, alarm, wetter) }))
     .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : 1))
 
   const fahrzeuge = s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org && frei(f, alarm))
@@ -727,7 +851,7 @@ function plane(R, s, e, alarm, umwelt) {
       weg = strassenweg(R, basis, ort)
     }
     // Zu Fuß bestimmen Stiefel, Wetter und Licht das Tempo
-    const te = truppEffekt(R, leute)
+    const te = truppEffekt(R, leute, org)
     let fussFaktor = 1
     if (zuFuss) {
       fussFaktor = (1 / te.tempo) * (1 + te.stolpern * ((R.ZEITEN.stolpern_wetter || {})[wetter] || 1))
@@ -1030,7 +1154,7 @@ function folgen(R, s, e, umwelt) {
     const fa = R.EINSATZARTEN[id]
     if (!fa) continue
     // Nur, wenn die andere Organisation überhaupt jemanden hat (sonst entsteht der Folgeeinsatz nicht)
-    if (!s.personal.some((p) => p.org === fa.org)) continue
+    if (!s.personal.some((p) => istMitglied(p, fa.org))) continue
     // Kein dramatischer Folgeeinsatz in einer Schutzzone
     if (!ortErlaubt(R, s, fa, e.ort)) continue
     erzeuge(R, s, id, t, umwelt, e)
@@ -1171,6 +1295,7 @@ function naechstesEreignis(s, bis, vorher) {
   for (const [id, a] of Object.entries(s.einsatzarten)) nimm(a.naechster, "meldung", 2, id)
   for (const b of s.baustellen || []) nimm(b.ende, "bau", 3, b.id)
   for (const [tag, d] of Object.entries(s.tage || {})) if (!d.abgerechnet) nimm(tagesende(tag), "tag", 4, tag)
+  if (s.training_naechster) nimm(s.training_naechster, "training", 6, "")
   // Solange ein Einsatz wartet: zu jeder vollen Minute neu alarmieren (festes Raster, damit Teilrechnungen gleich bleiben)
   if (wartet) nimm(Math.floor(vorher / MIN) * MIN + MIN, "warten", 5, "")
   return best
@@ -1185,6 +1310,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   bauFelder(s)
   if (bis <= s.bis) return s
   const wetter = umwelt || ((t) => wetterBei(null, t))
+  if (!s.training_naechster && R.FITNESS) s.training_naechster = naechstesTraining(R, s.bis)
   let schutz = 0
   let vorher = s.bis
   for (;;) {
@@ -1213,6 +1339,8 @@ function fortschreiben(stand, bis, umwelt, R) {
       e.ende = e.verfall
     } else if (ev.typ === "tag") {
       tagesabschluss(R, s, ev.id)
+    } else if (ev.typ === "training") {
+      training(R, s, ev.t)
     } else if (ev.typ === "bau") {
       const b = s.baustellen.find((x) => x.id === ev.id)
       if (!b.wetter_geprueft) {
@@ -1250,20 +1378,62 @@ function stellplaetzeBelegt(R, s, org) {
   return s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org).reduce((n, f) => n + R.FAHRZEUGE[f.typ].stellplatz, 0)
 }
 
-function neuePerson(s, org, haus, jetzt) {
+function neuePerson(s, org, haus, jetzt, bewohner) {
   s.zaehler += 1
-  return {
+  const bw = bewohner || {}
+  const p = {
     id: "p" + s.zaehler,
     org,
     name: "",
     anrede: "",
     haus,
+    beruf: bw.beruf || (org === "polizei" ? "schicht" : "frei"),
     lehrgaenge: org === "feuerwehr" ? { tm1: jetzt } : { pk: jetzt },
     lehrgang_laeuft: null,
     psa: {},
+    fitness: 50,
     einsaetze: 0,
     belegt_bis: 0,
   }
+  if (bw.arbeitgeber) p.arbeitgeber = bw.arbeitgeber
+  return p
+}
+
+/** Freie Stellen bei einem Arbeitgeber im Dorf (Bewohner in Häusern, die noch gebaut werden, zählen mit). */
+function freieStellen(R, s, id) {
+  const ag = R.ARBEITGEBER[id]
+  if (!ag) return 0
+  if (ag.gebaeude && (s.gebaeude[ag.gebaeude] || 0) < (ag.ab_stufe || 0)) return 0
+  const besetzt = s.personal.filter((p) => p.arbeitgeber === id).length + (s.baustellen || []).filter((b) => b.bewohner && b.bewohner.arbeitgeber === id).length
+  return Math.max(0, ag.stellen - besetzt)
+}
+
+/** Polizei mit Wohnsitz oder Versetzung, auch in Häusern im Bau. */
+function polizeiZahl(s) {
+  return s.personal.filter((p) => p.org === "polizei").length + (s.baustellen || []).filter((b) => b.bewohner && b.bewohner.org === "polizei").length
+}
+
+/**
+ * Wer einzieht: {org, beruf, arbeitgeber}. Feuerwehr: im Dorf (mit freier Stelle) oder pendelt; Polizei: Schichtdienst an
+ * der Dienststelle, zählt zu deren Personal. Ohne Angabe (ältere App) wie bisher: Feuerwehr, immer verfügbar.
+ * Gibt {bewohner} oder {fehler} zurück.
+ */
+function pruefeBewohner(R, s, roh) {
+  if (!roh) return { bewohner: { org: "feuerwehr", beruf: "frei" } }
+  const org = roh.org === "polizei" ? "polizei" : "feuerwehr"
+  if (org === "polizei") {
+    const max = R.GEBAEUDE.dienststelle[s.gebaeude.dienststelle].personal_max
+    if (polizeiZahl(s) >= max) return { fehler: "Die Dienststelle ist voll besetzt. Erst ausbauen." }
+    return { bewohner: { org, beruf: "schicht" } }
+  }
+  const beruf = roh.beruf
+  if (beruf === "auswaerts") return { bewohner: { org, beruf } }
+  if (beruf === "dorf") {
+    if (!R.ARBEITGEBER[roh.arbeitgeber]) return { fehler: "Unbekannter Arbeitgeber." }
+    if (!freieStellen(R, s, roh.arbeitgeber)) return { fehler: "Bei " + R.ARBEITGEBER[roh.arbeitgeber].name + " ist keine Stelle frei." }
+    return { bewohner: { org, beruf, arbeitgeber: roh.arbeitgeber } }
+  }
+  return { fehler: "Bitte einen Beruf wählen: im Dorf oder auswärts." }
 }
 
 /**
@@ -1293,23 +1463,30 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!bp) return fehler("Diesen Bauplatz gibt es nicht.")
     if (bp.neubaugebiet && s.neubaugebiete.indexOf(bp.neubaugebiet) < 0) return fehler("Das Neubaugebiet ist noch nicht erschlossen.")
     if (s.haeuser.some((h) => h.bauplatz === id)) return fehler("Der Bauplatz ist schon bebaut.")
+    const bw = pruefeBewohner(R, s, auftrag.bewohner)
+    if (bw.fehler) return fehler(bw.fehler)
     roh = bp.preis
     s.zaehler += 1
-    // Erst wird gebaut, mit dem fertigen Haus zieht die Einsatzkraft ein
+    // Erst wird gebaut, mit dem fertigen Haus zieht die Bewohnerin oder der Bewohner ein
     const h = { id: "h" + s.zaehler, bauplatz: id, gekauft: jetzt, ausbau: [], alarmierung: "sirene", im_bau: true }
     s.haeuser.push(h)
-    beginneBau(R, s, jetzt, { art: "haus", ziel: h.id, name: "Haus auf " + id.toUpperCase(), ort: { x: bp.x, z: bp.z }, bauzeit_h: R.BAU.haus_h, klein: false })
+    beginneBau(R, s, jetzt, { art: "haus", ziel: h.id, name: "Haus auf " + id.toUpperCase(), ort: { x: bp.x, z: bp.z }, bauzeit_h: R.BAU.haus_h, klein: false, bewohner: bw.bewohner })
   } else if (art === "haus_ausbau") {
     const h = haus()
     const a = R.HAUS_AUSBAU[id]
     if (!h || !a || id === "zu_fuss") return fehler("Unbekanntes Haus oder unbekannter Ausbau.")
     if (h.ausbau.indexOf(id) >= 0) return fehler("Schon vorhanden.")
     if (a.voraussetzung && h.ausbau.indexOf(a.voraussetzung) < 0) return fehler("Zuerst " + R.HAUS_AUSBAU[a.voraussetzung].name + ".")
+    let bw = null
+    if (a.bewohner) {
+      bw = pruefeBewohner(R, s, auftrag.bewohner)
+      if (bw.fehler) return fehler(bw.fehler)
+    }
     roh = a.preis
     if (a.bauzeit_h) {
       if (imBau(s, "haus_ausbau", h.id)) return fehler("Am Haus wird schon gebaut.")
       const bp = bauplatz(R, h.bauplatz)
-      beginneBau(R, s, jetzt, { art: "haus_ausbau", ziel: h.id, ausbau: id, name: a.name.split(" (")[0] + " auf " + h.bauplatz.toUpperCase(), ort: { x: bp.x, z: bp.z }, bauzeit_h: a.bauzeit_h, klein: false })
+      beginneBau(R, s, jetzt, Object.assign({ art: "haus_ausbau", ziel: h.id, ausbau: id, name: a.name.split(" (")[0] + " auf " + h.bauplatz.toUpperCase(), ort: { x: bp.x, z: bp.z }, bauzeit_h: a.bauzeit_h, klein: false }, bw ? { bewohner: bw.bewohner } : {}))
     } else h.ausbau.push(id)
   } else if (art === "alarmierung") {
     const h = haus()
@@ -1321,7 +1498,7 @@ function kaufe(stand, auftrag, jetzt, R) {
   } else if (art === "lehrgang") {
     const p = person()
     const l = R.LEHRGAENGE[id]
-    if (!p || !l || l.org !== p.org) return fehler("Unbekannte Person oder unpassender Lehrgang.")
+    if (!p || !l || !istMitglied(p, l.org)) return fehler("Unbekannte Person oder unpassender Lehrgang.")
     if (p.lehrgaenge[id] !== undefined) return fehler("Schon abgeschlossen.")
     if (p.lehrgang_laeuft) return fehler("Die Person ist schon in einem Lehrgang.")
     for (const v of l.voraussetzung || []) if (!hatLehrgang(p, v, jetzt)) return fehler("Voraussetzung fehlt: " + R.LEHRGAENGE[v].name + ".")
@@ -1329,7 +1506,9 @@ function kaufe(stand, auftrag, jetzt, R) {
     p.lehrgang_laeuft = { id, bis: jetzt + Math.round(l.dauer_h * STD * ausbauFaktor(R, s, "lehrgang_faktor")) }
   } else if (art === "psa") {
     const p = person()
-    const tabelle = p && (p.org === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR)
+    const porg = (p && auftrag.org) || (p && p.org)
+    if (p && !istMitglied(p, porg)) return fehler("Die Person ist nicht in dieser Organisation.")
+    const tabelle = p && (porg === "polizei" ? R.PSA_POLIZEI : R.PSA_FEUERWEHR)
     const stufe = Math.floor(auftrag.stufe || 0)
     if (!p || !tabelle[id] || !tabelle[id][stufe]) return fehler("Unbekanntes Ausrüstungsteil oder Stufe.")
     if ((p.psa[id] || 0) >= stufe) return fehler("Diese Stufe ist schon vorhanden.")
@@ -1357,10 +1536,16 @@ function kaufe(stand, auftrag, jetzt, R) {
     const stufen = R.GEBAEUDE[id]
     if (!stufen) return fehler("Unbekanntes Gebäude.")
     if (imBau(s, "gebaeude", id)) return fehler("Hier wird schon gebaut.")
-    const neu = s.gebaeude[id] + 1
-    if (!stufen[neu]) return fehler("Schon die höchste Stufe.")
-    roh = stufen[neu].preis
-    beginneBau(R, s, jetzt, { art: "gebaeude", ziel: id, stufe: neu, name: stufen[neu].name, ort: id === "dienststelle" ? R.ORTE.dienststelle : R.ORTE.feuerwehrhaus, bauzeit_h: stufen[neu].bauzeit_h || 1, klein: false })
+    const neu = (s.gebaeude[id] || 0) + 1
+    const st = stufen[neu]
+    if (!st) return fehler("Schon die höchste Stufe.")
+    if (!levelReicht(s, st.ab_level)) return fehler("Erst ab Level " + st.ab_level + ".")
+    roh = st.preis
+    const ortId = (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[id]) || "feuerwehrhaus"
+    const winter = st.bauzeit_winter_h && R.FITNESS.winter_monate.indexOf(ortszeit(jetzt).monat) >= 0
+    const bau = { art: "gebaeude", ziel: id, stufe: neu, name: st.name, ort: { x: R.ORTE[ortId].x, z: R.ORTE[ortId].z }, bauzeit_h: (winter ? st.bauzeit_winter_h : st.bauzeit_h) || 1, klein: false }
+    if (st.phasen) bau.phasen = st.phasen
+    beginneBau(R, s, jetzt, bau)
   } else if (art === "ausbau") {
     const a = R.AUSBAU[id]
     if (!a) return fehler("Unbekannter Ausbau.")
@@ -1381,11 +1566,29 @@ function kaufe(stand, auftrag, jetzt, R) {
     roh = nb.erschliessung
     const mitte = { x: nb.ursprung.x + ((nb.spalten - 1) * nb.raster) / 2, z: nb.ursprung.z + ((nb.reihen - 1) * nb.raster) / 2 }
     beginneBau(R, s, jetzt, { art: "neubaugebiet", ziel: id, name: nb.name, ort: mitte, bauzeit_h: nb.bauzeit_h || 24, klein: false })
+  } else if (art === "mitgliedschaft") {
+    const p = person()
+    const m = R.MITGLIEDSCHAFTEN[id]
+    if (!p || !m) return fehler("Unbekannte Person oder Mitgliedschaft.")
+    if (!levelReicht(s, m.ab_level)) return fehler("Erst ab Level " + m.ab_level + ".")
+    if (id === "sportverein") {
+      if (p.sportverein) return fehler("Schon im Sportverein.")
+      p.sportverein = true
+    } else {
+      if (istMitglied(p, id)) return fehler("Schon Mitglied.")
+      if (m.fuer_org && m.fuer_org.indexOf(p.org) < 0) return fehler("Diese Mitgliedschaft passt nicht zur Person.")
+      if (m.braucht_haus && !p.haus) return fehler("Nur wer im Dorf wohnt, kann eintreten.")
+      if ((p.mitglied || []).length >= 1) return fehler("Mehr als zwei Organisationen sind nicht möglich.")
+      if (p.lehrgang_laeuft) return fehler("Die Person ist gerade in einem Lehrgang.")
+      p.mitglied = (p.mitglied || []).concat([id])
+      if (m.grundausbildung) p.lehrgang_laeuft = { id: m.grundausbildung, bis: jetzt + Math.round(m.grundausbildung_h * STD) }
+    }
+    roh = m.eintritt
   } else if (art === "personal") {
     const P = R.PERSONAL[id]
     if (!P) return fehler("Unbekannt.")
     const max = R.GEBAEUDE.dienststelle[s.gebaeude.dienststelle].personal_max
-    if (s.personal.filter((p) => p.org === "polizei").length >= max) return fehler("Die Dienststelle ist voll besetzt. Erst ausbauen.")
+    if (polizeiZahl(s) >= max) return fehler("Die Dienststelle ist voll besetzt. Erst ausbauen.")
     roh = P.preis
     s.personal.push(neuePerson(s, "polizei", null, jetzt))
   } else return fehler("Unbekannte Kaufart.")
@@ -1427,6 +1630,7 @@ module.exports = {
   fussweg,
   ortszeit,
   preis,
+  levelAusXp,
   // für Tests
-  _intern: { ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

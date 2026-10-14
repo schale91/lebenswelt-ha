@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.8.0
+
+- Einsatzspiel, Dorfbewohner: Wer in ein Haus zieht, hat einen Beruf. `kaufen` mit `art: "bauplatz"` (und bei der Einliegerwohnung) nimmt `bewohner: {org, beruf, arbeitgeber}` an. Feuerwehr: `beruf: "dorf"` mit einem Arbeitgeber im Dorf (`ARBEITGEBER`, begrenzte Stellen) kommt in der Arbeitszeit vom Arbeitsplatz und braucht 60 s mehr; `beruf: "auswaerts"` fehlt werktags von 7 bis 17 Uhr. Polizei: wohnt im Dorf, Schichtdienst an der Dienststelle, zählt zu deren Personal. Wer schon da war, bleibt „wie bisher“ (`beruf: "frei"`). Ohne `bewohner` gilt das auch für neue Häuser (ältere App-Versionen).
+- Mitgliedschaften: `kaufen` mit `art: "mitgliedschaft"`. Polizistinnen und Polizisten mit Haus im Dorf treten mit `id: "feuerwehr"` in die Feuerwehr ein (Grundausbildung als Lehrgang) und rücken außerhalb ihrer Schicht mit aus; Lehrgänge und Schutzausrüstung der Feuerwehr gibt es dann auch für sie (`psa` mit `org`). Eine Person ist nie in zwei Einsätzen zugleich.
+- Level der Lebenswelt: Der Server liest es aus dem Spielstand (Summe der Skill-XP) und merkt es sich im Stand (`level`, nur steigend). `FREISCHALTUNG_LEVEL` legt fest, ab wann ein Dienst kommt (Sportverein ab 5, Rettungswache ab 16, alle zusammen ab 30).
+- Sportplatz (`GEBAEUDE.sportplatz`, Ort `sportplatz`) in neun Stufen mit Level-Grenzen, eigene Bauphasen für den Rasenplatz (im Winter länger). Sportverein (`mitgliedschaft` `sportverein`) trainiert dienstags und donnerstags um 19 Uhr; Fitness (Start 50) macht schneller zu Fuß, mit dem Rad und bei der Arbeit.
+- Stand Version 2, ältere Stände werden beim Laden übernommen.
+
 ## 0.7.0
 
 - Fitness-Welt: Neue Option `fitness_personen` (HA-Benutzer-ID oder Anmeldename). Diese Personen bekommen in der App nur die Fitness-Welt: dieselbe Karte, dasselbe Einsatzspiel und derselbe Shop mit denselben Preisen, aber kein Smarthome, keine Aufgaben und kein Kraftbuch. `GET /api/lebenswelt/ich` liefert dazu `profil` (`voll` oder `fitness`).

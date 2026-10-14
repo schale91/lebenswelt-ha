@@ -68,12 +68,33 @@ for (const [tabelle, teile] of [["PSA_FEUERWEHR", R.PSA_FEUERWEHR], ["PSA_POLIZE
   }
 }
 // Bauen: Phasen ergeben zusammen 1, Bauzeiten an jeder Ausbaustufe
-for (const [name, liste] of [["phasen", R.BAU.phasen], ["phasen_klein", R.BAU.phasen_klein]]) {
+for (const [name, liste] of Object.entries(R.BAU).filter(([k, v]) => k.startsWith("phasen") && Array.isArray(v))) {
   const summe = liste.reduce((n, p) => n + p.anteil, 0)
   if (Math.abs(summe - 1) > 1e-9) f(`BAU.${name}: Anteile ergeben ${summe} statt 1`)
 }
 for (const [geb, stufen] of Object.entries(R.GEBAEUDE)) stufen.forEach((st, i) => { if (i > 0 && !(st.bauzeit_h > 0)) f(`GEBAEUDE.${geb}[${i}]: bauzeit_h fehlt`) })
 for (const [id, a] of Object.entries(R.AUSBAU)) if (!(a.bauzeit_h > 0)) f(`AUSBAU.${id}: bauzeit_h fehlt`)
+// Gebäude: Sonderphasen, Level aufsteigend, Ort zum Bauen
+for (const [geb, stufen] of Object.entries(R.GEBAEUDE)) {
+  if (!R.GEBAEUDE_ORT || !R.GEBAEUDE_ORT[geb] || !R.ORTE[R.GEBAEUDE_ORT[geb]]) f(`GEBAEUDE.${geb}: Ort zum Bauen fehlt in GEBAEUDE_ORT`)
+  stufen.forEach((st, i) => {
+    if (st.phasen && !R.BAU["phasen_" + st.phasen]) f(`GEBAEUDE.${geb}[${i}]: unbekannte Phasen "${st.phasen}"`)
+    if (i > 0 && (st.ab_level || 0) < (stufen[i - 1].ab_level || 0)) f(`GEBAEUDE.${geb}[${i}]: ab_level kleiner als bei der Stufe davor`)
+  })
+}
+// Bewohner: Berufe, Schichten, Arbeitgeber, Mitgliedschaften, Fitness
+for (const [id, b] of Object.entries(R.BERUFE)) for (const sch of b.schichtplan || []) if (sch !== "frei" && !R.SCHICHTEN[sch]) f(`BERUFE.${id}: unbekannte Schicht "${sch}"`)
+for (const [id, a] of Object.entries(R.ARBEITGEBER)) {
+  if (!R.ORTE[a.ort]) f(`ARBEITGEBER.${id}: unbekannter Ort "${a.ort}"`)
+  if (!(a.stellen > 0)) f(`ARBEITGEBER.${id}: stellen fehlt`)
+  if (a.gebaeude && !(R.GEBAEUDE[a.gebaeude] && R.GEBAEUDE[a.gebaeude][a.ab_stufe])) f(`ARBEITGEBER.${id}: Gebäudestufe gibt es nicht`)
+}
+for (const [id, m] of Object.entries(R.MITGLIEDSCHAFTEN)) {
+  if (m.grundausbildung && !R.LEHRGAENGE[m.grundausbildung]) f(`MITGLIEDSCHAFTEN.${id}: unbekannte Grundausbildung`)
+  if (!(m.eintritt > 0)) f(`MITGLIEDSCHAFTEN.${id}: eintritt fehlt`)
+}
+if (!(R.FITNESS && R.FITNESS.start > 0 && R.FITNESS.max > R.FITNESS.start)) f("FITNESS: start und max prüfen")
+for (const [k, v] of Object.entries(R.FREISCHALTUNG_LEVEL)) if (!(Number.isInteger(v) && v > 0)) f(`FREISCHALTUNG_LEVEL.${k}: ganze Zahl über 0 nötig`)
 for (const nb of R.NEUBAUGEBIETE) if (!(nb.bauzeit_h > 0)) f(`NEUBAUGEBIETE.${nb.id}: bauzeit_h fehlt`)
 if (!Array.isArray(R.SONNE) || R.SONNE.length !== 12) f("SONNE: zwölf Monate nötig")
 else R.SONNE.forEach(([auf, unter], i) => { if (!(auf > 0 && auf < unter && unter < 24)) f(`SONNE[${i}]: ungültig`) })

@@ -1,4 +1,4 @@
-// Tests der Simulation: node --test test/
+// Tests der Simulation: node --test test/*.test.js
 const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
