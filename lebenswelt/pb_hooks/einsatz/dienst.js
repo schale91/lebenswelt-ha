@@ -85,7 +85,9 @@ function mitKarte(r) {
     return Object.assign({}, alt || { preis: 500 }, { id: b.id, x: b.x, z: b.z }, b.preis ? { preis: b.preis } : {})
   })
   const neubaugebiete = R.NEUBAUGEBIETE.map((n) => (k.neubaugebiete && k.neubaugebiete[n.id] ? Object.assign({}, n, { ursprung: k.neubaugebiete[n.id] }) : n))
-  return Object.assign({}, R, { STRASSEN: k.strassen, ORTE: orte, BAUPLAETZE: bauplaetze, NEUBAUGEBIETE: neubaugebiete, KARTE: "privat" })
+  const zahl = (v) => typeof v === "number" && isFinite(v)
+  const schutz = Array.isArray(k.schutz) ? k.schutz.filter((z) => z && zahl(z.x) && zahl(z.z) && zahl(z.r) && z.r > 0) : R.SCHUTZZONEN || []
+  return Object.assign({}, R, { STRASSEN: k.strassen, ORTE: orte, BAUPLAETZE: bauplaetze, NEUBAUGEBIETE: neubaugebiete, SCHUTZZONEN: schutz, KARTE: "privat" })
 }
 
 function karteGueltig(k) {
