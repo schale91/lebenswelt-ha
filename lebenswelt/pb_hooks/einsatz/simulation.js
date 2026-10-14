@@ -544,8 +544,8 @@ function bauFelder(s) {
     s.version = 2
   }
   if (s.level === undefined) s.level = 0
-  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
-  for (const o of ["werkstatt", "bauhof", "rettungsdienst"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
+  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
+  for (const o of ["werkstatt", "bauhof", "rettungsdienst", "drk"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
 }
 
 /** Gebäude einer Organisation (geraetehaus, dienststelle, werkstatt, bauhof). */
@@ -603,6 +603,15 @@ function notarztPlan(R, s, e, alarm, besetzt) {
   return wahl[0]
 }
 
+/** Kann das DRK verpflegen? Feldküche mit Zugfahrzeug frei und jemand mit Verpflegungsausbildung, der nicht schon mitfährt. */
+function drkVerpflegung(R, s, t, schon) {
+  if (!orgFrei(R, s, "drk")) return false
+  const ids = schon.map((p) => p.id)
+  const kueche = s.fahrzeuge.find((f) => f.typ === "feldkueche" && frei(f, t))
+  const zug = kueche && s.fahrzeuge.find((f) => (R.FAHRZEUGE.feldkueche.voraussetzung_fahrzeug || []).indexOf(f.typ) >= 0 && frei(f, t))
+  return Boolean(zug && s.personal.some((p) => ids.indexOf(p.id) < 0 && einsatzbereitFuer(R, p, "drk", t, s) && hatLehrgang(p, "verpflegungshelfer", t)))
+}
+
 /** Wiederherstellung des Fahrzeugs nach dem Transport (Desinfizieren, Auffüllen), in ms. */
 function wiederherstellungMs(R, s, art, leute, t) {
   let min = R.RETTUNG.wiederherstellung_min * ausbauFaktor(R, s, "wiederherstellung_faktor")
@@ -635,7 +644,7 @@ function patientErgebnis(R, s, e) {
   const hilfen = []
   if (e.erste_hilfe && e.erste_hilfe < versorgt) {
     ohne -= (Rt.erste_hilfe_anteil * (versorgt - e.erste_hilfe)) / MIN
-    hilfen.push("Erste Hilfe durch die Feuerwehr")
+    hilfen.push("Erste Hilfe vor Ort")
   }
   if (art.reanimation && ausbauEffekt(R, s, "telefonreanimation") > 0) {
     ohne -= Rt.telefon_bonus_min
@@ -932,7 +941,7 @@ function plane(R, s, e, alarm, umwelt) {
   for (const auswahl of teilmengen(fahrzeuge, 4)) {
     const motor = auswahl.filter((f) => !R.FAHRZEUGE[f.typ].gezogen && !R.FAHRZEUGE[f.typ].anhaenger && R.FAHRZEUGE[f.typ].tempo_kmh > 6)
     // Anhänger nur mit Zugfahrzeug
-    if (auswahl.some((f) => R.FAHRZEUGE[f.typ].anhaenger) && !motor.some((f) => (R.FAHRZEUGE.tsa.voraussetzung_fahrzeug || []).indexOf(f.typ) >= 0)) continue
+    if (auswahl.some((a) => R.FAHRZEUGE[a.typ].anhaenger && !motor.some((f) => (R.FAHRZEUGE[a.typ].voraussetzung_fahrzeug || []).indexOf(f.typ) >= 0))) continue
     const sitze = motor.reduce((n, f) => n + R.FAHRZEUGE[f.typ].besatzung[0] + R.FAHRZEUGE[f.typ].besatzung[1], 0)
     const zuFuss = motor.length === 0
     const kapazitaet = zuFuss ? bereit.length : Math.min(sitze, bereit.length)
@@ -1073,7 +1082,14 @@ function plane(R, s, e, alarm, umwelt) {
   const th = String(art.stichwort || "").indexOf("TH") === 0
   merke("ausruestung", bester.te.arbeit * (th ? bester.te.arbeit_th : 1), "persönliche Ausrüstung")
   if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
-  const arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
+  let arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
+  // Lange Einsätze: Mit Verpflegung durch das DRK (Feldküche und Feldkoch frei) geht die Arbeit danach schneller
+  const Rt = R.RETTUNG
+  if (Rt && Rt.verpflegung_ab_min && arbeit > Rt.verpflegung_ab_min && org !== "drk" && drkVerpflegung(R, s, alarm, bester.leute)) {
+    const vorher = arbeit
+    arbeit = Rt.verpflegung_ab_min + (arbeit - Rt.verpflegung_ab_min) * Rt.verpflegung_faktor
+    faktoren.push({ grund: "verpflegung", faktor: Math.round((arbeit / vorher) * 100) / 100, text: "Verpflegung durch das DRK" })
+  }
   const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN) + Math.round(wasserMin * MIN)
   let zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
   // Rettungsdienst: Transport ins Krankenhaus, Übergabe, Rückfahrt, danach Wiederherstellung
@@ -1289,7 +1305,11 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     // Für den Patienten zählt die Zeit ab dem ersten Notruf; Erste Hilfe leistet die Feuerwehr ab ihrem Eintreffen
     e.notruf = folgeVon ? folgeVon.notruf || folgeVon.meldung : t
     const fp = folgeVon && folgeVon.plan
-    if (fp && fp.eintreffen && R.EINSATZARTEN[folgeVon.art].org === "feuerwehr") {
+    const helfer = folgeVon && (R.EINSATZARTEN[folgeVon.art].org === "feuerwehr" || R.EINSATZARTEN[folgeVon.art].org === "drk")
+    // Sanitätswachdienst vor Ort: Erste Hilfe sofort
+    const wache = s.laufend.find((x) => R.EINSATZARTEN[x.art].wache && x.ort === ort && x.plan && x.plan.eintreffen <= t && x.plan.arbeit_ende > t)
+    if (wache) e.erste_hilfe = t
+    else if (fp && fp.eintreffen && helfer) {
       const leute = fp.personen.map((x) => s.personal.find((q) => q.id === x.id)).filter(Boolean)
       if ((fp.bestand && fp.bestand.notfallrucksack) || leute.some((q) => hatLehrgang(q, "erste_hilfe", fp.eintreffen))) e.erste_hilfe = fp.eintreffen
     }
@@ -1325,6 +1345,11 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     e.ende = e.plan.arbeit_ende
   }
   s.laufend.push(e)
+  // Helfer vor Ort des DRK parallel zum Rettungsdienst (Leitstelle): überbrückt die Zeit bis zum RTW
+  if (art.patient && art.patient !== "gruen" && (e.status === "alarmiert" || e.wartet) && ausbauEffekt(R, s, "hvo_parallel") > 0 && orgFrei(R, s, "drk") && R.EINSATZARTEN.drk_hvo_parallel && ortErlaubt(R, s, R.EINSATZARTEN.drk_hvo_parallel, e.ort)) {
+    const h = erzeuge(R, s, "drk_hvo_parallel", t, umwelt, e)
+    if (h.plan && h.plan.eintreffen && h.status === "alarmiert" && !h.plan.extern && (!e.erste_hilfe || h.plan.eintreffen < e.erste_hilfe)) e.erste_hilfe = h.plan.eintreffen
+  }
   // Strukturierte Notrufabfrage: Der Rettungsdienst wird gleich mit alarmiert, nicht erst beim Eintreffen nachgefordert
   if (e.status === "alarmiert" && !folgeVon && art.org !== "rettungsdienst" && ausbauEffekt(R, s, "notrufabfrage") > 0) {
     for (const id of art.folge || []) {
@@ -1960,5 +1985,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
