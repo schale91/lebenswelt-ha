@@ -32,6 +32,7 @@ options:
   fcm_dienstkonto: ""
   ais_schluessel: ""
   ais_radius_km: 5
+  ha_benachrichtigung: ""
 schema:
   person: str?
   vertraute_apps:
@@ -45,3 +46,4 @@ schema:
   fcm_dienstkonto: password?
   ais_schluessel: password?
   ais_radius_km: int(1,20)?
+  ha_benachrichtigung: str?

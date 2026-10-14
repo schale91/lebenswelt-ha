@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.7.1
+
+- Benachrichtigungen ohne Firebase: Neue Option `ha_benachrichtigung` (notify-Dienst der Home-Assistant-App, z. B. `mobile_app_alex_handy`). Wünsche zur Freigabe, Spaziergänge mit Nilo und fällige Wiedervorlagen beim LKA gehen dann zusätzlich als Benachrichtigung der Home-Assistant-App an die Person mit voller Lebenswelt. Einsätze und Garmin bleiben in der eigenen App. Logik in `pb_hooks/benachrichtigung.js`.
+- „Test-Benachrichtigung“ in der App prüft auch diesen Weg.
+
 ## 0.10.0
 
 - Einsatzspiel, Werkstatt mit Abschleppdienst und Bauhof (ab Level 12, `FREISCHALTUNG_LEVEL.werkstatt` und `.bauhof`, neue Organisationen in `ORGANISATIONEN`). Gebäude `werkstatt` und `bauhof` in vier Ausbaustufen (Stufe 0: kein Betrieb im Dorf), Personal über `kaufen` mit `art: "personal"` (`id: "werkstatt"` bzw. `"bauhof"`, begrenzt durch `personal_max`), eigene Geräte, Fahrzeuge (gelbes Rundumlicht, keine Sonderrechte: `ohne_sonderrechte`) und Lehrgänge. Arbeitgeber im Dorf: Kfz-Werkstatt und Bauhof.

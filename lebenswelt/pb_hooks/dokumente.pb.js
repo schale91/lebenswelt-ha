@@ -79,6 +79,7 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
       text: offen === 1 ? "Ein Wunsch aus der Fitness-Welt wartet auf dich (Store)." : `${offen} Wünsche aus der Fitness-Welt warten auf dich (Store).`,
       kanal: "allgemein",
       id: "freigabe",
+      ha: true,
     })
   }
   return e.json(200, { dokumente: ergebnis })
@@ -203,5 +204,5 @@ routerAdd("POST", "/api/lebenswelt/push/test", (e) => {
   const h = require(`${__hooks}/hilfen.js`)
   const ich = h.benutzer(e)
   if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
-  return e.json(200, require(`${__hooks}/push.js`).sende(e.app, ich.id, { titel: "Lebenswelt", text: "Push-Nachrichten funktionieren.", kanal: "allgemein", id: "test" }))
+  return e.json(200, require(`${__hooks}/push.js`).sende(e.app, ich.id, { titel: "Lebenswelt", text: "Push-Nachrichten funktionieren.", kanal: "allgemein", id: "test", ha: true }))
 })

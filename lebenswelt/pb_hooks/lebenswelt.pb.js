@@ -99,7 +99,7 @@ routerAdd("PUT", "/api/lebenswelt/spielstand", (e) => {
     const wer = String(ich.anzeige || ich.name || "Opa").split(" ")[0]
     const p = require(`${__hooks}/push.js`)
     for (const andere of e.app.findRecordsByFilter("spielstaende", "benutzer != {:b}", "", 0, 0, { b: ich.id })) {
-      p.sende(e.app, andere.getString("benutzer"), { titel: `${wer} schiebt Nilo`, text: "Eine Stunde lang mit dem Buggy auf der Karte unterwegs.", kanal: "allgemein", id: "nilo-" + nilo[0].id })
+      p.sende(e.app, andere.getString("benutzer"), { titel: `${wer} schiebt Nilo`, text: "Eine Stunde lang mit dem Buggy auf der Karte unterwegs.", kanal: "allgemein", id: "nilo-" + nilo[0].id, ha: true })
     }
   }
   // Berichtigter Stand: das Frontend übernimmt ihn wie bei einem Konflikt
