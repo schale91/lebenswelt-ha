@@ -64,12 +64,32 @@ function aktuell(app, besitzer, jetzt) {
     stand = S.neuerStand(R, jetzt)
   }
   const verlauf = wetterVerlauf(app, besitzer)
+  const bekannt = new Set(stand.laufend.map((e) => e.id))
   stand = S.fortschreiben(stand, jetzt, (t) => S.wetterBei(verlauf, t), R)
+  meldeNeue(app, besitzer, stand.laufend.filter((e) => !bekannt.has(e.id)), jetzt)
   for (const e of stand.abgeschlossen) schreibe(app, besitzer, "einsatz", e.id, e)
   stand.abgeschlossen = []
   if (stand.ausgaben.length > AUSGABEN_MAX) stand.ausgaben = stand.ausgaben.slice(-AUSGABEN_MAX)
   schreibe(app, besitzer, WELT, "stand", stand)
   return { stand: stand, wetter: S.wetterBei(verlauf, jetzt) }
+}
+
+/** Push für neue Einsätze (höchstens drei, nur frische, nicht nach langer Pause alles nachholen). */
+function meldeNeue(app, besitzer, neu, jetzt) {
+  const frisch = neu.filter((e) => e.status !== "verfallen" && e.meldung >= jetzt - 5 * 60 * 1000).slice(0, 3)
+  if (!frisch.length) return
+  try {
+    const p = require(`${__hooks}/push.js`)
+    if (!p.eingerichtet()) return
+    for (const e of frisch) {
+      const art = R.EINSATZARTEN[e.art] || {}
+      const wer = art.org === "polizei" ? "Polizei" : "Feuerwehr"
+      const ort = (R.ORTE[e.ort] && R.ORTE[e.ort].name) || ""
+      p.sende(app, besitzer, { titel: `Einsatz: ${art.stichwort || e.art}`, text: `${wer} alarmiert${ort ? " · " + ort : ""}. Schau zu, wie es läuft.`, kanal: "einsatz", id: e.id, ttl_s: Math.max(60, Math.round((e.verfall - jetzt) / 1000)) })
+    }
+  } catch (err) {
+    console.log("Einsatzspiel: Push fehlgeschlagen", err)
+  }
 }
 
 function speichere(app, besitzer, stand) {

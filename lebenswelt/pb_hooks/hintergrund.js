@@ -55,6 +55,10 @@ function garminAbgleich() {
     neu++
   }
   if (neu) console.log("Garmin-Abgleich: " + neu + " neue Aktivitäten")
+  if (neu > 0) {
+    // Die XP dafür liegen in der App am Elternhaus zum Abholen bereit
+    require(`${__hooks}/push.js`).sende($app, person.id, { titel: neu === 1 ? "Neue Garmin-Aktivität" : `${neu} neue Garmin-Aktivitäten`, text: "XP liegen am Elternhaus zum Abholen bereit.", kanal: "allgemein", id: "garmin" })
+  }
   return { ok: true, gefunden: liste.length, neu: neu }
 }
 

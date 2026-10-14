@@ -101,8 +101,9 @@ function bereitesManifest() {
   }
 }
 
+/** Alle Dateien des Pakets: die App selbst und Zusatzdateien wie die Android-App (lebenswelt.apk). */
 function pruefeManifest(manifest) {
-  const dateien = (manifest.dateien || []).map(String)
+  const dateien = (manifest.dateien || []).map(String).concat((manifest.zusatz || []).map(String))
   if (!manifest.erstellt || !dateien.length || !dateien.includes("stand.json") || !dateien.includes("index.html")) throw new Error("manifest.json ist unvollständig.")
   for (const d of dateien) if (!NAME_OK.test(d) || BEHALTEN.includes(d)) throw new Error("Unzulässiger Dateiname im Paket: " + d)
   return dateien
@@ -141,6 +142,7 @@ function pruefe() {
       $os.removeAll(BEREIT)
       $os.rename(neu, BEREIT)
       console.log(`App-Paket ${manifest.erstellt} heruntergeladen, wartet auf Installieren`)
+      if (vorhanden) require(`${__hooks}/push.js`).sendeAllen($app, { titel: "Update verfügbar", text: "In der Lebenswelt auf „Installieren“ tippen.", kanal: "allgemein", id: "update" })
     }
     merke({ geprueft: new Date().toISOString(), fehler: "" })
   } catch (err) {

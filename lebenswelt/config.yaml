@@ -28,6 +28,7 @@ options:
   wetter_entitaet: weather.forecast_home
   app_quelle: schale91/Claude@app-paket
   app_token: ""
+  fcm_dienstkonto: ""
 schema:
   person: str?
   vertraute_apps:
@@ -36,3 +37,4 @@ schema:
   wetter_entitaet: str?
   app_quelle: str?
   app_token: password?
+  fcm_dienstkonto: password?
