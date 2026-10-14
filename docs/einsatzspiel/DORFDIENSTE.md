@@ -9,16 +9,16 @@ Stand 14.10.2026, zweite Fassung mit deinen Entscheidungen (Abschnitt 23). Werte
 ## 0. Kurzfassung
 
 1. **Sieben neue Dienste** kommen ins Dorf: Rettungsdienst, DRK mit Sanitäts- und Betreuungsdienst, DLRG mit Wasserrettung, Technisches Hilfswerk, Werkstatt mit Abschleppdienst, Bauhof mit Winterdienst und ein Sportverein mit Sportplatz in der südöstlichen Ecke.
-2. **Freischaltung nach dem Level der Lebenswelt:** Sportplatz ab Level 10, Zusammenarbeit von Feuerwehr und Polizei ab 15, Werkstatt und Bauhof ab 20, **Rettungswache ab 30**, DRK ab 40, DLRG ab 50, THW ab 60, **alle zusammen ab 70**. Vorher gibt es den Dienst nicht, und **gemeinsame Einsätze mit ihm erscheinen erst ab diesem Level** (Abschnitt 14.3).
+2. **Freischaltung nach dem Level der Lebenswelt, alles in gut einem Jahr erreichbar:** Sportplatz ab Level 5, Zusammenarbeit von Feuerwehr und Polizei ab 8, Werkstatt und Bauhof ab 12, **Rettungswache ab 16**, DRK ab 20, DLRG ab 24, THW ab 27, **alle zusammen ab 30**. Vorher gibt es den Dienst nicht, und **gemeinsame Einsätze mit ihm erscheinen erst ab diesem Level** (Abschnitt 14.3).
 3. **Grundversorgung von außen ab der Freischaltung:** Ab seinem Level ist ein Dienst sofort da, aber von außerhalb und langsam (RTW der Nachbarwache, Abschleppdienst aus der Stadt). Jeder Kauf macht ihn schneller oder besser.
 4. **Dorfbewohner statt Einsatzkräfte:** Wer in ein Haus zieht, ist Bewohnerin oder Bewohner mit Beruf, Fitness und **bis zu zwei ehrenamtlichen Mitgliedschaften** plus Sportverein. **Rettungsdienstler und Polizisten, die im Dorf wohnen, können in der Feuerwehr sein** und rücken außerhalb ihres Dienstes mit aus. Eine Person ist nie in zwei Einsätzen zugleich.
 5. **Arbeitsplätze im Dorf** (Rettungswache, Werkstatt, Bauhof, Tierarztpraxis, Platzwart) machen Bewohner tagsüber verfügbar. Das ist die Antwort auf das reale Problem der Tagesalarmsicherheit freiwilliger Feuerwehren (beschlossen).
 6. **Sportplatz** in acht Bauabschnitten, von der Bolzwiese bis zum Sportzentrum mit Lehrschwimmbecken. Er hebt die Fitness der Bewohner. Fitness wirkt auf Tempo, Arbeit, Ausdauer und die Einsatzzeit unter Atemschutz, und sie ist Voraussetzung für Atemschutz, Rettungsschwimmen und die Fitnessabzeichen.
-7. **Gemeinsame Einsätze** in drei Größen: Feuerwehr und Polizei (ab Level 15), Feuerwehr, Polizei und ein weiterer Dienst (mit dessen Level), alle zusammen (ab Level 70). Jede Organisation bekommt Sterne für ihren Teil, dazu gibt es eine Bewertung der Zusammenarbeit.
+7. **Gemeinsame Einsätze** in drei Größen: Feuerwehr und Polizei (ab Level 8), Feuerwehr, Polizei und ein weiterer Dienst (mit dessen Level), alle zusammen (ab Level 30). Jede Organisation bekommt Sterne für ihren Teil, dazu gibt es eine Bewertung der Zusammenarbeit.
 8. **Drei Ebenen zum Leveln:** Person (Qualifikation, Erfahrung, Abzeichen), Organisation (Gebäudestufe) und das Level der Lebenswelt, das die Dienste freischaltet.
 9. **Jeder Kauf wirkt, und das wird vorher gezeigt:** Die Simulation ist deterministisch. Vor dem Kauf rechnet der Server die letzten Einsätze mit dem neuen Teil nach und zeigt, was es gebracht hätte („Katze im Mittel 4:50 statt 5:30 Minuten, +0,5 Sterne“).
 10. **Über 40 Baustellen** mit eigenen Bauphasen, darunter jahreszeitabhängige wie das Anwachsen des Rasens.
-11. **Preisfaktor bleibt 0,05.** Weil die Dienste nacheinander über Jahre freigeschaltet werden, verteilen sich die Kosten von selbst (Abschnitt 19).
+11. **Preisfaktor bleibt 0,05.** Freigeschaltet ist alles nach gut einem Jahr, ausgebaut wird über viele Jahre. Jeder Dienst arbeitet ab seinem Level mit der Grundversorgung von außen (Abschnitt 19).
 12. **Im Spiel stirbt niemand** (beschlossen).
 
 ---
@@ -29,8 +29,8 @@ Einige Punkte halte ich für riskant oder habe ich mit dir entschieden. Ich schr
 
 | Punkt | Problem | Lösung |
 |---|---|---|
-| **Wie weit Level 70 weg ist** | Nach der Levelkurve der App (`100 · n^1,4` XP je Level) und rund 300 XP am Tag erreicht man Level 30 nach etwa 1,3 Jahren, Level 50 nach 4,4 Jahren und **Level 70 erst nach etwa 10 Jahren** (bei 250 XP am Tag nach 12 Jahren). THW ab 60 heißt rund 7 Jahre. | So umgesetzt, wie du es willst. Meine Empfehlung dazu: Inhalte erst bauen, wenn das Level näher rückt (Abschnitt 20). Was in sieben Jahren freigeschaltet wird, muss heute noch nicht programmiert sein. Die Stufen stehen im Regelwerk und lassen sich jederzeit verschieben. |
-| **Wirtschaft** | Die neuen Dienste kosten bei `PREISFAKTOR = 0,05` rund 55 000 Münzen. | Bleibt bei 0,05. Durch die Freischaltung nach Level kommen sie nacheinander dazu, über rund zehn Jahre. Das passt zu den Einnahmen (Abschnitt 19). Zusätzlich gilt die **Preisleiter** aus Abschnitt 16. |
+| **Wann was kommt** | Die erste Fassung (Rettungswache ab 30, alle zusammen ab 70) hätte nach der Levelkurve der App (`100 · n^1,4` XP je Level) bei rund 300 XP am Tag gut zehn Jahre bis zum Ende gebraucht. | Entschieden: alles früher. Alle Dienste sind in gut einem Jahr freigeschaltet, alle drei bis vier Monate kommt einer dazu (Abschnitt 14.3). Die Grenzen stehen im Regelwerk und lassen sich verschieben. |
+| **Wirtschaft** | Die neuen Dienste kosten bei `PREISFAKTOR = 0,05` rund 55 000 Münzen. Freigeschaltet ist alles nach gut einem Jahr, ganz ausgebaut nach etwa zehn Jahren. | Bleibt bei 0,05 (Entscheidung). Freischalten heißt nicht fertig: Jeder Dienst arbeitet ab seinem Level mit der Grundversorgung von außen, und jeder Kauf macht ihn besser. Zusätzlich gilt die **Preisleiter** aus Abschnitt 16 (Abschnitt 19). |
 | **Komplexität** | Sieben Dienste auf einmal würden die App überladen. | Gelöst durch die Freischaltung nach Level. Alles wird automatisch disponiert, es gibt nichts zu steuern. |
 | **Rettungsdienst ist hauptamtlich** | Im echten Leben fährt den RTW kein Ehrenamtlicher von zu Hause aus los. Träger sind Landkreise und kreisfreie Städte, die Wache ist im Schichtdienst besetzt. | Rettungswache mit **Stellen und Schichten** (wie die Polizei-Dienststelle). Bewohner können dort **beruflich** arbeiten und zusätzlich in der Feuerwehr sein. |
 | **Tagesalarmsicherheit** | Wenn Bewohner tagsüber auswärts arbeiten, ist die Feuerwehr werktags schwächer. | Beschlossen: kommt. Bestehende Einsatzkräfte behalten „arbeitet im Dorf“, nur Neuzugänge wählen einen Beruf (Abschnitt 3.4). |
@@ -64,7 +64,7 @@ Heute zieht in jedes Haus genau eine Einsatzkraft der Feuerwehr. Künftig zieht 
 | Erste Mitgliedschaft | Feuerwehr, DRK, DLRG, THW (je nach Level) | Grundausbildung der Organisation ist abgeschlossen |
 | Sportverein | ja oder nein | Training und Fitness (Abschnitt 12) |
 
-Mit der **Einliegerwohnung** (gibt es schon) zieht eine zweite Person ein. Neu ist der Ausbau **Familienhaus** (dritte Person, ab Level 40).
+Mit der **Einliegerwohnung** (gibt es schon) zieht eine zweite Person ein. Neu ist der Ausbau **Familienhaus** (dritte Person, ab Level 20).
 
 ### 3.2 Was jede Person hat
 
@@ -85,7 +85,7 @@ Mit der **Einliegerwohnung** (gibt es schon) zieht eine zweite Person ein. Neu i
 5. **Eine zweite Mitgliedschaft kostet** einen Eintritt (Spielwert, 150) und die Grundausbildung der neuen Organisation als Lehrgang mit Dauer. Die Person fehlt während des Lehrgangs, wie heute.
 6. **Nie in zwei Einsätzen zugleich.** Das ist die wichtigste Regel und wird getestet wie heute „keine Doppelbelegung“.
 7. **Alarmkollision:** Wer zuerst alarmiert wird, geht. Kommen zwei Alarme in derselben Minute, entscheidet die Hauptorganisation. Mit Rückmeldesystem (Meldeempfänger mit Rückmeldung oder App) weiß die zweite Organisation sofort, dass die Person fehlt, und plant ohne sie. Ohne Rückmeldung wartet sie vergeblich (wie heute 10 Minuten gebunden).
-8. **Großlagen** (ab Level 70): Jede Person wird **einmal** eingeplant, für ihre Hauptorganisation; Hauptamtliche im Dienst für ihren Dienst. Das ist eine Spielregel. Eine Vorschrift dazu habe ich nicht gefunden. Laut Bundesregierung erfassen weder THW noch Bundeswehr Doppelmitgliedschaften, und daraus lasse sich nicht ableiten, wie sehr sie die Verfügbarkeit im Katastrophenfall einschränken ([Antwort der Bundesregierung](https://www.andre-hahn.eu/app/uploads/2024/11/sf558.pdf)).
+8. **Großlagen** (ab Level 30): Jede Person wird **einmal** eingeplant, für ihre Hauptorganisation; Hauptamtliche im Dienst für ihren Dienst. Das ist eine Spielregel. Eine Vorschrift dazu habe ich nicht gefunden. Laut Bundesregierung erfassen weder THW noch Bundeswehr Doppelmitgliedschaften, und daraus lasse sich nicht ableiten, wie sehr sie die Verfügbarkeit im Katastrophenfall einschränken ([Antwort der Bundesregierung](https://www.andre-hahn.eu/app/uploads/2024/11/sf558.pdf)).
 9. **Wachdienst der DLRG** an Sommerwochenenden bindet die Person an der Badestelle. Sie ist dort schnell bei Badeunfällen, fehlt aber der Feuerwehr.
 
 **Darstellung:** Die Figur trägt die Kleidung der Organisation, für die sie gerade unterwegs ist. In der Personenliste stehen kleine Farbpunkte je Mitgliedschaft, der Beruf steht darunter.
@@ -117,19 +117,19 @@ Die Bilanz am Feuerwehrhaus zeigt dazu eine Zeile „tagsüber verfügbar: 4 von
 
 | Dienst | Ab Level | Träger und Grundlage | Gebäude im Dorf | Grundversorgung von außen | Farben auf der Karte |
 |---|---|---|---|---|---|
-| **Sportverein** | 10 | Verein | Sportplatz in acht Stufen | Joggen auf der Straße | Vereinsfarben frei wählbar |
-| **Werkstatt und Abschleppdienst** | 20 | privater Betrieb, Auftrag durch Polizei oder Halter | Werkstatt in fünf Stufen | Abschleppdienst aus der Stadt | Gelb mit gelbem Rundumlicht |
-| **Bauhof** | 20 | Gemeinde | Bauhof in fünf Stufen | Straßenmeisterei des Kreises | Kommunalorange |
-| **Rettungsdienst** | 30 | Landkreis als Träger, NRettDG, BedarfVO-RettD | Rettungswache in vier Stufen, Landestelle am Sportplatz | RTW der Nachbarwache, Anfahrt lang | Weiß mit leuchtroter und leuchtgelber Konturmarkierung |
-| **DRK (Sanitäts- und Betreuungsdienst)** | 40 | Hilfsorganisation, Mitwirkung im Katastrophenschutz nach § 14 NKatSG | Unterkunft in vier Stufen | Schnelleinsatzgruppe aus dem Nachbarort | Weiß und Rot, ohne Kreuz und Logo |
-| **DLRG (Wasserrettung)** | 50 | Wasserrettungsorganisation, Fachdienst Wasserrettung im Katastrophenschutz | Wachstation an der Elbe in vier Stufen | Wasserrettungszug des Landkreises | Rot und Gelb, ohne Logo |
-| **THW** | 60 | Bundesanstalt, Hilfe auf Ersuchen der Gefahrenabwehr (§ 1 THWG) | Unterkunft des Ortsverbands in vier Stufen | Ortsverband der Kreisstadt | THW-Blau mit weißer Schrift, ohne Logo |
+| **Sportverein** | 5 | Verein | Sportplatz in acht Stufen | Joggen auf der Straße | Vereinsfarben frei wählbar |
+| **Werkstatt und Abschleppdienst** | 12 | privater Betrieb, Auftrag durch Polizei oder Halter | Werkstatt in fünf Stufen | Abschleppdienst aus der Stadt | Gelb mit gelbem Rundumlicht |
+| **Bauhof** | 12 | Gemeinde | Bauhof in fünf Stufen | Straßenmeisterei des Kreises | Kommunalorange |
+| **Rettungsdienst** | 16 | Landkreis als Träger, NRettDG, BedarfVO-RettD | Rettungswache in vier Stufen, Landestelle am Sportplatz | RTW der Nachbarwache, Anfahrt lang | Weiß mit leuchtroter und leuchtgelber Konturmarkierung |
+| **DRK (Sanitäts- und Betreuungsdienst)** | 20 | Hilfsorganisation, Mitwirkung im Katastrophenschutz nach § 14 NKatSG | Unterkunft in vier Stufen | Schnelleinsatzgruppe aus dem Nachbarort | Weiß und Rot, ohne Kreuz und Logo |
+| **DLRG (Wasserrettung)** | 24 | Wasserrettungsorganisation, Fachdienst Wasserrettung im Katastrophenschutz | Wachstation an der Elbe in vier Stufen | Wasserrettungszug des Landkreises | Rot und Gelb, ohne Logo |
+| **THW** | 27 | Bundesanstalt, Hilfe auf Ersuchen der Gefahrenabwehr (§ 1 THWG) | Unterkunft des Ortsverbands in vier Stufen | Ortsverband der Kreisstadt | THW-Blau mit weißer Schrift, ohne Logo |
 
-Dazu kommen kleine **externe Partner** (Abschnitt 11, ab Level 20) und die **Leitstelle** als unsichtbarer Dienst mit kaufbaren Verbesserungen (Abschnitt 13.1, ab Level 30).
+Dazu kommen kleine **externe Partner** (Abschnitt 11, ab Level 12) und die **Leitstelle** als unsichtbarer Dienst mit kaufbaren Verbesserungen (Abschnitt 13.1, ab Level 16).
 
 ---
 
-## 5. Rettungsdienst (ab Level 30)
+## 5. Rettungsdienst (ab Level 16)
 
 ### 5.1 Worauf er sich stützt
 
@@ -182,7 +182,7 @@ Tragestuhl, Schaufeltrage, Vakuummatratze, Vakuumschienen-Set, Notfallrucksack (
 | 1 | RTW-Stellplatz am Feuerwehrhaus, Tagdienst | 6 h | 1 | RTW im Dorf von 7 bis 19 Uhr. In der Wirklichkeit stehen RTW häufig an Feuerwachen. |
 | 2 | Rettungswache in Containerbauweise | 24 h | 1 | rund um die Uhr |
 | 3 | Rettungswache | 72 h | 3 | Desinfektionsraum, Ruheraum, NEF möglich |
-| 4 | Rettungswache mit Lehrrettungswache (ab Level 60) | 96 h | 4 | Ausbildung zur Notfallsanitäterin im Dorf |
+| 4 | Rettungswache mit Lehrrettungswache (ab Level 27) | 96 h | 4 | Ausbildung zur Notfallsanitäterin im Dorf |
 
 **Ausbauten:** beheizte Fahrzeughalle (schneller ausrücken im Winter), Desinfektionsraum (Wiederherstellung nach Transport kürzer), Ruheraum (Nachtschicht ohne Abzug), Waschhalle, Lager für Medizinprodukte (mehr Slots), Notstrom.
 
@@ -219,7 +219,7 @@ Ein RTW ist pro Transport also rund 70 Minuten weg. Wer nur einen RTW hat, merkt
   - **Sportverletzung** (3★, erst ab Sportplatz Stufe 3, Vakuumschiene)
   - **Infektionstransport** (4★, Infektionsschutzset, Desinfektor)
 
-**Bestehende Einsätze bekommen ab Level 30 einen Rettungsdienst-Teil:** Verkehrsunfall mit eingeklemmter Person, Zimmerbrand, Person im Eis, Person in der Elbe, Arbeitsunfall auf der Baustelle, Schlägerei, hilflose Person, Türöffnung, First Responder. **Vor Level 30 gibt es diesen Teil nicht.** Die Einsätze laufen dann genau wie heute, ohne Patienten und ohne Abzug.
+**Bestehende Einsätze bekommen ab Level 16 einen Rettungsdienst-Teil:** Verkehrsunfall mit eingeklemmter Person, Zimmerbrand, Person im Eis, Person in der Elbe, Arbeitsunfall auf der Baustelle, Schlägerei, hilflose Person, Türöffnung, First Responder. **Vor Level 16 gibt es diesen Teil nicht.** Die Einsätze laufen dann genau wie heute, ohne Patienten und ohne Abzug.
 
 ### 5.8 Bewertung
 
@@ -233,7 +233,7 @@ Fünf Sterne, abgezogen wird für:
 
 ---
 
-## 6. DRK: Sanitäts- und Betreuungsdienst (ab Level 40)
+## 6. DRK: Sanitäts- und Betreuungsdienst (ab Level 20)
 
 Hilfsorganisationen wirken in Niedersachsen im Katastrophenschutz mit (§ 14 NKatSG). Grundeinheit ist der Sanitäts- und Betreuungszug, Gliederung und Sollstärke legt das Innenministerium per Erlass fest ([MI Niedersachsen](https://www.mi.niedersachsen.de/startseite/themen/innere_sicherheit/brand_katastrophenschutz/katastrophenschutz/gliederung-und-sollstarke-der-einheiten-des-katastrophenschutzes-im-sanitats-und-betreuungsdienst-221740.html)). Bei Hochwasser haben Helfer von ASB, DRK, JUH und MHD Deichverteidigung und Versorgung unterstützt ([MI, Neuausrichtung Katastrophenschutz](https://www.mi.niedersachsen.de/download/120460/Neuausrichtung_Niedersachsen_stellt_Katastrophenschutz_neu_auf_Artikel_.pdf)).
 
@@ -258,7 +258,7 @@ Hilfsorganisationen wirken in Niedersachsen im Katastrophenschutz mit (§ 14 NKa
 
 ---
 
-## 7. DLRG: Wasserrettung (ab Level 50)
+## 7. DLRG: Wasserrettung (ab Level 24)
 
 Die Elbe ist das prägende Gewässer des Dorfes, ihr Pegel kommt schon heute live aus Home Assistant. Der Fachdienst Wasserrettung ist in Niedersachsen Teil des Katastrophenschutzes, bei Hochwasser waren über 500 Mitglieder der DLRG eingesetzt ([MI, Neuausrichtung Katastrophenschutz](https://www.mi.niedersachsen.de/download/120460/Neuausrichtung_Niedersachsen_stellt_Katastrophenschutz_neu_auf_Artikel_.pdf)).
 
@@ -287,7 +287,7 @@ Das Rettungsschwimmabzeichen muss in der Wirklichkeit regelmäßig erneuert werd
 
 ---
 
-## 8. Technisches Hilfswerk (ab Level 60)
+## 8. Technisches Hilfswerk (ab Level 27)
 
 Das THW ist eine Bundesanstalt aus ehrenamtlichen und hauptamtlichen Kräften. Es hilft **auf Ersuchen** der für die Gefahrenabwehr zuständigen Stellen ([§ 1 THWG](https://www.gesetze-im-internet.de/thw-helfrg/__1.html)). Ein Technischer Zug besteht aus Zugtrupp, Bergungsgruppe und Fachgruppen, die je Ortsverband verschieden sind, zum Beispiel Notversorgung und Notinstandsetzung, Räumen oder Wassergefahren ([OV Heilbronn](https://ov-heilbronn.thw.de/unser-thw-ortsverband/einheiten/technischer-zug), [Übersicht der Einheiten](https://ov-woerth.thw.de/fileadmin/user_upload/LVBY/GSTR/OWOE/Mediathek/THW_Einheiten.pdf)).
 
@@ -310,7 +310,7 @@ Das THW ist eine Bundesanstalt aus ehrenamtlichen und hauptamtlichen Kräften. E
 
 ---
 
-## 9. Werkstatt und Abschleppdienst (ab Level 20)
+## 9. Werkstatt und Abschleppdienst (ab Level 12)
 
 Ein privater Betrieb, der für das Dorf zwei Dinge tut: Er räumt nach Unfällen und Falschparkern die Straße, und er ist ein Arbeitgeber im Dorf.
 
@@ -339,7 +339,7 @@ Ein privater Betrieb, der für das Dorf zwei Dinge tut: Er räumt nach Unfällen
 
 ---
 
-## 10. Bauhof und Winterdienst (ab Level 20)
+## 10. Bauhof und Winterdienst (ab Level 12)
 
 Der Bauhof der Gemeinde wirkt **vorbeugend** und **nachsorgend**. Das ist ein eigener Spieltyp: Er verhindert keine Einsätze, macht sie aber leichter.
 
@@ -367,7 +367,7 @@ Der Bauhof der Gemeinde wirkt **vorbeugend** und **nachsorgend**. Das ist ein ei
 
 ---
 
-## 11. Kleine externe Partner (ab Level 20, AED ab Level 30)
+## 11. Kleine externe Partner (ab Level 12, AED ab Level 16)
 
 Ohne eigenen Aufbau, aber mit einem Kauf, der wirkt:
 
@@ -380,7 +380,7 @@ Ohne eigenen Aufbau, aber mit einem Kauf, der wirkt:
 
 ---
 
-## 12. Sportplatz in der Südostecke (ab Level 10)
+## 12. Sportplatz in der Südostecke (ab Level 5)
 
 ### 12.1 Lage
 
@@ -394,19 +394,19 @@ Jede Stufe ist eine Baustelle mit eigenen Phasen und Baufahrzeugen (Abschnitt 17
 
 | Stufe | Ab Level | Name | Bauzeit | Preis (Regelwerk) | Wirkung |
 |---|---|---|---|---|---|
-| 0 | 10 | Brachfläche (Grundstück kaufen) | | 2 000 | Fläche gehört dem Dorf |
-| 1 | 10 | Bolzwiese mit zwei Toren | 4 h | 1 500 | Training möglich, Fitness wächst langsam |
-| 2 | 10 | Trimm-dich-Pfad am Rand | 8 h | 3 000 | Kraft und Koordination, für alle Bewohner, auch ohne Verein |
-| 3 | 10 | Rasenplatz mit Drainage | 48 h + Anwachsen | 12 000 | Fußball, regelmäßiges Vereinstraining |
-| 4 | 20 | Vereinsheim mit Umkleiden und Duschen | 48 h | 15 000 | Training bei jedem Wetter, Arbeitsplatz Platzwart; AED am Platz ab Level 30 |
-| 5 | 20 | Flutlicht | 12 h | 8 000 | Training im Winter abends, ab Level 30 Landestelle auch bei Nacht |
-| 6 | 40 | 400-m-Laufbahn, Weitsprung, Kugelstoßen, Tribüne, Kiosk | 72 h | 30 000 | Ausdauer, Sportabzeichen, Sportfest mit Sanitätswachdienst, Kiosk als Arbeitsplatz |
-| 7 | 50 | Übungsbahn der Feuerwehr und Kraftraum | 36 h | 20 000 | Feuerwehr-Fitnessabzeichen, Löschangriff üben (Ausbildung schneller) |
-| 8 | 60 | Sporthalle mit Lehrschwimmbecken | 120 h | 60 000 | Training ganzjährig, Rettungsschwimmen im Winter |
+| 0 | 5 | Brachfläche (Grundstück kaufen) | | 2 000 | Fläche gehört dem Dorf |
+| 1 | 5 | Bolzwiese mit zwei Toren | 4 h | 1 500 | Training möglich, Fitness wächst langsam |
+| 2 | 5 | Trimm-dich-Pfad am Rand | 8 h | 3 000 | Kraft und Koordination, für alle Bewohner, auch ohne Verein |
+| 3 | 5 | Rasenplatz mit Drainage | 48 h + Anwachsen | 12 000 | Fußball, regelmäßiges Vereinstraining |
+| 4 | 12 | Vereinsheim mit Umkleiden und Duschen | 48 h | 15 000 | Training bei jedem Wetter, Arbeitsplatz Platzwart; AED am Platz ab Level 16 |
+| 5 | 12 | Flutlicht | 12 h | 8 000 | Training im Winter abends, ab Level 16 Landestelle auch bei Nacht |
+| 6 | 20 | 400-m-Laufbahn, Weitsprung, Kugelstoßen, Tribüne, Kiosk | 72 h | 30 000 | Ausdauer, Sportabzeichen, Sportfest mit Sanitätswachdienst, Kiosk als Arbeitsplatz |
+| 7 | 24 | Übungsbahn der Feuerwehr und Kraftraum | 36 h | 20 000 | Feuerwehr-Fitnessabzeichen, Löschangriff üben (Ausbildung schneller) |
+| 8 | 27 | Sporthalle mit Lehrschwimmbecken | 120 h | 60 000 | Training ganzjährig, Rettungsschwimmen im Winter |
 
-Ausbauten ohne eigene Stufe: **Kunstrasen** (Training auch nach Regen, ab Stufe 5), **Hubschrauber-Landestelle** mit Windsack, Markierung und Befeuerung (ab Level 30 und Stufe 3, Befeuerung ab Stufe 5), **Geräteschuppen**, **Beregnungsanlage** (Rasen im Sommer).
+Ausbauten ohne eigene Stufe: **Kunstrasen** (Training auch nach Regen, ab Stufe 5), **Hubschrauber-Landestelle** mit Windsack, Markierung und Befeuerung (ab Level 16 und Stufe 3, Befeuerung ab Stufe 5), **Geräteschuppen**, **Beregnungsanlage** (Rasen im Sommer).
 
-Einsätze am Sportplatz gibt es erst mit dem passenden Dienst: Sportverletzung ab Level 30, Sanitätswachdienst beim Sportfest ab Level 40.
+Einsätze am Sportplatz gibt es erst mit dem passenden Dienst: Sportverletzung ab Level 16, Sanitätswachdienst beim Sportfest ab Level 20.
 
 ### 12.3 Fitness
 
@@ -457,7 +457,7 @@ Entschieden: Das Training im Kraftbuch wirkt nicht auf die Fitness im Dorf. Die 
 
 ### 13.1 Leitstelle
 
-Die Leitstelle ist kein Gebäude auf der Karte. Sie disponiert automatisch nach einer **Alarm- und Ausrückeordnung**: Jede Einsatzart nennt die Organisationen, die sofort alarmiert werden, und die, die nachgefordert werden können. Eine Organisation steht darin erst ab ihrem Level. Kaufbare Verbesserungen ab Level 30:
+Die Leitstelle ist kein Gebäude auf der Karte. Sie disponiert automatisch nach einer **Alarm- und Ausrückeordnung**: Jede Einsatzart nennt die Organisationen, die sofort alarmiert werden, und die, die nachgefordert werden können. Eine Organisation steht darin erst ab ihrem Level. Kaufbare Verbesserungen ab Level 16:
 
 | Kauf | Wirkung |
 |---|---|
@@ -465,11 +465,11 @@ Die Leitstelle ist kein Gebäude auf der Karte. Sie disponiert automatisch nach 
 | Telefonreanimation | Anrufende werden zur Herzdruckmassage angeleitet, die Zeit ohne Hilfe bei Reanimation sinkt |
 | Smartphone-Ersthelferalarmierung | registrierte Ersthelfer in der Nähe werden alarmiert (Bewohner mit Erste-Hilfe-Ausbildung) |
 | AED-Verzeichnis | Ersthelfer werden zum nächsten AED geschickt |
-| Paralleler Alarm Helfer vor Ort | ab Level 40: Helfer vor Ort des DRK wird gleichzeitig mit dem RTW alarmiert |
+| Paralleler Alarm Helfer vor Ort | ab Level 20: Helfer vor Ort des DRK wird gleichzeitig mit dem RTW alarmiert |
 
 ### 13.2 Nachforderung
 
-Manche Hilfe kommt nur auf Anforderung: Abschleppdienst, Bauhof (ab 20), Rettungshubschrauber (ab 30, wenn die Leitstelle ihn nicht schon sendet), Betreuung und Verpflegung (ab 40), THW (ab 60). Nachfordern kann eine **Einsatzleitung** mit passender Führungsausbildung:
+Manche Hilfe kommt nur auf Anforderung: Abschleppdienst, Bauhof (ab 12), Rettungshubschrauber (ab 16, wenn die Leitstelle ihn nicht schon sendet), Betreuung und Verpflegung (ab 20), THW (ab 27). Nachfordern kann eine **Einsatzleitung** mit passender Führungsausbildung:
 
 | Einsatzgröße | Einsatzleitung |
 |---|---|
@@ -486,21 +486,21 @@ Ein gemeinsamer Einsatz erscheint **erst, wenn alle beteiligten Dienste freigesc
 | Ab Level | Wer zusammenarbeitet | Was neu erscheint |
 |---|---|---|
 | 1 (wie heute) | Feuerwehr und Polizei über Folgeeinsätze | Verkehrsregelung, Absperrung, Unfallaufnahme, Begleitung Türöffnung, Personensuche |
-| 15 | Feuerwehr und Polizei als gemeinsamer Einsatz | 8 Einsatzarten aus 13.5, Bewertung der Zusammenarbeit |
-| 20 | dazu Abschleppdienst und Bauhof | Teile in Verkehrsunfall, Ölspur, Falschparker, Glätte, Sturm |
-| 30 | dazu Rettungsdienst | Rettungsdienst-Teil in 9 bestehenden Einsätzen, 6 neue Einsatzarten mit Feuerwehr und Polizei aus 13.6 |
-| 40 | dazu DRK | Betreuung nach Brand, Verpflegung bei langen Einsätzen, Sanitätswachdienst bei Festen |
-| 50 | dazu DLRG | Person in der Elbe mit Strömungsrettern, Auto in der Elbe, Badeunfall |
-| 60 | dazu THW | Nachforderung bei Stromausfall, Einsturzgefahr, Ausleuchten |
-| 70 | **alle zusammen** | Großlagen aus 13.7 |
+| 8 | Feuerwehr und Polizei als gemeinsamer Einsatz | 8 Einsatzarten aus 13.5, Bewertung der Zusammenarbeit |
+| 12 | dazu Abschleppdienst und Bauhof | Teile in Verkehrsunfall, Ölspur, Falschparker, Glätte, Sturm |
+| 16 | dazu Rettungsdienst | Rettungsdienst-Teil in 9 bestehenden Einsätzen, 6 neue Einsatzarten mit Feuerwehr und Polizei aus 13.6 |
+| 20 | dazu DRK | Betreuung nach Brand, Verpflegung bei langen Einsätzen, Sanitätswachdienst bei Festen |
+| 24 | dazu DLRG | Person in der Elbe mit Strömungsrettern, Auto in der Elbe, Badeunfall |
+| 27 | dazu THW | Nachforderung bei Stromausfall, Einsturzgefahr, Ausleuchten |
+| 30 | **alle zusammen** | Großlagen aus 13.7 |
 
 ### 13.4 Bewertung gemeinsamer Einsätze
 
 - Jede beteiligte Organisation bekommt **eigene Sterne für ihren Teil** und schaltet damit ihren eigenen Baum frei.
-- Dazu gibt es ab Level 15 die **Zusammenarbeit** von 1 bis 5 Sternen, die Übergaben bewertet: Wie lange stand die Straße nach dem Löschen noch gesperrt? Wie lange wartete der befreite Patient auf den RTW? Kam die Verpflegung rechtzeitig?
+- Dazu gibt es ab Level 8 die **Zusammenarbeit** von 1 bis 5 Sternen, die Übergaben bewertet: Wie lange stand die Straße nach dem Löschen noch gesperrt? Wie lange wartete der befreite Patient auf den RTW? Kam die Verpflegung rechtzeitig?
 - Die Zusammenarbeit der letzten 20 gemeinsamen Einsätze bestimmt, wie oft die großen gemeinsamen Einsätze kommen. Wer gut zusammenarbeitet, bekommt mehr davon.
 
-### 13.5 Feuerwehr und Polizei (ab Level 15)
+### 13.5 Feuerwehr und Polizei (ab Level 8)
 
 | Einsatz | Freischaltung | Feuerwehr | Polizei | Für 5 Sterne |
 |---|---|---|---|---|
@@ -513,7 +513,7 @@ Ein gemeinsamer Einsatz erscheint **erst, wenn alle beteiligten Dienste freigesc
 | **Brand in leerstehendem Haus** | nach Zimmerbrand (3★) | Löschen, Kontrolle auf Personen | Ermittlung Brandursache, Absperrung | Haus durchsucht, Brandstelle beschlagnahmt |
 | **Silvesternacht** (nur 31.12. bis 1.1.) | nach Heckenbrand und Ruhestörung (je 3★) | mehrere Kleinbrände | Ruhestörungen, Sachbeschädigung | alle Einsätze der Nacht unter Zielzeit |
 
-### 13.6 Feuerwehr, Polizei und Rettungsdienst (ab Level 30)
+### 13.6 Feuerwehr, Polizei und Rettungsdienst (ab Level 16)
 
 Zusätzlich zum Rettungsdienst-Teil in den bestehenden Einsätzen:
 
@@ -526,9 +526,9 @@ Zusätzlich zum Rettungsdienst-Teil in den bestehenden Einsätzen:
 | **Person auf dem Dach eines Stalls verletzt** | Drehleiter oder Schiebleiter, Rettung | Absperrung | Versorgung oben und unten |
 | **Reanimation am Sportplatz** | First Responder | Anfahrtsweg frei halten | RTW, Notarzt oder Hubschrauber auf der Landestelle |
 
-### 13.7 Alle zusammen (ab Level 70)
+### 13.7 Alle zusammen (ab Level 30)
 
-Großlagen werden nicht gekauft. Sie erscheinen ab Level 70, kommen selten und hängen am echten Wetter und Pegel. Wie oft, bestimmt die Zusammenarbeit (13.4). Jede Person wird einmal eingeplant (3.3).
+Großlagen werden nicht gekauft. Sie erscheinen ab Level 30, kommen selten und hängen am echten Wetter und Pegel. Wie oft, bestimmt die Zusammenarbeit (13.4). Jede Person wird einmal eingeplant (3.3).
 
 | Großlage | Auslöser | Feuerwehr | Polizei | Rettungsdienst | DRK | DLRG | THW | Bauhof, Abschleppdienst |
 |---|---|---|---|---|---|---|---|---|
@@ -547,12 +547,12 @@ Wie derselbe Einsatz mit jedem Level reicher wird:
 
 | Level | Feuerwehr | Polizei | Rettungsdienst | Abschleppdienst und Bauhof |
 |---|---|---|---|---|
-| bis 14 | wie heute | Unfallaufnahme als Folgeeinsatz | gibt es nicht | gibt es nicht |
-| 15 bis 19 | wie heute | wie heute, dazu Bewertung der Zusammenarbeit (Absicherung, Übergabe der Einsatzstelle) | gibt es nicht | gibt es nicht |
-| 20 bis 29 | wie heute | Straße erst frei, wenn das Fahrzeug weg ist | gibt es nicht | Abschleppdienst nachfordern, Bauhof reinigt die Fahrbahn |
-| ab 30 | patientengerechte Rettung in Absprache mit dem Notarzt | wie oben | RTW und NEF, Patient mit Dringlichkeit, Transport | wie oben |
+| bis 7 | wie heute | Unfallaufnahme als Folgeeinsatz | gibt es nicht | gibt es nicht |
+| 8 bis 11 | wie heute | wie heute, dazu Bewertung der Zusammenarbeit (Absicherung, Übergabe der Einsatzstelle) | gibt es nicht | gibt es nicht |
+| 12 bis 15 | wie heute | Straße erst frei, wenn das Fahrzeug weg ist | gibt es nicht | Abschleppdienst nachfordern, Bauhof reinigt die Fahrbahn |
+| ab 16 | patientengerechte Rettung in Absprache mit dem Notarzt | wie oben | RTW und NEF, Patient mit Dringlichkeit, Transport | wie oben |
 
-Abzug Zusammenarbeit ab Level 30 zum Beispiel: „Patient wartete nach der Befreiung 6 Minuten auf den RTW.“
+Abzug Zusammenarbeit ab Level 16 zum Beispiel: „Patient wartete nach der Befreiung 6 Minuten auf den RTW.“
 
 ---
 
@@ -571,19 +571,19 @@ Die Gebäudestufe ist das Level der Organisation. Sie bestimmt Stellplätze, Lag
 
 ### 14.3 Freischaltung nach Level
 
-Die Dienste hängen am **Level der Lebenswelt** (XP aus dem Alltag, Kurve `100 · n^1,4`, siehe Konzept der App). XP gehen nie verloren, ein freigeschalteter Dienst bleibt also für immer. Zeiten bei rund 300 XP am Tag (bei 250 XP etwa ein Fünftel länger):
+Die Dienste hängen am **Level der Lebenswelt** (XP aus dem Alltag, Kurve `100 · n^1,4`, siehe Konzept der App). XP gehen nie verloren, ein freigeschalteter Dienst bleibt also für immer. Alles ist in gut einem Jahr erreichbar, und alle drei bis vier Monate kommt etwas Neues. Zeiten bei rund 300 XP am Tag (bei 250 XP etwa ein Fünftel länger):
 
 | Level | ungefähr nach | Freigeschaltet | Gemeinsame Einsätze |
 |---|---|---|---|
 | 1 | sofort | Feuerwehr und Polizei wie heute, Bewohner mit Beruf, Feuerwehr und Polizei als Mitgliedschaften | Folgeeinsätze wie heute |
-| 10 | 1 Monat | Sportverein, Sportplatz Stufen 0 bis 3 | keine |
-| 15 | 3 Monate | Zusammenarbeit von Feuerwehr und Polizei | 13.5 |
-| 20 | 6 Monate | Werkstatt und Abschleppdienst, Bauhof, Tierarztpraxis, Jägerschaft, Sportplatz Stufen 4 und 5 | mit Abschleppdienst und Bauhof |
-| **30** | **1,3 Jahre** | **Rettungswache**, AED, Leitstellen-Verbesserungen, Landestelle, dritte Baukolonne | 13.6 |
-| 40 | 2,6 Jahre | DRK, Familienhaus, Sportplatz Stufe 6 | mit DRK |
-| 50 | 4,4 Jahre | DLRG, Sportplatz Stufe 7 | mit DLRG |
-| 60 | 6,9 Jahre | THW, Lehrrettungswache, Sportplatz Stufe 8 | mit THW |
-| **70** | **10 Jahre** | **alle zusammen** | Großlagen 13.7 |
+| 5 | 1 Woche | Sportverein, Sportplatz Stufen 0 bis 3 | keine |
+| 8 | 2,5 Wochen | Zusammenarbeit von Feuerwehr und Polizei | 13.5 |
+| 12 | 7 Wochen | Werkstatt und Abschleppdienst, Bauhof, Tierarztpraxis, Jägerschaft, Sportplatz Stufen 4 und 5 | mit Abschleppdienst und Bauhof |
+| **16** | **3 Monate** | **Rettungswache**, AED, Leitstellen-Verbesserungen, Landestelle, dritte Baukolonne | 13.6 |
+| 20 | 6 Monate | DRK, Familienhaus, Sportplatz Stufe 6 | mit DRK |
+| 24 | 9 Monate | DLRG, Sportplatz Stufe 7 | mit DLRG |
+| 27 | 1 Jahr | THW, Lehrrettungswache, Sportplatz Stufe 8 | mit THW |
+| **30** | **15 Monate** | **alle zusammen** | Großlagen 13.7 |
 
 Bisher war dafür eine Dorfstufe nach Einwohnerzahl vorgesehen. Sie entfällt: Ein Level ist einfacher zu verstehen und belohnt den Alltag, um den es in der App eigentlich geht.
 
@@ -692,7 +692,7 @@ Zusätzlich zu den Phasen aus [UMSETZUNG.md Abschnitt 13](UMSETZUNG.md):
 - **Richtfest** bei Gebäuden mit Rohbau: Die Bewohner stehen eine Stunde auf der Baustelle, rein sichtbar.
 - **Lieferzeit für Fahrzeuge:** Große Fahrzeuge (RTW, HLF, Bergewagen, Radlader) werden bestellt und kommen nach einer Lieferzeit (Spielwert 12 bis 48 h) mit einem Tieflader ins Dorf. Bis dahin steht im Store „bestellt“.
 - **Behelfsbetrieb** gilt auch für Rettungswache, Bauhof und Werkstatt: Solange dort gebaut wird, dauern Ausrücken und Wiederherstellen länger.
-- **Baufirma:** Bleibt bei zwei Kolonnen. Mit den neuen Diensten wird das spürbar. Ein Ausbau **dritte Kolonne** (Spielwert 5 000, ab Level 30) wird ein sinnvoller Kauf.
+- **Baufirma:** Bleibt bei zwei Kolonnen. Mit den neuen Diensten wird das spürbar. Ein Ausbau **dritte Kolonne** (Spielwert 5 000, ab Level 16) wird ein sinnvoller Kauf.
 
 ---
 
@@ -744,35 +744,37 @@ Hubschrauberlandung, Abschleppen, Streufahrt mit Teilchen, Pumpen mit Wasserstra
 
 | Bereich | Ab Level | Regelwerk | Münzen |
 |---|---|---|---|
-| Dorf (Bewohner, Mitgliedschaften, Familienhaus, AED, Leitstelle, Tierarzt) | 1 bis 40 | 60 000 | 3 000 |
-| Sportplatz | 10 bis 60 | 160 000 | 8 000 |
-| Werkstatt und Abschleppdienst | 20 | 90 000 | 4 500 |
-| Bauhof | 20 | 80 000 | 4 000 |
-| Rettungsdienst | 30 | 260 000 | 13 000 |
-| DRK | 40 | 120 000 | 6 000 |
-| DLRG | 50 | 110 000 | 5 500 |
-| THW | 60 | 220 000 | 11 000 |
+| Dorf (Bewohner, Mitgliedschaften, Familienhaus, AED, Leitstelle, Tierarzt) | 1 bis 20 | 60 000 | 3 000 |
+| Sportplatz | 5 bis 27 | 160 000 | 8 000 |
+| Werkstatt und Abschleppdienst | 12 | 90 000 | 4 500 |
+| Bauhof | 12 | 80 000 | 4 000 |
+| Rettungsdienst | 16 | 260 000 | 13 000 |
+| DRK | 20 | 120 000 | 6 000 |
+| DLRG | 24 | 110 000 | 5 500 |
+| THW | 27 | 220 000 | 11 000 |
 | **Summe** | | **1 100 000** | **55 000** |
 
-**Passt das zu den Einnahmen?** Bei 30 Münzen am Tag kommen bis Level 70 in rund zehn Jahren etwa 110 000 Münzen zusammen. Feuerwehr und Polizei (rund 60 000) und die neuen Dienste (55 000) kosten zusammen etwa 115 000. Das geht also ungefähr auf. Bis Level 30 gibt es mit Feuerwehr, Polizei, Sportplatz, Werkstatt und Bauhof weit mehr zu kaufen, als man verdient. Danach kommt alle ein bis drei Jahre ein neuer Dienst dazu, gerade wenn die vorigen weitgehend ausgebaut sind. Wichtig bleibt die Preisleiter (16.5): Alle ein bis drei Tage soll ein wirksamer Kauf möglich sein.
+**Was das heißt:** Nach gut einem Jahr ist alles freigeschaltet, gekauft ist dann aber erst ein kleiner Teil. Bei 30 Münzen am Tag kommen im Jahr knapp 11 000 Münzen zusammen. Feuerwehr und Polizei (rund 60 000) und die neuen Dienste (55 000) zusammen reichen also für rund zehn Jahre Ausbau. Das ist so gewollt: Ab dem ersten Jahr kann man frei wählen, welchen Dienst man als Nächstes stärkt, und die Empfehlungen (16.3) zeigen, wo ein Kauf am meisten bringt. Wichtig bleibt die Preisleiter (16.5): Alle ein bis drei Tage soll ein wirksamer Kauf möglich sein.
+
+Wenn dir zehn Jahre Ausbau zu lang werden, ist der Hebel der Preisfaktor, nicht die Level-Grenzen.
 
 ---
 
 ## 20. Umsetzung in Etappen
 
-Gebaut wird in der Reihenfolge der Level. Was erst in vielen Jahren freigeschaltet wird, baue ich erst, wenn das Level näher rückt (etwa ein halbes Jahr vorher). So entsteht kein Code, der jahrelang ungenutzt liegt und bis dahin veraltet. Jede Etappe endet wie bisher mit Tests, Build, Screenshots und Installation.
+Gebaut wird in der Reihenfolge der Level. Da alles in gut einem Jahr erreichbar ist, sollte jede Etappe fertig sein, bevor ihr Level erreicht ist. Die ersten Stufen (Level 5 und 8) kommen nach ein bis drei Wochen, deshalb zuerst D1 bis D3. Ist ein Level schon erreicht, wenn eine Etappe fertig wird, ist der Dienst mit dem Update sofort freigeschaltet. Jede Etappe endet wie bisher mit Tests, Build, Screenshots und Installation.
 
 | Etappe | Level | Inhalt | Abnahme |
 |---|---|---|---|
 | **D1 Bewohner und Level** | 1 | Datenmodell Version 2, Berufe, Mitgliedschaften, Hauptamt plus Feuerwehr, Alarmkollision, Freischaltung nach Level auf dem Server | alter Stand ergibt gleiche Bewertung; nie zwei Einsätze gleichzeitig; ohne Level kein Dienst und kein gemeinsamer Einsatz |
-| **D2 Sportplatz** | 10 | Stufen 0 bis 3, Fitness, Training, Wirkung auf Tempo und Atemschutz, Belastungsübung automatisch | Fitness steigt mit Training, Wirkung im Protokoll sichtbar; Screenshot je Stufe |
-| **D3 Zusammenarbeit Feuerwehr und Polizei** | 15 | 8 gemeinsame Einsatzarten, Bewertung der Zusammenarbeit | jede Organisation eigene Sterne, Zusammenarbeit im Protokoll |
-| **D4 Werkstatt und Bauhof** | 20 | Abschleppen, Straßensperren, Winterdienst mit Reibwert, Arbeitsplätze im Dorf, Sportplatz 4 und 5, Wirkungsvorschau | gestreute Straße bremst wie nass; Vorschau stimmt mit Nachrechnung überein |
-| **D5 Rettungsdienst** | 30 | Nachbarwache, Wache in Stufen, Fahrzeuge, Patienten, Transport, Baum, Erreichungsgrad, Landestelle, Leitstelle | Reanimation mit und ohne AED; zweiter Notfall bekommt Nachbarwache; vor Level 30 unverändert |
-| **D6 DRK** | 40 | Helfer vor Ort, Sanitätswachdienst, Betreuung, Verpflegung, Sportplatz 6 | Verpflegung verhindert Leistungsabfall |
-| **D7 DLRG** | 50 | Wachstation, Wachdienst, Pegel-Kopplung, Sportplatz 7 | Wachdienst bindet Personen |
-| **D8 THW** | 60 | Nachforderung nach Führungsstufe, Fachgruppen, Sportplatz 8 | THW kommt nur auf Anforderung |
-| **D9 Alle zusammen** | 70 | Großlagen | Großlage über mehrere Stunden in unter einer Sekunde fortgeschrieben |
+| **D2 Sportplatz** | 5 | Stufen 0 bis 3, Fitness, Training, Wirkung auf Tempo und Atemschutz, Belastungsübung automatisch | Fitness steigt mit Training, Wirkung im Protokoll sichtbar; Screenshot je Stufe |
+| **D3 Zusammenarbeit Feuerwehr und Polizei** | 8 | 8 gemeinsame Einsatzarten, Bewertung der Zusammenarbeit | jede Organisation eigene Sterne, Zusammenarbeit im Protokoll |
+| **D4 Werkstatt und Bauhof** | 12 | Abschleppen, Straßensperren, Winterdienst mit Reibwert, Arbeitsplätze im Dorf, Sportplatz 4 und 5, Wirkungsvorschau | gestreute Straße bremst wie nass; Vorschau stimmt mit Nachrechnung überein |
+| **D5 Rettungsdienst** | 16 | Nachbarwache, Wache in Stufen, Fahrzeuge, Patienten, Transport, Baum, Erreichungsgrad, Landestelle, Leitstelle | Reanimation mit und ohne AED; zweiter Notfall bekommt Nachbarwache; vor Level 16 unverändert |
+| **D6 DRK** | 20 | Helfer vor Ort, Sanitätswachdienst, Betreuung, Verpflegung, Sportplatz 6 | Verpflegung verhindert Leistungsabfall |
+| **D7 DLRG** | 24 | Wachstation, Wachdienst, Pegel-Kopplung, Sportplatz 7 | Wachdienst bindet Personen |
+| **D8 THW** | 27 | Nachforderung nach Führungsstufe, Fachgruppen, Sportplatz 8 | THW kommt nur auf Anforderung |
+| **D9 Alle zusammen** | 30 | Großlagen | Großlage über mehrere Stunden in unter einer Sekunde fortgeschrieben |
 
 ---
 
@@ -801,7 +803,7 @@ Gebaut wird in der Reihenfolge der Level. Was erst in vielen Jahren freigeschalt
 
 **Entschieden am 14.10.2026:**
 
-1. Freischaltung nach Level der Lebenswelt: Rettungswache ab 30, alle zusammen ab 70, dazwischen wie in 14.3. Gemeinsame Einsätze erst, wenn alle Beteiligten freigeschaltet sind.
+1. Freischaltung nach Level der Lebenswelt, alles in gut einem Jahr erreichbar: Rettungswache ab 16, alle zusammen ab 30, dazwischen wie in 14.3 (zweite Änderung am selben Tag, vorher 30 und 70). Gemeinsame Einsätze erst, wenn alle Beteiligten freigeschaltet sind.
 2. `PREISFAKTOR` bleibt 0,05.
 3. Rettungsdienstler und Polizisten, die im Dorf wohnen, können in der Feuerwehr sein.
 4. Gemeinsame Einsätze mit der Polizei und mit allen zusammen.
@@ -812,7 +814,7 @@ Gebaut wird in der Reihenfolge der Level. Was erst in vielen Jahren freigeschalt
 
 **Noch offen:**
 
-1. Stimmt die Verteilung zwischen 30 und 70 (Werkstatt und Bauhof 20, DRK 40, DLRG 50, THW 60)?
+1. Passen die Abstände (Sportplatz 5, Feuerwehr und Polizei 8, Werkstatt und Bauhof 12, Rettungswache 16, DRK 20, DLRG 24, THW 27, alle zusammen 30)?
 2. Bolzplatz g5 bleibt als Kinder-Bolzplatz bestehen. Einverstanden?
 
 ---
