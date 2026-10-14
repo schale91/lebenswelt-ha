@@ -298,9 +298,18 @@ function inSchicht(R, p, t) {
  * Kann die Person zum Zeitpunkt t für diese Organisation ausrücken? Die Polizei an der Dienststelle ist immer besetzt
  * (wie bisher). Für die Feuerwehr zählen Beruf und Schicht: Pendler fehlen in der Arbeitszeit, wer Schicht hat, auch.
  */
-function einsatzbereitFuer(R, p, org, t) {
+function einsatzbereitFuer(R, p, org, t, s) {
   if (!verfuegbar(p, t) || !istMitglied(p, org)) return false
   if (org === "polizei" && p.org === "polizei") return true
+  if (org === "rettungsdienst" && p.org === "rettungsdienst") {
+    // Stufe 1 der Rettungswache ist nur tagsüber besetzt
+    const st = s && R.GEBAEUDE.rettungswache && R.GEBAEUDE.rettungswache[s.gebaeude.rettungswache || 0]
+    if (st && st.tagdienst) {
+      const h = ortszeit(t).stunde
+      return h >= st.tagdienst[0] && h < st.tagdienst[1]
+    }
+    return true
+  }
   const b = R.BERUFE[p.beruf] || {}
   if (b.abwesend && inArbeitszeit(R, t)) return false
   if (b.schichtplan && b.org !== org && inSchicht(R, p, t)) return false
@@ -420,6 +429,8 @@ function merkmale(R, fahrzeuge) {
     if (f.typ === "elw1") m.elw_fahrzeug = 1
     if (f.typ === "tlf3000") m.tlf_fahrzeug = 1
     if (f.typ === "mzb") m.boot_fahrzeug = 1
+    // weitere Merkmale aus MERKMALE (z. B. Rettungswagen)
+    for (const [id, mk] of Object.entries(R.MERKMALE || {})) if (mk.aus && mk.aus.fahrzeug && mk.aus.fahrzeug.indexOf(f.typ) >= 0 && !m[id]) m[id] = 1
   }
   return m
 }
@@ -533,8 +544,8 @@ function bauFelder(s) {
     s.version = 2
   }
   if (s.level === undefined) s.level = 0
-  for (const g of ["sportplatz", "werkstatt", "bauhof"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
-  for (const o of ["werkstatt", "bauhof"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
+  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
+  for (const o of ["werkstatt", "bauhof", "rettungsdienst"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
 }
 
 /** Gebäude einer Organisation (geraetehaus, dienststelle, werkstatt, bauhof). */
@@ -551,6 +562,94 @@ function orgFrei(R, s, org) {
 /** Einsatzarten mit start_level werden mit dem Level kaufbar (der erste Einsatz einer neuen Organisation). */
 function levelFreischalten(R, s) {
   for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.start_level && levelReicht(s, a.start_level) && s.freigeschaltet.indexOf(id) < 0) s.freigeschaltet.push(id)
+}
+
+/** Standort einer Organisation: Ort der aktuellen Gebäudestufe (z. B. RTW-Stellplatz am Feuerwehrhaus) oder GEBAEUDE_ORT. */
+function standortVon(R, s, org) {
+  const geb = gebaeudeVon(R, org)
+  const st = R.GEBAEUDE[geb] && R.GEBAEUDE[geb][s.gebaeude[geb] || 0]
+  const id = (st && st.ort) || (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[geb]) || "feuerwehrhaus"
+  return R.ORTE[id] || R.ORTE.feuerwehrhaus
+}
+
+/** Personen einer Organisation, auch in Häusern, die noch gebaut werden (für Stellen). */
+function orgZahl(s, org) {
+  return s.personal.filter((p) => p.org === org).length + (s.baustellen || []).filter((b) => b.bewohner && b.bewohner.org === org).length
+}
+
+/**
+ * Wer bringt den Notarzt? Eigenes NEF (mit Notarztvertrag, freiem Fahrzeug und Fahrer), tagsüber der
+ * Rettungshubschrauber, sonst der Notarzt aus der Stadt. Gibt {quelle, name, eintreffen, fahrzeug?, fahrer?} zurück.
+ */
+function notarztPlan(R, s, e, alarm, besetzt) {
+  const art = R.EINSATZARTEN[e.art]
+  const Rt = R.RETTUNG
+  if (!art.notarzt || !Rt) return null
+  const ort = punktVon(R, s, e.ort)
+  const wahl = []
+  if (ausbauEffekt(R, s, "notarzt") > 0) {
+    const nef = s.fahrzeuge.find((f) => R.FAHRZEUGE[f.typ].nef && frei(f, alarm) && besetzt.indexOf(f.id) < 0)
+    const fahrer = nef && s.personal.find((p) => besetzt.indexOf(p.id) < 0 && einsatzbereitFuer(R, p, "rettungsdienst", alarm, s) && hatLehrgang(p, R.FAHRZEUGE[nef.typ].fahrer, alarm))
+    if (nef && fahrer) {
+      const tempo = (R.FAHRZEUGE[nef.typ].tempo_kmh / 3.6) * R.ZEITEN.sonderrechte_tempo
+      const weg = strassenweg(R, standortVon(R, s, "rettungsdienst"), ort)
+      const eintreffen = alarm + (R.ORGANISATIONEN.rettungsdienst.reaktion_s + R.ZEITEN.ausruecken_s) * 1000 + Math.round(((weg * R.METER_JE_EINHEIT) / tempo) * 1000)
+      wahl.push({ quelle: "nef", name: "Notarzt mit dem eigenen NEF", eintreffen, fahrzeug: nef.id, fahrer: fahrer.id })
+    }
+  }
+  if (!dunkel(R, alarm)) wahl.push({ quelle: "rth", name: Rt.rth_name, eintreffen: alarm + Math.round((Rt.rth_min + ausbauEffekt(R, s, "rth_min")) * MIN) })
+  wahl.push({ quelle: "stadt", name: "Notarzt aus der Stadt", eintreffen: alarm + Rt.notarzt_stadt_min * MIN })
+  wahl.sort((a, b) => a.eintreffen - b.eintreffen)
+  return wahl[0]
+}
+
+/** Wiederherstellung des Fahrzeugs nach dem Transport (Desinfizieren, Auffüllen), in ms. */
+function wiederherstellungMs(R, s, art, leute, t) {
+  let min = R.RETTUNG.wiederherstellung_min * ausbauFaktor(R, s, "wiederherstellung_faktor")
+  if (art.infektion) min *= R.RETTUNG.infektion_faktor * (leute.some((p) => hatLehrgang(p, "desinfektor", t)) ? 0.5 : 1)
+  return Math.round(min * MIN)
+}
+
+/** Ein öffentlicher Defibrillator in der Nähe der Einsatzstelle? */
+function aedInDerNaehe(R, s, ort) {
+  for (const id of s.ausbau) {
+    const e = R.AUSBAU[id] && R.AUSBAU[id].effekt
+    const o = e && e.aed_ort && R.ORTE[e.aed_ort]
+    if (o && luftlinie(o, ort) <= R.RETTUNG.aed_umkreis) return true
+  }
+  return false
+}
+
+/**
+ * Wie es dem Patienten geht (kein Tod im Spiel): Minuten vom Notruf bis zur Versorgung, Erste Hilfe davor zählt zur
+ * Hälfte, bei Reanimation helfen Telefonreanimation und ein Defibrillator in der Nähe.
+ */
+function patientErgebnis(R, s, e) {
+  const art = R.EINSATZARTEN[e.art]
+  const Rt = R.RETTUNG
+  const pl = e.plan
+  const notruf = e.notruf || e.meldung
+  let versorgt = pl.eintreffen
+  if (pl.notarzt && pl.notarzt.eintreffen < versorgt) versorgt = pl.notarzt.eintreffen
+  let ohne = (versorgt - notruf) / MIN
+  const hilfen = []
+  if (e.erste_hilfe && e.erste_hilfe < versorgt) {
+    ohne -= (Rt.erste_hilfe_anteil * (versorgt - e.erste_hilfe)) / MIN
+    hilfen.push("Erste Hilfe durch die Feuerwehr")
+  }
+  if (art.reanimation && ausbauEffekt(R, s, "telefonreanimation") > 0) {
+    ohne -= Rt.telefon_bonus_min
+    hilfen.push("Telefonreanimation")
+  }
+  if (art.reanimation && aedInDerNaehe(R, s, punktVon(R, s, e.ort))) {
+    ohne -= Rt.aed_bonus_min
+    hilfen.push("Defibrillator in der Nähe")
+  }
+  ohne = Math.max(0, ohne)
+  const grenzen = Rt.patient[art.patient] || Rt.patient.gelb
+  const ergebnis = ohne <= grenzen[0] ? "stabil" : ohne <= grenzen[1] ? "verzoegert" : "verschlechtert"
+  const text = { stabil: "stabil übergeben", verzoegert: "mit Verzögerung übergeben", verschlechtert: "Zustand hat sich verschlechtert" }[ergebnis]
+  return { dringlichkeit: art.patient, ergebnis, text, minuten: Math.round(ohne * 10) / 10, hilfen }
 }
 
 /** Glätte und Schnee wirken auf gestreuten Straßen wie Nässe (Winterdienst des Bauhofs). */
@@ -805,8 +904,8 @@ function plane(R, s, e, alarm, umwelt) {
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
   const ort = punktVon(R, s, e.ort)
   const geb = gebaeudeVon(R, org)
-  const basis = R.ORTE[(R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[geb]) || "feuerwehrhaus"] || R.ORTE.feuerwehrhaus
-  const personen = s.personal.filter((p) => einsatzbereitFuer(R, p, org, alarm))
+  const basis = standortVon(R, s, org)
+  const personen = s.personal.filter((p) => einsatzbereitFuer(R, p, org, alarm, s))
   if (!personen.length) return externerPlan(R, s, e, alarm) || { grund: org === "polizei" ? "Keine Beamtin und kein Beamter verfügbar." : org === "feuerwehr" ? "Keine Einsatzkraft verfügbar." : "Niemand im Dienst." }
 
   // Bereitschaftszeit je Person: Feuerwehr von zu Hause, alle anderen sind an ihrem Gebäude im Dienst
@@ -823,7 +922,7 @@ function plane(R, s, e, alarm, umwelt) {
   const falschparker = org === "feuerwehr" && s.laufend.some((x) => x.art === "p_falschparker" && x.status !== "abgeschlossen" && x.meldung <= alarm && !(x.plan && x.plan.arbeit_ende <= alarm) && !(x.umgesetzt && x.umgesetzt <= alarm))
   const zf = falschparker ? R.EINSATZARTEN.p_falschparker.wirkung.fahrzeit_faktor : 1
   const behelfAus = org === "feuerwehr" && behelfAktiv(R, s, "geraetehaus", alarm) ? R.BAU.behelf.ausruecken_s : 0
-  const ausruecken = Math.max(0, R.ZEITEN.ausruecken_s + ausbauEffekt(R, s, "ausruecken_s") + behelfAus) * 1000
+  const ausruecken = Math.max(0, R.ZEITEN.ausruecken_s + ausbauEffekt(R, s, "ausruecken_s") + (org === "rettungsdienst" ? ausbauEffekt(R, s, "rd_ausruecken_s") : 0) + behelfAus) * 1000
   const amWeg = baustellenAmWeg(R, s, [basis, ort], alarm).concat(sperrungenAmWeg(R, s, [basis, ort], alarm, e.id)).slice(0, 2)
   const mind = art.mindestens || {}
   const opt = art.optimal || {}
@@ -976,7 +1075,18 @@ function plane(R, s, e, alarm, umwelt) {
   if (dunkel(R, bester.eintreffen)) merke("dunkel", 1 + (R.ZEITEN.nacht_arbeit - 1) * (1 - licht(R, bester.bestand, vorhanden, bester.te)), "Dunkelheit")
   const arbeit = faktoren.filter((f) => f.faktor && f.grund !== "zu_fuss").reduce((n, f) => n * f.faktor, art.arbeit_min)
   const arbeitEnde = bester.eintreffen + Math.round(arbeit * MIN) + Math.round(wasserMin * MIN)
-  const zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
+  let zurueck = arbeitEnde + Math.round(bester.fahrzeit * R.ZEITEN.rueckfahrt_faktor / R.ZEITEN.sonderrechte_tempo)
+  // Rettungsdienst: Transport ins Krankenhaus, Übergabe, Rückfahrt, danach Wiederherstellung
+  let transport = null
+  let wiederherstellung = 0
+  if (art.patient && R.RETTUNG && bester.motor.length) {
+    const Rt = R.RETTUNG
+    transport = { ab: arbeitEnde, klinik: arbeitEnde + Rt.transport_min * MIN, zurueck: arbeitEnde + (2 * Rt.transport_min + Rt.uebergabe_min) * MIN }
+    zurueck = transport.zurueck
+    wiederherstellung = wiederherstellungMs(R, s, art, bester.leute, alarm)
+  }
+  // Notarzt: eigenes NEF fährt mit (und begleitet den Transport), sonst Hubschrauber oder Notarzt aus der Stadt
+  const notarzt = notarztPlan(R, s, e, alarm, bester.leute.map((p) => p.id).concat(bester.auswahl.map((f) => f.id)))
   // Ohne Rückmeldung kommen alle Alarmierten zum Gerätehaus, auch wer nicht mehr gebraucht wird
   const imTrupp = {}
   for (const b of bester.trupp) imTrupp[b.p.id] = true
@@ -985,11 +1095,17 @@ function plane(R, s, e, alarm, umwelt) {
         .filter((b) => !imTrupp[b.p.id] && !hatRueckmeldung(R, s, b.p))
         .map((b) => ({ id: b.p.id, bis: b.t + VERGEBLICH_MS }))
     : []
+  const personenPlan = bester.trupp.map((b) => ({ id: b.p.id, umgezogen: b.t }))
+  const fahrzeugePlan = bester.auswahl.map((f) => f.id)
+  if (notarzt && notarzt.fahrzeug) {
+    personenPlan.push({ id: notarzt.fahrer, umgezogen: alarm })
+    fahrzeugePlan.push(notarzt.fahrzeug)
+  }
   return {
     plan: {
       alarm,
-      personen: bester.trupp.map((b) => ({ id: b.p.id, umgezogen: b.t })),
-      fahrzeuge: bester.auswahl.map((f) => f.id),
+      personen: personenPlan,
+      fahrzeuge: fahrzeugePlan,
       mitgenommen: bester.mit,
       bestand: bester.bestand,
       zu_fuss: bester.motor.length === 0,
@@ -998,8 +1114,10 @@ function plane(R, s, e, alarm, umwelt) {
       eintreffen: bester.eintreffen,
       arbeit_ende: arbeitEnde,
       zurueck,
-      einsatzbereit: zurueck + (bester.motor.length ? R.ZEITEN.einsatzbereit_s * 1000 : 0),
+      einsatzbereit: zurueck + (bester.motor.length ? (transport ? wiederherstellung : R.ZEITEN.einsatzbereit_s * 1000) : 0),
       verzug_min: Math.round(verzugMin * 10) / 10,
+      transport,
+      notarzt: notarzt ? { quelle: notarzt.quelle, name: notarzt.name, eintreffen: notarzt.eintreffen } : null,
       wasser: wasser ? (wasser.x === undefined ? { quelle: wasser.quelle, sekunden: wasser.sekunden } : { quelle: wasser.quelle, x: wasser.x, z: wasser.z, meter: wasser.meter, sekunden: wasser.sekunden }) : null,
       faktoren,
       gesperrt: sperren,
@@ -1038,6 +1156,10 @@ function externerPlan(R, s, e, alarm) {
       faktoren: [{ grund: "extern", sekunden: x.anfahrt_min * 60, text: x.name + " mit langer Anfahrt" }],
       gesperrt: [],
       vergeblich: [],
+      notarzt: (function () {
+        const na = notarztPlan(R, Object.assign({}, s, { ausbau: [] }), e, alarm, [])
+        return na ? { quelle: na.quelle, name: na.name, eintreffen: na.eintreffen } : null
+      })(),
     },
   }
 }
@@ -1106,6 +1228,20 @@ function bewerte(R, s, e) {
     }
     if (!regelErfuellt(R, s, regel, k, e, pl.eintreffen)) ziehe(r, regel.abzug, regel.text)
   }
+  if (art.patient && R.RETTUNG) {
+    const notruf = e.notruf || e.meldung
+    if (art.notarzt) {
+      const na = pl.notarzt
+      if (!na) ziehe("notarzt", 1, "Kein Notarzt, obwohl einer nötig war.")
+      else if ((na.eintreffen - notruf) / MIN > R.RETTUNG.notarzt_ziel_min)
+        ziehe("notarzt", 0.5, na.name + " war erst nach " + komma((na.eintreffen - notruf) / MIN) + " Minuten da" + (na.quelle !== "nef" ? ". Mit eigenem NEF und Notarztvertrag geht es schneller." : "."))
+    }
+    if (!pl.extern && art.patient !== "gruen" && !leute.some((p) => hatLehrgang(p, "nfs", pl.eintreffen)))
+      ziehe("besetzung", 0.5, "Keine Notfallsanitäterin und kein Notfallsanitäter im RTW (§ 10 NRettDG).")
+    const pe = patientErgebnis(R, s, e)
+    e.patient = pe
+    if (pe.ergebnis === "verschlechtert") ziehe("patient", 1, "Der Zustand des Patienten hat sich verschlechtert: " + komma(pe.minuten) + " Minuten ohne Versorgung.")
+  }
   if (pl.extern) {
     const x = R.EXTERN[art.org]
     const vorher = Math.max(1, Math.round((R.STERNE.max - abzuege.reduce((n, a) => n + a.sterne, 0)) * 2) / 2)
@@ -1149,6 +1285,15 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     folge_von: folgeVon ? folgeVon.id : null,
     folgen_erzeugt: false,
   }
+  if (art.patient) {
+    // Für den Patienten zählt die Zeit ab dem ersten Notruf; Erste Hilfe leistet die Feuerwehr ab ihrem Eintreffen
+    e.notruf = folgeVon ? folgeVon.notruf || folgeVon.meldung : t
+    const fp = folgeVon && folgeVon.plan
+    if (fp && fp.eintreffen && R.EINSATZARTEN[folgeVon.art].org === "feuerwehr") {
+      const leute = fp.personen.map((x) => s.personal.find((q) => q.id === x.id)).filter(Boolean)
+      if ((fp.bestand && fp.bestand.notfallrucksack) || leute.some((q) => hatLehrgang(q, "erste_hilfe", fp.eintreffen))) e.erste_hilfe = fp.eintreffen
+    }
+  }
   const ergebnis = plane(R, s, e, t, umwelt)
   if (ergebnis.grund && !ergebnis.plan) {
     // Niemand frei oder Gerät fehlt: Der Einsatz bleibt offen und wartet. Jede volle Minute und nach jedem Kauf wird
@@ -1180,6 +1325,15 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
     e.ende = e.plan.arbeit_ende
   }
   s.laufend.push(e)
+  // Strukturierte Notrufabfrage: Der Rettungsdienst wird gleich mit alarmiert, nicht erst beim Eintreffen nachgefordert
+  if (e.status === "alarmiert" && !folgeVon && art.org !== "rettungsdienst" && ausbauEffekt(R, s, "notrufabfrage") > 0) {
+    for (const id of art.folge || []) {
+      const fa = R.EINSATZARTEN[id]
+      if (!fa || fa.org !== "rettungsdienst" || !orgFrei(R, s, fa.org) || !ortErlaubt(R, s, fa, e.ort)) continue
+      e.folgen_sofort = (e.folgen_sofort || []).concat([id])
+      erzeuge(R, s, id, t, umwelt, e)
+    }
+  }
   return e
 }
 
@@ -1235,6 +1389,7 @@ function folgen(R, s, e, umwelt) {
   for (const id of ids) {
     const fa = R.EINSATZARTEN[id]
     if (!fa) continue
+    if (e.folgen_sofort && e.folgen_sofort.indexOf(id) >= 0) continue
     // Organisationen, die erst mit einem Level kommen (Werkstatt, Bauhof), gibt es vorher nicht
     if (!orgFrei(R, s, fa.org)) continue
     const extern = R.EXTERN && R.EXTERN[fa.org] && levelReicht(s, R.EXTERN[fa.org].ab_level)
@@ -1295,6 +1450,10 @@ function abschliessen(R, s, e) {
       const fp = s.laufend.find((x) => x.id === e.folge_von)
       if (fp) fp.umgesetzt = e.plan.arbeit_ende
     }
+    if (art.patient && art.patient !== "gruen" && R.RETTUNG) {
+      const ok = (e.plan.eintreffen - e.meldung) / MIN <= R.RETTUNG.hilfsfrist_min
+      s.hilfsfrist = (s.hilfsfrist || []).concat([{ id: e.id, ok }]).slice(-50)
+    }
     if (art.gemeinsam) {
       e.bewertung.zusammenarbeit = bewerteZusammenarbeit(R, s, e)
       s.zusammenarbeit = (s.zusammenarbeit || []).concat([{ id: e.id, sterne: e.bewertung.zusammenarbeit.sterne }]).slice(-20)
@@ -1305,7 +1464,10 @@ function abschliessen(R, s, e) {
       if (p) p.einsaetze = (p.einsaetze || 0) + 1
     }
     pflege(R, s, e)
-  } else e.bewertung = { sterne: 0, abzuege: [{ grund: "verfallen", sterne: 5, text: e.grund }] }
+  } else {
+    e.bewertung = { sterne: 0, abzuege: [{ grund: "verfallen", sterne: 5, text: e.grund }] }
+    if (art.patient && art.patient !== "gruen" && R.RETTUNG) s.hilfsfrist = (s.hilfsfrist || []).concat([{ id: e.id, ok: false }]).slice(-50)
+  }
   if (st) {
     st.anzahl += 1
     if (e.status === "abgeschlossen") st.erfolgreich += 1
@@ -1514,6 +1676,9 @@ function stellplaetzeBelegt(R, s, org) {
   return s.fahrzeuge.filter((f) => R.FAHRZEUGE[f.typ].org === org).reduce((n, f) => n + R.FAHRZEUGE[f.typ].stellplatz, 0)
 }
 
+/** Was jede Person ihrer Organisation beim Einzug oder bei der Einstellung mitbringt. */
+const GRUNDAUSBILDUNG = { feuerwehr: "tm1", polizei: "pk", rettungsdienst: "rs", werkstatt: "kfz", bauhof: "gemeindearbeit" }
+
 function neuePerson(s, org, haus, jetzt, bewohner) {
   s.zaehler += 1
   const bw = bewohner || {}
@@ -1523,14 +1688,15 @@ function neuePerson(s, org, haus, jetzt, bewohner) {
     name: "",
     anrede: "",
     haus,
-    beruf: bw.beruf || (org === "polizei" ? "schicht" : "frei"),
-    lehrgaenge: org === "feuerwehr" ? { tm1: jetzt } : { pk: jetzt },
+    beruf: bw.beruf || (org === "polizei" ? "schicht" : org === "rettungsdienst" && haus ? "rettungswache" : "frei"),
+    lehrgaenge: {},
     lehrgang_laeuft: null,
     psa: {},
     fitness: 50,
     einsaetze: 0,
     belegt_bis: 0,
   }
+  if (GRUNDAUSBILDUNG[org]) p.lehrgaenge[GRUNDAUSBILDUNG[org]] = jetzt
   if (bw.arbeitgeber) p.arbeitgeber = bw.arbeitgeber
   return p
 }
@@ -1556,6 +1722,12 @@ function polizeiZahl(s) {
  */
 function pruefeBewohner(R, s, roh) {
   if (!roh) return { bewohner: { org: "feuerwehr", beruf: "frei" } }
+  if (roh.org === "rettungsdienst") {
+    if (!orgFrei(R, s, "rettungsdienst")) return { fehler: "Erst ab Level " + R.ORGANISATIONEN.rettungsdienst.ab_level + "." }
+    const st = R.GEBAEUDE.rettungswache[s.gebaeude.rettungswache || 0]
+    if (orgZahl(s, "rettungsdienst") >= (st.personal_max || 0)) return { fehler: st.personal_max ? "An der Rettungswache sind alle Stellen besetzt. Erst ausbauen." : "Erst die Rettungswache bauen." }
+    return { bewohner: { org: "rettungsdienst", beruf: "rettungswache" } }
+  }
   const org = roh.org === "polizei" ? "polizei" : "feuerwehr"
   if (org === "polizei") {
     const max = R.GEBAEUDE.dienststelle[s.gebaeude.dienststelle].personal_max
@@ -1594,6 +1766,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (s.einsatzarten[id]) return fehler("Schon gekauft.")
     if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet.")
     if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
+    for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
     roh = a.preis
     aktiviereArt(R, s, id, jetzt)
   } else if (art === "bauplatz") {
@@ -1640,6 +1813,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (p.lehrgaenge[id] !== undefined) return fehler("Schon abgeschlossen.")
     if (p.lehrgang_laeuft) return fehler("Die Person ist schon in einem Lehrgang.")
     for (const v of l.voraussetzung || []) if (!hatLehrgang(p, v, jetzt)) return fehler("Voraussetzung fehlt: " + R.LEHRGAENGE[v].name + ".")
+    for (const [g, st] of Object.entries(l.gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
     roh = l.preis
     p.lehrgang_laeuft = { id, bis: jetzt + Math.round(l.dauer_h * STD * ausbauFaktor(R, s, "lehrgang_faktor")) }
   } else if (art === "psa") {
@@ -1683,7 +1857,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!st) return fehler("Schon die höchste Stufe.")
     if (!levelReicht(s, st.ab_level)) return fehler("Erst ab Level " + st.ab_level + ".")
     roh = st.preis
-    const ortId = (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[id]) || "feuerwehrhaus"
+    const ortId = st.ort || (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[id]) || "feuerwehrhaus"
     const winter = st.bauzeit_winter_h && R.FITNESS.winter_monate.indexOf(ortszeit(jetzt).monat) >= 0
     const bau = { art: "gebaeude", ziel: id, stufe: neu, name: st.name, ort: { x: R.ORTE[ortId].x, z: R.ORTE[ortId].z }, bauzeit_h: (winter ? st.bauzeit_winter_h : st.bauzeit_h) || 1, klein: false }
     if (st.phasen) bau.phasen = st.phasen
@@ -1693,11 +1867,13 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!a) return fehler("Unbekannter Ausbau.")
     if (s.ausbau.indexOf(id) >= 0) return fehler("Schon vorhanden.")
     if (imBau(s, "ausbau", id)) return fehler("Wird schon gebaut.")
-    if (a.gebaeude !== "ort" && s.gebaeude[a.gebaeude] < a.ab_stufe) return fehler("Das Gebäude ist dafür noch zu klein.")
+    if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
+    if (a.gebaeude !== "ort" && (s.gebaeude[a.gebaeude] || 0) < a.ab_stufe) return fehler("Das Gebäude ist dafür noch zu klein.")
     roh = a.preis
     const platz = a.effekt && a.effekt.hydrant_platz !== undefined && (R.HYDRANT_PLAETZE || [])[a.effekt.hydrant_platz]
     if (a.effekt && a.effekt.hydrant_platz !== undefined && !platz) return fehler("Für diesen Hydranten gibt es auf der Karte keinen Platz.")
-    const wo = platz || (a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus)
+    const aedOrt = a.effekt && a.effekt.aed_ort && R.ORTE[a.effekt.aed_ort]
+    const wo = platz || aedOrt || (id === "landestelle" && R.ORTE.sportplatz) || (a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "rettungswache" ? standortVon(R, s, "rettungsdienst") : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus)
     beginneBau(R, s, jetzt, { art: "ausbau", ziel: id, name: a.name, ort: { x: wo.x, z: wo.z }, bauzeit_h: a.bauzeit_h || 1, klein: Boolean(a.klein) })
   } else if (art === "neubaugebiet") {
     const nb = R.NEUBAUGEBIETE.find((n) => n.id === id)
@@ -1733,7 +1909,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!orgFrei(R, s, porg)) return fehler("Erst ab Level " + R.ORGANISATIONEN[porg].ab_level + ".")
     const pg = gebaeudeVon(R, porg)
     const max = R.GEBAEUDE[pg][s.gebaeude[pg] || 0].personal_max || 0
-    const zahl = porg === "polizei" ? polizeiZahl(s) : s.personal.filter((x) => x.org === porg).length
+    const zahl = porg === "polizei" ? polizeiZahl(s) : orgZahl(s, porg)
     if (zahl >= max) return fehler(porg === "polizei" ? "Die Dienststelle ist voll besetzt. Erst ausbauen." : "Alle Stellen sind besetzt. Erst ausbauen.")
     roh = P.preis
     const neu = neuePerson(s, porg, null, jetzt)
@@ -1784,5 +1960,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
