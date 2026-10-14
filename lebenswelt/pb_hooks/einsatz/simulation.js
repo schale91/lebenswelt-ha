@@ -1573,7 +1573,7 @@ function bewerte(R, s, e) {
     if (pe.ergebnis === "verschlechtert") ziehe("patient", 1, "Der Zustand des Patienten hat sich verschlechtert: " + komma(pe.minuten) + " Minuten ohne Versorgung.")
   }
   if (pl.extern) {
-    const x = R.EXTERN[art.org]
+    const x = (R.EXTERN && R.EXTERN[art.org]) || (R.NACHBARHILFE && R.NACHBARHILFE[art.org])
     const vorher = Math.max(1, Math.round((R.STERNE.max - abzuege.reduce((n, a) => n + a.sterne, 0)) * 2) / 2)
     if (vorher > x.max_sterne) ziehe("extern", vorher - x.max_sterne, x.name + " hat übernommen. Mit eigenem Betrieb im Dorf geht es schneller.")
   }
@@ -1697,6 +1697,13 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   return e
 }
 
+/** Sind alle erlaubten Orte der Art gerade mit einem Einsatz derselben Art belegt? (Schutzzonen zählen nicht als frei) */
+function alleOrteBesetzt(R, s, art, id) {
+  const erlaubt = orteVon(R, art).filter((o) => ortErlaubt(R, s, art, o))
+  const liste = erlaubt.length ? erlaubt : orteVon(R, art)
+  return liste.length > 0 && liste.every((o) => ortBesetzt(s, id, o))
+}
+
 /** Läuft an diesem Ort gerade ein Einsatz dieser Art (gemeldet, wartend, alarmiert, vor Ort)? */
 function ortBesetzt(s, art, ort) {
   return s.laufend.some((x) => x.art === art && x.ort === ort && x.status !== "verfallen" && x.status !== "abgeschlossen")
@@ -1715,12 +1722,40 @@ function hvoLohnt(R, s, e, t, umwelt) {
 }
 
 /** Wartende Einsätze erneut alarmieren (wenn inzwischen jemand frei ist oder etwas gekauft wurde). */
+/**
+ * Ab wann übernimmt die Nachbarhilfe einen wartenden Einsatz (ernste Feuerwehreinsätze, nicht die harmlosen wie die
+ * Katze, die warten weiter auf die eigenen Leute)? null: gar nicht.
+ */
+function nachbarAb(R, e) {
+  const art = R.EINSATZARTEN[e.art]
+  const nh = R.NACHBARHILFE && R.NACHBARHILFE[art.org]
+  if (!nh || art.harmlos) return null
+  return e.meldung + Math.max(nh.nach_min, art.ablauf_min) * MIN
+}
+
 function versucheWartende(R, s, t, umwelt) {
   for (const e of s.laufend) {
     if (!e.wartet || t >= e.verfall) continue
     const ergebnis = plane(R, s, e, t, umwelt)
     if (ergebnis.grund || !ergebnis.plan) {
       if (ergebnis.grund) e.grund = ergebnis.grund
+      // Lange niemand frei: Die Leitstelle alarmiert die Nachbarwehr (lange Anfahrt, wenig Sterne)
+      const ab = nachbarAb(R, e)
+      if (ab !== null && t >= ab) {
+        const art = R.EINSATZARTEN[e.art]
+        const nh = R.NACHBARHILFE[art.org]
+        const x = externerPlan(Object.assign({}, R, { EXTERN: Object.assign({}, R.EXTERN, { [art.org]: nh }) }), s, e, t)
+        if (x && x.plan) {
+          e.wartet = false
+          e.nachbarhilfe = e.grund
+          delete e.grund
+          e.alarm_spaeter_s = Math.round((t - e.meldung) / 1000)
+          e.plan = x.plan
+          e.status = "alarmiert"
+          e.ende = e.plan.arbeit_ende
+          meldePartner(s, e)
+        }
+      }
       continue
     }
     if (ergebnis.plan.eintreffen > e.verfall) {
@@ -2003,6 +2038,8 @@ function naechstesEreignis(R, s, bis, vorher) {
       const r = R.VERFALL && vorher >= e.meldung + art.ablauf_min * MIN ? R.VERFALL.raster_min * MIN : MIN
       if (!raster || r < raster) raster = r
       nimm(e.verfall, "verfall", 0, e.id)
+      const ab = nachbarAb(R, e)
+      if (ab !== null && ab > vorher) nimm(ab, "warten", 5, "")
     } else if (e.status === "verfallen") nimm(e.ende, "ende", 0, e.id)
     else if (!e.folgen_erzeugt) nimm(e.plan.eintreffen, "eintreffen", 1, e.id)
     else nimm(e.ende, "ende", 0, e.id)
@@ -2053,7 +2090,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
       // Wartet schon ein Einsatz dieser Art auf Kräfte, kommt kein zweiter dazu
       // Ebenso, wenn an allen Orten der Art gerade schon einer läuft
-      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id) || (!art.baustelle && orteVon(R, art).length > 0 && orteVon(R, art).every((o) => ortBesetzt(s, ev.id, o)))
+      const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id) || (!art.baustelle && alleOrteBesetzt(R, s, art, ev.id))
       if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f) && !wartetSchon) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
     } else if (ev.typ === "warten") {

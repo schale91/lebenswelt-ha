@@ -1,5 +1,19 @@
 # Änderungen
 
+## 0.20.0
+
+- Einsatzspiel, Nachttest im Vollausbau (Level 30, 44 Feuerwehrleute, 42 Fahrzeuge, bis zu 19 Einsätze gleichzeitig):
+  - Schneller: Wege werden zwischengespeichert, die Fahrzeugauswahl prüft das Gerät vorab. Ein Spieltag rechnet sich in unter einer Sekunde statt in fast zehn.
+  - Auswahl nach Fertigzeit: Unter allen passenden Besetzungen gewinnt die, die am frühesten fertig ist (mit etwas Spielraum, dann weniger Fahrzeuge, mehr Leute). Vorher ging bei voller Wehr oft ein Trupp zu Fuß, obwohl ein Fahrzeug viel schneller gewesen wäre (Hecke, Mülltonne, Katze jetzt meist 5 statt 2 bis 4 Sterne).
+  - Mülltonne, Brandserie und Silvester gehen auch mit einem Fahrzeug mit Wasser und Strahlrohr (Schnellangriff).
+  - Absichern, Ausleuchten und Verkehrsregelung werden nach dem Eintreffen bewertet, nicht nach der Dauer des Auslösers.
+  - Der Helfer vor Ort (HvO) wird nur alarmiert, wenn er vor dem Rettungswagen da ist.
+  - Fehler behoben: Absturz der Auswahl bei bestimmten Wohnungsbränden.
+- Heimweg nach dem Einsatz: Die Kräfte gehen oder fahren vom Gerätehaus nach Hause (`zurueck_fw`). Kommt unterwegs ein neuer Alarm, starten sie dort, wo sie gerade sind (`ZEITEN.heimweg_tempo`).
+- Nachbarhilfe (`NACHBARHILFE`): Ist für einen ernsten Feuerwehreinsatz 30 Minuten niemand frei (tagsüber sind viele auf der Arbeit), übernimmt die Nachbarfeuerwehr mit 15 Minuten Anfahrt, höchstens ein Stern. Vorher konnte ein Wohnungsbrand werktags acht Stunden warten.
+- Kein zweiter Einsatz an einem Ort, an dem schon einer läuft, auch nicht über Schutzzonen hinweg (zwei Heckenbrände an derselben Stelle).
+- Wartende Einsätze werden alle 15 Minuten neu geprüft (`VERFALL.raster_min`).
+
 ## 0.19.0
 
 - Einsatzspiel, zufällige Einsatzorte: Einsatzarten mit `ort_gruppen` treten außer an ihren festen Orten auch an Zufallsorten der Karte auf (`ZUFALLSORTE`, von der privaten Karte geliefert). Katze im Baum in allen Bäumen an freien Grünflächen (`baum`), Unfälle, Pannen, Ölspur, Wild, Streuen und andere Straßeneinsätze auf allen Straßen (`strasse`). Ohne Karte bleibt alles wie bisher.

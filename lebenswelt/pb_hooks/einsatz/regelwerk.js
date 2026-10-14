@@ -2326,6 +2326,15 @@ const ZEITEN = {
 }
 
 /**
+ * Nachbarhilfe (Spielwerte): Ist für einen ernsten Feuerwehreinsatz so lange niemand frei (nach_min, mindestens die
+ * Frist der Einsatzart), alarmiert die Leitstelle die Nachbarfeuerwehr. Sie kommt vom Ortseingang, höchstens max_sterne.
+ * Harmlose Einsätze (Katze im Baum) warten weiter auf die eigenen Leute.
+ */
+const NACHBARHILFE = {
+  feuerwehr: { name: "Nachbarfeuerwehr", nach_min: 30, anfahrt_min: 15, max_sterne: 1 },
+}
+
+/**
  * Zufallsorte: Punkte aus der Karte, an denen Einsätze mit ort_gruppen außer an ihren festen Orten auftreten können
  * (baum: Bäume an freien Grünflächen; strasse: Abschnitte aller Straßen). Das öffentliche Regelwerk hat keine, die
  * private Karte der App liefert sie (dienst.js, mitKarte).
@@ -2334,6 +2343,7 @@ const ZUFALLSORTE = {}
 const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße" }
 
 module.exports = {
+  NACHBARHILFE,
   ZUFALLSORTE,
   ZUFALLSORT_NAMEN,
   VERFALL,
