@@ -65,7 +65,7 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
         r.set("besitzer", ich.id)
         r.set("typ", typ)
         r.set("schluessel", schluessel)
-        r.set("daten", vorgaenge.ergaenzeFrist(typ, null, h.verschmelze({}, neu), neu))
+        r.set("daten", vorgaenge.ergaenzeFaelligkeit(typ, vorgaenge.ergaenzeFrist(typ, null, h.verschmelze({}, neu), neu)))
       }
       tx.save(r)
       ergebnis.push(h.alsDokument(r))

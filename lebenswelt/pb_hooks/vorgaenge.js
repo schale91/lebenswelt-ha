@@ -2,10 +2,14 @@
 //
 // Warten auf LKA (KTA PMK): Bis zur Rückmeldung gibt es nichts zu tun. Wer einen Vorgang auf diesen Status setzt,
 // bekommt automatisch eine Wiedervorlage in zwei Monaten als Frist, egal ob aus der App oder über Claude.
+//
+// Unteraufgaben (Aufgaben in einem Vorgang oder Projekt, Teilaufgaben, Unteraufgaben) bekommen beim Anlegen
+// zwei Wochen als Fälligkeit, wenn keine mitkommt. Ändern lässt sie sich danach jederzeit.
 
 const LKA_STATUS = "Warten auf LKA (KTA PMK)"
 const WIEDERVORLAGE_MONATE = 2
 const STD = 3600000
+const UNTERAUFGABE_TAGE = 14
 
 /** Kalendertag in Ortszeit (MEZ/MESZ) als JJJJ-MM-TT, wie im Einsatzspiel ohne Zeitzonendatenbank. */
 function heute(ms) {
@@ -43,6 +47,22 @@ function ergaenzeFrist(typ, alt, neu, eingabe, tag) {
   return neu
 }
 
+/** Tag plus n Kalendertage als JJJJ-MM-TT. */
+function plusTage(tag, n) {
+  const d = new Date(String(tag).slice(0, 10) + "T12:00:00Z")
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Neue Unteraufgabe ohne Fälligkeit: zwei Wochen ab heute. Nur beim Anlegen, nicht bei Änderungen. */
+function ergaenzeFaelligkeit(typ, neu, tag) {
+  if (typ !== "aufgabe" && typ !== "unteraufgabe") return neu
+  if (!neu || neu.faellig || neu.status === "Erledigt") return neu
+  if (!neu.vorgang && !neu.eltern && typ !== "unteraufgabe") return neu
+  neu.faellig = plusTage(tag || heute(), UNTERAUFGABE_TAGE)
+  return neu
+}
+
 /** Zahl der Vorgänge beim LKA, deren Wiedervorlage genau heute fällig ist, je Besitzer. */
 function heuteFaellig(app, tag) {
   const liste = app.findRecordsByFilter("dokumente", "typ = 'vorgang' && geloescht = false", "", 0, 0)
@@ -72,4 +92,4 @@ function erinnere(app) {
   }
 }
 
-module.exports = { LKA_STATUS, heute, wiedervorlage, ergaenzeFrist, erinnere }
+module.exports = { LKA_STATUS, heute, wiedervorlage, ergaenzeFrist, ergaenzeFaelligkeit, erinnere }
