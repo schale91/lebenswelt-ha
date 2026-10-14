@@ -14,6 +14,19 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `vertraute_apps` | Hostnamen anderer Apps, die ohne Ingress zugreifen dürfen (Standard: der MCP-Server, über den Claude arbeitet). |
 | `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
 | `wetter_entitaet` | Wetter-Entität für das Einsatzspiel (Standard `weather.forecast_home`). |
+| `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
+| `app_token` | GitHub-Token nur zum Lesen dieses einen Repositorys. Ohne Token gibt es keine Updates per Knopf. |
+
+## Updates der App per Knopf
+
+Bei jedem Push baut eine GitHub Action die App (nur wenn Typprüfung und Tests bestehen) und legt das fertige Paket auf den Zweig `app-paket`. Das Add-on sieht beim Start und danach alle 10 Minuten nach und lädt eine neue Version herunter, spielt sie aber nicht ein. In der App erscheint dann „Update verfügbar · Installieren“. Erst dieser Tipp schreibt die Version in jeden Ordner `www/lebenswelt-*/`, in dem eine `server.json` liegt: erst die Programmdateien, zuletzt `stand.json` und `index.html`, danach werden alte Dateien früherer Versionen gelöscht. `server.json` und andere Ordner bleiben unberührt.
+
+Einrichtung:
+
+1. Auf GitHub unter Settings → Developer settings → Personal access tokens → Fine-grained tokens einen Token anlegen: Repository access „Only select repositories“ mit dem App-Repository, Repository permissions → Contents „Read-only“, sonst nichts.
+2. Den Token hier unter Konfiguration als `app_token` eintragen, speichern und das Add-on neu starten.
+
+Routen: `GET /api/lebenswelt/app-paket` (bereitliegende und installierte Version, letzter Fehler), `POST /api/lebenswelt/app-paket` (sofort nachsehen), `POST /api/lebenswelt/app-paket/installieren` (bereitliegende Version einspielen).
 
 ## Schnittstelle
 

@@ -1,10 +1,11 @@
-// Selbst-Update der Lebenswelt-App (als Modul, weil PocketBase jeden Handler in einem eigenen Kontext ausführt).
+// Update der Lebenswelt-App per Knopf (als Modul, weil PocketBase jeden Handler in einem eigenen Kontext ausführt).
 //
 // Eine GitHub Action baut die App bei jedem Push und legt das fertige Paket auf einen eigenen Zweig.
-// Alle 10 Minuten fragt das Add-on dort nach. Gibt es eine neue Version, schreibt es sie in jeden Ordner
-// www/lebenswelt-*/ von Home Assistant, in dem eine server.json liegt, genau wie der Installer:
-// erst die Programmdateien, dann stand.json und index.html (Reihenfolge aus manifest.json), danach werden
-// alte Dateien früherer Versionen gelöscht. server.json wird nie angefasst.
+// Alle 10 Minuten fragt das Add-on dort nach und lädt eine neue Version nur herunter (/data/app_paket/bereit).
+// Live geht sie erst, wenn jemand in der App auf „Installieren“ tippt: Dann schreibt das Add-on sie in jeden
+// Ordner www/lebenswelt-*/ mit einer server.json, genau wie der Installer: erst die Programmdateien, dann
+// stand.json und index.html (Reihenfolge aus manifest.json), danach werden alte Dateien gelöscht.
+// server.json wird nie angefasst.
 
 const WWW = $os.getenv("LEBENSWELT_WWW") || "/homeassistant/www"
 const DATEN = $os.getenv("LEBENSWELT_DATEN") || "/data"
@@ -73,65 +74,115 @@ function installiertErstellt(ordner) {
   }
 }
 
-function merke(zustand) {
+const BEREIT = `${DATEN}/app_paket/bereit`
+
+function merke(felder) {
   try {
-    $os.writeFile(`${DATEN}/app_paket.json`, JSON.stringify(zustand), 0o644)
+    $os.mkdirAll(`${DATEN}/app_paket`, 0o755)
+    $os.writeFile(`${DATEN}/app_paket/zustand.json`, JSON.stringify(Object.assign(zustandRoh(), felder)), 0o644)
   } catch (_) {
     // nur zur Anzeige
   }
 }
 
-function zustand() {
+function zustandRoh() {
   try {
-    return JSON.parse(text($os.readFile(`${DATEN}/app_paket.json`)))
+    return JSON.parse(text($os.readFile(`${DATEN}/app_paket/zustand.json`)))
   } catch (_) {
     return {}
   }
 }
 
-/** Prüft auf eine neue Version und spielt sie ein. `erzwingen` schreibt auch eine schon vorhandene neu. */
-function aktualisiere(erzwingen) {
-  const z = { geprueft: new Date().toISOString(), ordner: [], erstellt: "", geschrieben: 0, geloescht: 0, fehler: "" }
+function bereitesManifest() {
+  try {
+    return JSON.parse(text($os.readFile(`${BEREIT}/manifest.json`)))
+  } catch (_) {
+    return null
+  }
+}
+
+function pruefeManifest(manifest) {
+  const dateien = (manifest.dateien || []).map(String)
+  if (!manifest.erstellt || !dateien.length || !dateien.includes("stand.json") || !dateien.includes("index.html")) throw new Error("manifest.json ist unvollständig.")
+  for (const d of dateien) if (!NAME_OK.test(d) || BEHALTEN.includes(d)) throw new Error("Unzulässiger Dateiname im Paket: " + d)
+  return dateien
+}
+
+/** Stand für die App: bereitliegende und installierte Version, letzter Blick, letzter Fehler. */
+function zustand() {
+  const z = zustandRoh()
+  const m = bereitesManifest()
+  const ordner = zielordner()
+  return {
+    verfuegbar: (m && m.erstellt) || "",
+    installiert: ordner.length ? installiertErstellt(ordner[0]) : "",
+    ordner: ordner.map((o) => o.slice(WWW.length + 1)),
+    geprueft: z.geprueft || "",
+    installiert_am: z.installiert_am || "",
+    fehler: z.fehler || "",
+  }
+}
+
+/** Sieht nach einer neuen Version und lädt sie herunter, spielt sie aber nicht ein. */
+function pruefe() {
   try {
     const q = quelle()
     if (q.github && !q.token) throw new Error("Kein app_token in der Konfiguration des Add-ons.")
     const manifest = JSON.parse(text(hole(q, "manifest.json")))
-    const dateien = (manifest.dateien || []).map(String)
-    if (!manifest.erstellt || !dateien.length || !dateien.includes("stand.json") || !dateien.includes("index.html")) throw new Error("manifest.json ist unvollständig.")
-    for (const d of dateien) if (!NAME_OK.test(d) || BEHALTEN.includes(d)) throw new Error("Unzulässiger Dateiname im Paket: " + d)
-    z.erstellt = manifest.erstellt
-    const ordner = zielordner()
-    z.ordner = ordner.map((o) => o.slice(WWW.length + 1))
-    if (!ordner.length) throw new Error("Kein Ordner www/lebenswelt-* mit server.json gefunden. Bitte einmal den Installer ausführen.")
-    const offen = ordner.filter((o) => erzwingen || installiertErstellt(o) !== manifest.erstellt)
-    if (!offen.length) {
-      merke(z)
-      return z
+    const dateien = pruefeManifest(manifest)
+    const vorhanden = bereitesManifest()
+    if (!vorhanden || vorhanden.erstellt !== manifest.erstellt) {
+      // Erst vollständig in einen Zwischenordner, dann umbenennen: "bereit" ist nie halb
+      const neu = `${DATEN}/app_paket/neu`
+      $os.removeAll(neu)
+      $os.mkdirAll(neu, 0o755)
+      for (const d of dateien) $os.writeFile(`${neu}/${d}`, hole(q, d), 0o644)
+      $os.writeFile(`${neu}/manifest.json`, JSON.stringify(manifest), 0o644)
+      $os.removeAll(BEREIT)
+      $os.rename(neu, BEREIT)
+      console.log(`App-Paket ${manifest.erstellt} heruntergeladen, wartet auf Installieren`)
     }
-    // Erst alles herunterladen, dann schreiben: bricht der Download ab, bleibt die alte Version unverändert
-    const inhalt = {}
-    for (const d of dateien) inhalt[d] = hole(q, d)
-    for (const o of offen) {
+    merke({ geprueft: new Date().toISOString(), fehler: "" })
+  } catch (err) {
+    const fehler = String(err && err.message ? err.message : err)
+    console.log("App-Paket: " + fehler)
+    merke({ geprueft: new Date().toISOString(), fehler })
+  }
+  return zustand()
+}
+
+/** Spielt die bereitliegende Version in alle App-Ordner ein. */
+function installiere() {
+  const m = bereitesManifest()
+  if (!m) return Object.assign(zustand(), { fehler: "Es liegt keine neue Version bereit." })
+  try {
+    const dateien = pruefeManifest(m)
+    const ordner = zielordner()
+    if (!ordner.length) throw new Error("Kein Ordner www/lebenswelt-* mit server.json gefunden. Bitte einmal den Installer ausführen.")
+    let geschrieben = 0
+    let geloescht = 0
+    for (const o of ordner) {
       for (const d of dateien) {
         // über eine Zwischendatei, damit nie eine halbe Datei ausgeliefert wird
-        $os.writeFile(`${o}/.${d}.neu`, inhalt[d], 0o644)
+        $os.writeFile(`${o}/.${d}.neu`, $os.readFile(`${BEREIT}/${d}`), 0o644)
         $os.rename(`${o}/.${d}.neu`, `${o}/${d}`)
-        z.geschrieben++
+        geschrieben++
       }
       for (const e of $os.readDir(o)) {
         const name = e.name()
         if (e.isDir() || dateien.includes(name) || BEHALTEN.includes(name)) continue
         $os.remove(`${o}/${name}`)
-        z.geloescht++
+        geloescht++
       }
     }
-    console.log(`App-Paket ${manifest.erstellt} eingespielt: ${z.geschrieben} Dateien geschrieben, ${z.geloescht} alte gelöscht`)
+    console.log(`App-Paket ${m.erstellt} installiert: ${geschrieben} Dateien geschrieben, ${geloescht} alte gelöscht`)
+    merke({ installiert_am: new Date().toISOString(), fehler: "" })
+    return Object.assign(zustand(), { geschrieben, geloescht })
   } catch (err) {
-    z.fehler = String(err && err.message ? err.message : err)
-    console.log("App-Paket: " + z.fehler)
+    const fehler = String(err && err.message ? err.message : err)
+    merke({ fehler })
+    return Object.assign(zustand(), { fehler })
   }
-  merke(z)
-  return z
 }
 
-module.exports = { aktualisiere, zustand }
+module.exports = { pruefe, installiere, zustand }
