@@ -22,6 +22,13 @@ const PREIS_MINIMUM = 10 // spielwert: nichts kostet weniger (außer Kostenlosem
 
 /** Quellen, auf die sich Einträge über `quelle` beziehen. Stand der Recherche: Oktober 2026. */
 const QUELLEN = {
+  bedarfvo_rettd: { titel: "Verordnung über die Bemessung des Bedarfs an Einrichtungen des Rettungsdienstes (BedarfVO-RettD), Nds. GVBl. Nr. 18/2023", url: "https://www.niedersachsen.de/download/199212/Nds._GVBl._Nr._18_2023_vom_19.09.2023_S._201-215.pdf" },
+  nrettdg_besetzung: { titel: "Landtag Niedersachsen Drs. 18/10734, Besetzung der Rettungsmittel nach § 10 NRettDG", url: "https://www.landtag-niedersachsen.de/Drucksachen/Drucksachen_18_12500/10501-11000/18-10734.pdf" },
+  notsang: { titel: "§ 5 Notfallsanitätergesetz (Ausbildung)", url: "https://www.gesetze-im-internet.de/notsang/__5.html" },
+  din_en_1789: { titel: "DIN EN 1789 Rettungsdienstfahrzeuge und deren Ausrüstung, Krankenkraftwagen", url: "https://www.dinmedia.de/de/norm/din-en-1789/94004682" },
+  din_75079: { titel: "DIN 75079 Notarzt-Einsatzfahrzeuge", url: "https://www.dinmedia.de/de/norm/din-75079/388433461" },
+  luftvg25: { titel: "§ 25 LuftVG, Landung außerhalb von Flugplätzen zur Hilfeleistung", url: "https://lxgesetze.de/luftvg/25" },
+  reanimation: { titel: "Universitätsklinikum Freiburg, Zahlen und Fakten zur Reanimation", url: "https://www.uniklinik-freiburg.de/fileadmin/mediapool/06_presse/migration/100ProAnimation_Zahlen_Fakten.pdf" },
   nbrandschg: { titel: "Niedersächsisches Brandschutzgesetz (NBrandSchG), § 2 Aufgaben der Gemeinden", url: "https://www.anwalt24.de/gesetze/nbrandschg-1/2" },
   fwvo_nds: { titel: "Verordnung über die kommunalen Feuerwehren in Niedersachsen (FwVO), Gliederung in Grundausstattungs-, Stützpunkt- und Schwerpunktfeuerwehren", url: "https://www.niedersachsen.de/download/66249/Nds._GVBl._Nr._12_2010_vom_06.05.2010_S._185-185.pdf" },
   fwvo_nds_2025: { titel: "FwVO, nicht amtlicher Abdruck des NLBK, Stand 8. April 2025", url: "https://www.nlbk.niedersachsen.de/download/217021" },
@@ -301,6 +308,7 @@ const ORTE = {
   sportplatz: { name: "Sportplatz", x: 70, z: 84, fest: true },
   werkstatt_dorf: { name: "Kfz-Werkstatt", x: 20, z: 82, fest: true },
   bauhof: { name: "Bauhof", x: -62, z: 32, fest: true },
+  rettungswache: { name: "Rettungswache", x: 56, z: 86, fest: true },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -395,6 +403,7 @@ const ORGANISATIONEN = {
   polizei: { name: "Polizei", gebaeude: "dienststelle" },
   werkstatt: { name: "Werkstatt und Abschleppdienst", gebaeude: "werkstatt", ab_level: 12 },
   bauhof: { name: "Bauhof", gebaeude: "bauhof", ab_level: 12 },
+  rettungsdienst: { name: "Rettungsdienst", gebaeude: "rettungswache", ab_level: 16, reaktion_s: 60 },
 }
 
 /**
@@ -404,6 +413,7 @@ const ORGANISATIONEN = {
 const EXTERN = {
   werkstatt: { name: "Abschleppdienst aus der Stadt", anfahrt_min: 35, max_sterne: 3, ab_level: 12 }, // spielwert
   bauhof: { name: "Straßenmeisterei des Kreises", anfahrt_min: 60, max_sterne: 3, ab_level: 12 }, // spielwert
+  rettungsdienst: { name: "RTW der Nachbarwache", anfahrt_min: 14, max_sterne: 3, ab_level: 16 }, // spielwert
 }
 
 /**
@@ -418,6 +428,7 @@ const BERUFE = {
   dorf: { name: "arbeitet im Dorf", extra_s: 60, arbeitgeber: true }, // spielwert: Arbeit unterbrechen
   auswaerts: { name: "pendelt zur Arbeit", abwesend: true },
   schicht: { name: "Schichtdienst an der Dienststelle", org: "polizei", schichtplan: ["frueh", "spaet", "nacht", "frei", "frei"] },
+  rettungswache: { name: "Schichtdienst an der Rettungswache", org: "rettungsdienst", schichtplan: ["frueh", "frueh", "spaet", "spaet", "frei"] },
 }
 /** Schichten in Ortszeit (Stunden); die Nachtschicht geht bis 6 Uhr am Folgetag. */
 const SCHICHTEN = { frueh: [6, 14], spaet: [14, 22], nacht: [22, 30] }
@@ -438,7 +449,7 @@ const ARBEITGEBER = {
  * Freiwillige Feuerwehr eintreten; außerhalb ihrer Schicht rücken sie dann mit aus. Der Sportverein hebt die Fitness.
  */
 const MITGLIEDSCHAFTEN = {
-  feuerwehr: { name: "Freiwillige Feuerwehr", eintritt: 150, grundausbildung: "tm1", grundausbildung_h: 16, fuer_org: ["polizei"], braucht_haus: true },
+  feuerwehr: { name: "Freiwillige Feuerwehr", eintritt: 150, grundausbildung: "tm1", grundausbildung_h: 16, fuer_org: ["polizei", "rettungsdienst"], braucht_haus: true },
   sportverein: { name: "Sportverein", eintritt: 200, ab_level: 5 },
 }
 
@@ -571,6 +582,10 @@ const LEHRGAENGE = {
   gemeindearbeit: { org: "bauhof", name: "Gemeindearbeiterin/Gemeindearbeiter", dauer_h: 0, preis: 0, hinweis: "bei der Einstellung vorhanden" },
   winterdienst: { org: "bauhof", name: "Winterdienst-Fahrerin/Fahrer", dauer_h: 8, preis: 150, voraussetzung: ["gemeindearbeit"] },
   baumkontrolle: { org: "bauhof", name: "Baumkontrolle", dauer_h: 16, preis: 300, voraussetzung: ["gemeindearbeit"] },
+  // Rettungsdienst (Spielwerte, Dauer gekürzt). Notfallsanitäter nur an der Lehrrettungswache (Stufe 4).
+  rs: { org: "rettungsdienst", name: "Rettungssanitäterin/Rettungssanitäter", dauer_h: 48, preis: 800, hinweis: "Bewohner und Eingestellte bringen ihn mit" },
+  nfs: { org: "rettungsdienst", name: "Notfallsanitäterin/Notfallsanitäter", dauer_h: 240, preis: 4000, voraussetzung: ["rs"], gebaeude: { rettungswache: 4 }, quelle: "notsang", hinweis: "nur an der Lehrrettungswache" },
+  desinfektor: { org: "rettungsdienst", name: "Desinfektorin/Desinfektor", dauer_h: 24, preis: 400, voraussetzung: ["rs"], hinweis: "halbiert die Wiederherstellung nach Infektionstransporten" },
   pk: { org: "polizei", name: "Bachelorstudium Polizeivollzugsdienst (Polizeiakademie Niedersachsen)", dauer_h: 0, preis: 0, quelle: "polizeiakademie", hinweis: "beim Einzug abgeschlossen" },
   einsatztraining: { org: "polizei", name: "Einsatztraining (jährlich)", dauer_h: 8, preis: 150, voraussetzung: ["pk"], verfaellt_tage: 365 },
   vu_aufnahme: { org: "polizei", name: "Verkehrsunfallaufnahme", dauer_h: 16, preis: 300, voraussetzung: ["pk"] },
@@ -623,6 +638,8 @@ const MERKMALE = {
   elw_fahrzeug: { name: "Einsatzleitwagen", aus: { fahrzeug: ["elw1"] } },
   tlf_fahrzeug: { name: "Tanklöschfahrzeug", aus: { fahrzeug: ["tlf3000"] } },
   boot_fahrzeug: { name: "Boot", aus: { fahrzeug: ["mzb"] } },
+  rtw_fahrzeug: { name: "Rettungswagen", aus: { fahrzeug: ["rtw"] } },
+  ktw_fahrzeug: { name: "Krankentransportwagen", aus: { fahrzeug: ["ktw"] } },
   polizei_vor_ort: { name: "Polizei an der Einsatzstelle", aus: { lage: "polizei_eingetroffen" } },
 }
 
@@ -715,6 +732,19 @@ const GERAETE = {
   taschenlampe: { name: "Taschenlampe", slots: 0, preis: 40, org: "beide", kategorie: "allgemein", effekt: { nacht: 0.5 } },
   laser_messgeraet: { name: "Lasermessgerät Geschwindigkeit", slots: 0.5, preis: 2500, org: "polizei", kategorie: "polizei" },
   drohne: { name: "Drohne mit Wärmebild", slots: 1, preis: 6000, org: "beide", kategorie: "erkundung", effekt: { suchen: 3 } },
+  // Rettungsdienst (DIN EN 1789; Medikamente sind Teil der Grundbeladung)
+  tragestuhl: { name: "Tragestuhl", slots: 1, preis: 900, org: "rettungsdienst", kategorie: "tragen" },
+  schaufeltrage: { name: "Schaufeltrage", slots: 1, preis: 700, org: "rettungsdienst", kategorie: "tragen" },
+  vakuummatratze: { name: "Vakuummatratze", slots: 1, preis: 1200, org: "rettungsdienst", kategorie: "tragen" },
+  spineboard: { name: "Spineboard", slots: 1, preis: 500, org: "rettungsdienst", kategorie: "tragen" },
+  vakuumschienen: { name: "Vakuumschienen-Set", slots: 0.5, preis: 400, org: "rettungsdienst", kategorie: "versorgung" },
+  sauerstoff: { name: "Sauerstoffeinheit", slots: 0.5, preis: 600, org: "rettungsdienst", kategorie: "versorgung" },
+  waermeerhalt: { name: "Wärmeerhaltungsset", slots: 0.25, preis: 80, org: "rettungsdienst", kategorie: "versorgung" },
+  kinder_notfallset: { name: "Kinder-Notfallset", slots: 0.5, preis: 700, org: "rettungsdienst", kategorie: "versorgung" },
+  infektionsschutz: { name: "Infektionsschutzset", slots: 0.25, preis: 150, org: "rettungsdienst", kategorie: "versorgung" },
+  defi_monitor: { name: "Defibrillator mit EKG-Monitor", slots: 1, preis: 4500, org: "rettungsdienst", kategorie: "monitoring" },
+  beatmung: { name: "Beatmungsgerät", slots: 1, preis: 3500, org: "rettungsdienst", kategorie: "monitoring" },
+  thoraxkompression: { name: "Mechanische Thoraxkompressionshilfe", slots: 1, preis: 6000, org: "rettungsdienst", kategorie: "monitoring" },
   // Werkstatt und Abschleppdienst
   starthilfe: { name: "Starthilfegerät", slots: 0.5, preis: 150, org: "werkstatt", kategorie: "pannenhilfe" },
   abschleppseil: { name: "Abschleppseil und Abschleppstange", slots: 0.5, preis: 60, org: "werkstatt", kategorie: "pannenhilfe" },
@@ -811,6 +841,10 @@ const FAHRZEUGE = {
   pritschenwagen: { org: "bauhof", name: "Pritschenwagen", besatzung: [0, 2], slots: 6, preis: 3500, tempo_kmh: 45, stellplatz: 1, fahrer: "gemeindearbeit", ohne_sonderrechte: true, grundbeladung: { besen_schaufel: 2, absperrschranke: 2 } },
   winterdienstfahrzeug: { org: "bauhof", name: "Kommunalfahrzeug mit Schneeschild und Streuer", besatzung: [0, 2], slots: 6, preis: 12000, tempo_kmh: 35, stellplatz: 1, fahrer: "winterdienst", ohne_sonderrechte: true, grundbeladung: { streuer: 1, schneeschild: 1 } },
   kehrmaschine: { org: "bauhof", name: "Kehrmaschine", besatzung: [0, 1], slots: 3, preis: 9000, tempo_kmh: 25, stellplatz: 1, fahrer: "gemeindearbeit", ohne_sonderrechte: true, grundbeladung: { kehrbesen: 1 } },
+  // Rettungsdienst (DIN EN 1789, DIN 75079). Das NEF bringt den Notarzt, wenn es einen Notarztvertrag gibt.
+  ktw: { org: "rettungsdienst", name: "Krankentransportwagen (KTW, Typ A2)", besatzung: [0, 2], slots: 5, preis: 7000, tempo_kmh: 60, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { tragestuhl: 1 } },
+  rtw: { org: "rettungsdienst", name: "Rettungswagen (RTW, Typ C)", besatzung: [0, 2], slots: 9, preis: 14000, tempo_kmh: 65, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { notfallrucksack: 1, sauerstoff: 1 } },
+  nef: { org: "rettungsdienst", name: "Notarzteinsatzfahrzeug (NEF)", besatzung: [0, 1], slots: 4, preis: 6500, tempo_kmh: 75, stellplatz: 1, fahrer: "rs", quelle: "din_75079", nef: true, grundbeladung: { defi_monitor: 1 }, hinweis: "bringt den Notarzt, wenn es einen Notarztvertrag gibt" },
   hundestreife: { org: "polizei", name: "Diensthundstreife", besatzung: [0, 1], slots: 2, preis: 9000, tempo_kmh: 70, stellplatz: 1, fahrer: "diensthund", hund: true, grundbeladung: {} },
 }
 
@@ -886,6 +920,14 @@ const GEBAEUDE = {
     { name: "Bauhof mit Salzlager und Winterdienst", bauzeit_h: 36, stellplaetze: 3, preis: 18000, lager_slots: 20, personal_max: 3, ab_level: 12, gestreut_h: 4 },
     { name: "Bauhof mit Werkstatt und Sandsacklager", bauzeit_h: 48, stellplaetze: 4, preis: 30000, lager_slots: 30, personal_max: 4, ab_level: 12, gestreut_h: 4 },
   ],
+  // Rettungswache (Abschnitt 5.5). Stufe 0: Nachbarwache. Stufe 1 steht am Feuerwehrhaus und ist nur tagsüber besetzt.
+  rettungswache: [
+    { name: "Nachbarwache (kein Standort im Dorf)", bauzeit_h: 0, stellplaetze: 0, preis: 0, lager_slots: 0, personal_max: 0 },
+    { name: "RTW-Stellplatz am Feuerwehrhaus (Tagdienst)", bauzeit_h: 6, stellplaetze: 1, preis: 5000, lager_slots: 6, personal_max: 2, ab_level: 16, ort: "feuerwehrhaus", tagdienst: [7, 19] },
+    { name: "Rettungswache in Containerbauweise", bauzeit_h: 24, stellplaetze: 2, preis: 12000, lager_slots: 12, personal_max: 4, ab_level: 16 },
+    { name: "Rettungswache", bauzeit_h: 72, stellplaetze: 3, preis: 35000, lager_slots: 22, personal_max: 8, ab_level: 16 },
+    { name: "Rettungswache mit Lehrrettungswache", bauzeit_h: 96, stellplaetze: 4, preis: 60000, lager_slots: 30, personal_max: 10, ab_level: 27, hinweis: "Ausbildung zur Notfallsanitäterin und zum Notfallsanitäter im Dorf" },
+  ],
   // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
   // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
   sportplatz: [
@@ -903,7 +945,7 @@ const GEBAEUDE = {
 }
 
 /** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
-const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof" }
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -924,6 +966,18 @@ const AUSBAU = {
   sirene_neu: { gebaeude: "ort", name: "Elektronische Sirene", preis: 2000, effekt: { reaktion_s: -15 }, bauzeit_h: 4, klein: true, ab_stufe: 0 },
   wache_kueche: { gebaeude: "dienststelle", name: "Sozialraum", preis: 1500, effekt: { schicht: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 1 },
   gewahrsam: { gebaeude: "dienststelle", name: "Gewahrsamsraum", preis: 6000, effekt: { festnahme: 1 }, bauzeit_h: 24, ab_stufe: 2 },
+  // Rettungswache
+  notarztvertrag: { gebaeude: "rettungswache", name: "Notarztvertrag mit der Klinik", preis: 8000, effekt: { notarzt: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 2, hinweis: "mit NEF kommt der Notarzt aus dem Dorf" },
+  desinfektionsraum: { gebaeude: "rettungswache", name: "Desinfektionsraum", preis: 6000, effekt: { wiederherstellung_faktor: 0.5 }, bauzeit_h: 12, ab_stufe: 3, hinweis: "Fahrzeug nach dem Transport schneller wieder einsatzbereit" },
+  fahrzeughalle_warm: { gebaeude: "rettungswache", name: "Beheizte Fahrzeughalle", preis: 9000, effekt: { rd_ausruecken_s: -20 }, bauzeit_h: 24, ab_stufe: 3, hinweis: "schneller ausrücken" },
+  // Leitstelle und Ersthelfer (kein Gebäude im Dorf, ab Level 16)
+  notrufabfrage: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Strukturierte Notrufabfrage in der Leitstelle", preis: 3000, effekt: { notrufabfrage: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 0, hinweis: "der Rettungsdienst wird gleich mit alarmiert, nicht erst nachgefordert" },
+  telefonreanimation: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Telefonreanimation", preis: 2000, effekt: { telefonreanimation: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 0, quelle: "reanimation", hinweis: "Anrufende drücken bis zum Eintreffen" },
+  aed_markt: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator am Markt", preis: 1500, effekt: { aed_ort: "marktplatz" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
+  aed_feuerwehr: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator am Feuerwehrhaus", preis: 1500, effekt: { aed_ort: "feuerwehrhaus" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
+  aed_schule: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator an der Schule", preis: 1500, effekt: { aed_ort: "schule" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
+  aed_sportplatz: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator am Sportplatz", preis: 1500, effekt: { aed_ort: "sportplatz" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
+  landestelle: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Landestelle am Sportplatz", preis: 4000, effekt: { rth_min: -3 }, bauzeit_h: 12, ab_stufe: 0, quelle: "luftvg25", hinweis: "der Rettungshubschrauber landet näher" },
 }
 
 /**
@@ -1031,6 +1085,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 3, qualifikation: { eisrettung: 1 }, geraete: [[{ eisretter: 1 }, { rettungsring: 1, wathose: 1 }]] },
     optimal: { personen: 6, geraete: [[{ eisretter: 1 }], [{ rettungsweste: 2 }], [{ notfallrucksack: 1 }]] },
     regeln: ["eigenschutz_wasser", "einheitsfuehrer"],
+    folge: ["rd_notarzt"],
     text: "Ein Spaziergänger ist auf dem Altarm durchs Eis gebrochen.",
     verfallen_text: "Passanten haben die Person mit einem Ast herausgezogen, sie ist stark unterkühlt.",
   },
@@ -1066,7 +1121,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 2, geraete: [[{ tueroeffnung: 1 }, { steckleiter_teil: 2 }, { klappleiter: 1 }]] },
     optimal: { personen: 3, qualifikation: { erste_hilfe: 1 }, geraete: [[{ notfallrucksack: 1 }]] },
     regeln: ["polizei_vor_ort"],
-    folge: ["p_tuer_begleitung"],
+    folge: ["p_tuer_begleitung", "rd_versorgung"],
     text: "Eine ältere Nachbarin öffnet nicht, durch die Tür sind Hilferufe zu hören.",
     verfallen_text: "Der Rettungsdienst hat die Tür mit dem Schlüsseldienst geöffnet, deutlich später.",
   },
@@ -1076,6 +1131,7 @@ const EINSATZARTEN = {
     orte: ["marktplatz", "festplatz", "bibliothek"], intervall_min: 1440, ablauf_min: 6, arbeit_min: 10, ziel_eintreffen_min: 5,
     mindestens: { personen: 2, qualifikation: { erste_hilfe: 2 }, geraete: [[{ aed: 1 }], [{ notfallrucksack: 1 }]] },
     optimal: { personen: 3, geraete: [[{ hrt: 1 }]] },
+    folge: ["rd_notarzt"],
     text: "Ein Mann ist am Markt zusammengebrochen, Passanten beginnen mit der Herzdruckmassage.",
     verfallen_text: "Der Rettungsdienst war nach zwölf Minuten da. Jede Minute zählt.",
   },
@@ -1088,7 +1144,7 @@ const EINSATZARTEN = {
     optimal: { personen: 9, einheit: "gruppe", qualifikation: { erste_hilfe: 2 }, geraete: [[{ notfallrucksack: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }], [{ beleuchtung: 1 }], [{ hrt: 2 }]] },
     psa: { helm: 2, jacke: 1, handschuhe: 1, th_kleidung: 1 },
     regeln: ["einheitsfuehrer", "brandschutz_sicherstellen", "verkehrsabsicherung"],
-    folge: ["p_vu_aufnahme", "ab_bergung"],
+    folge: ["p_vu_aufnahme", "ab_bergung", "rd_notarzt"],
     text: "Zwei Autos sind an der Kreuzung zusammengestoßen, eine Fahrerin ist eingeklemmt.",
     verfallen_text: "Die Nachbarwehr mit Rettungssatz hat übernommen. Die Rettung dauerte lange.",
   },
@@ -1123,7 +1179,7 @@ const EINSATZARTEN = {
     optimal: { personen: 22, einheit: "zug", qualifikation: { gf: 1 }, geraete: [[{ waermebildkamera: 1 }], [{ dlak_fahrzeug: 1 }, { schiebleiter: 1 }], [{ luefter: 1 }], [{ rauchvorhang: 1 }], [{ sprungpolster: 1 }], [{ hrt: 4 }], [{ rettungstuch: 1 }]] },
     psa: { helm: 2, jacke: 2, handschuhe: 1, haube: 1, stiefel: 1 },
     regeln: ["einheitsfuehrer", "atemschutz_ueberwachung", "sicherheitstrupp", "maschinist_pumpe", "zweiter_rettungsweg"],
-    folge: ["p_absperrung"],
+    folge: ["p_absperrung", "rd_versorgung"],
     text: "Aus dem Obergeschoss dringt Rauch, eine Person ist am Fenster zu sehen.",
     verfallen_text: "Die Nachbarfeuerwehren haben übernommen. Die Wohnung ist ausgebrannt.",
   },
@@ -1146,6 +1202,7 @@ const EINSATZARTEN = {
     mindestens: { personen: 3, qualifikation: { boot: 1 }, geraete: [[{ boot_fahrzeug: 1 }], [{ rettungsweste: 3 }]] },
     optimal: { personen: 6, geraete: [[{ drohne: 1 }], [{ notfallrucksack: 1 }]] },
     regeln: ["eigenschutz_wasser", "einheitsfuehrer"],
+    folge: ["rd_notarzt"],
     text: "Ein Schwimmer wird von der Strömung abgetrieben.",
     verfallen_text: "Die DLRG-Wasserrettung hat ihn erreicht.",
   },
@@ -1170,6 +1227,7 @@ const EINSATZARTEN = {
     optimal: { personen: 6, geraete: [[{ notfallrucksack: 1 }], [{ schiebleiter: 1 }, { multifunktionsleiter: 1 }]] },
     psa: { helm: 1, handschuhe: 1 },
     regeln: ["leiter_sicherung", "einheitsfuehrer"],
+    folge: ["rd_versorgung"],
     text: "Ein Bauarbeiter ist vom Gerüst gestürzt und liegt verletzt im Rohbau. Der Rettungsdienst braucht Hilfe beim Tragen.",
     verfallen_text: "Die Kollegen vom Bau haben ihn allein heruntergetragen.",
   },
@@ -1224,6 +1282,7 @@ const EINSATZARTEN = {
     bedingung: { wetter: ["glaette", "schnee"], faktor: 1.5 },
     mindestens: { personen: 2 },
     optimal: { personen: 2, geraete: [[{ notfallrucksack: 1 }]] },
+    folge: ["rd_versorgung"],
     text: "Eine ältere Person irrt orientierungslos über den Platz.",
     verfallen_text: "Angehörige haben die Person gefunden.",
   },
@@ -1280,7 +1339,7 @@ const EINSATZARTEN = {
     optimal: { personen: 8, geraete: [[{ hrt: 2 }], [{ notfallrucksack: 1 }]] },
     psa: { weste: 1, bodycam: 1 },
     regeln: ["eigensicherung_zwei"],
-    folge: ["p_trunkenheit"],
+    folge: ["p_trunkenheit", "rd_versorgung"],
     text: "Vor dem Festzelt prügeln sich mehrere Personen.",
     verfallen_text: "Der Sicherheitsdienst hat die Gruppen getrennt, ein Verletzter.",
   },
@@ -1385,6 +1444,172 @@ const EINSATZARTEN = {
     mindestens: { personen: 1, geraete: [[{ absperrschranke: 2 }]] },
     optimal: { personen: 2, geraete: [[{ absperrschranke: 4 }]] },
     text: "Die Straße muss abgesperrt werden, bis der Baum weg ist.",
+  },
+  // ---------- Rettungsdienst (ab Level 16, Konzept DORFDIENSTE.md Abschnitt 5) ----------
+  // patient: Dringlichkeit rot, gelb oder grün; danach Transport ins Krankenhaus (RETTUNG). notarzt: Notarzt-Indikation.
+  // Hilfsfrist im Spiel 8 Minuten (BedarfVO-RettD: 15 Minuten in 95 % der Notfälle, auf die Karte heruntergerechnet).
+  rd_krankentransport: {
+    org: "rettungsdienst", name: "Krankentransport zur Klinik", stichwort: "KTP", preis: 300, start_level: 16, patient: "gruen",
+    orte: ["marktplatz", "bibliothek", "schule", "hauptstrasse_ost"], intervall_min: 720, ablauf_min: 120, arbeit_min: 15, ziel_eintreffen_min: 30,
+    mindestens: { personen: 2, geraete: [[{ ktw_fahrzeug: 1 }, { rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ ktw_fahrzeug: 1 }], [{ tragestuhl: 1 }]] },
+    text: "Eine Patientin muss zur Untersuchung in die Klinik, liegend und mit Begleitung.",
+    verfallen_text: "Der Transport kam von der Nachbarwache, die Untersuchung musste verschoben werden.",
+  },
+  rd_sturz: {
+    org: "rettungsdienst", name: "Sturz im Haushalt", stichwort: "RD 1", preis: 500, patient: "gelb",
+    freischaltung: { nach: "rd_krankentransport", sterne: 3 }, quelle: "bedarfvo_rettd",
+    orte: ["marktplatz", "bibliothek", "hauptstrasse_ost"], intervall_min: 1440, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ tragestuhl: 1 }], [{ vakuumschienen: 1 }]] },
+    text: "Ein älterer Herr ist gestürzt und kommt nicht mehr allein hoch, das Handgelenk schmerzt.",
+    verfallen_text: "Die Nachbarwache war nach langer Zeit da.",
+  },
+  rd_atemnot: {
+    org: "rettungsdienst", name: "Atemnot", stichwort: "RD 1", preis: 800, patient: "gelb",
+    freischaltung: { nach: "rd_sturz", sterne: 3 },
+    orte: ["marktplatz", "bibliothek", "schule"], intervall_min: 1440, ablauf_min: 30, arbeit_min: 20, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ sauerstoff: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }]] },
+    text: "Eine Frau bekommt schlecht Luft und kann kaum noch sprechen.",
+    verfallen_text: "Die Nachbarwache kam spät, die Frau musste länger kämpfen.",
+  },
+  rd_brustschmerz: {
+    org: "rettungsdienst", name: "Brustschmerz", stichwort: "RD 2", preis: 1500, patient: "rot", notarzt: true,
+    freischaltung: { nach: "rd_atemnot", sterne: 4 },
+    orte: ["marktplatz", "festplatz", "bibliothek"], intervall_min: 2160, ablauf_min: 25, arbeit_min: 25, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ defi_monitor: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ sauerstoff: 1 }], [{ schaufeltrage: 1 }, { tragestuhl: 1 }]] },
+    text: "Ein Mann hat starke Schmerzen in der Brust, die in den linken Arm ziehen.",
+    verfallen_text: "Der Rettungsdienst von außerhalb kam spät.",
+  },
+  rd_reanimation: {
+    org: "rettungsdienst", name: "Reanimation", stichwort: "RD 3", preis: 2500, patient: "rot", notarzt: true, reanimation: true,
+    freischaltung: { nach: "rd_brustschmerz", sterne: 4 }, quelle: "reanimation",
+    orte: ["marktplatz", "festplatz", "schule", "bibliothek"], intervall_min: 4320, ablauf_min: 20, arbeit_min: 30, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ defi_monitor: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ beatmung: 1 }], [{ thoraxkompression: 1 }]] },
+    text: "Eine Frau ist zusammengebrochen und atmet nicht mehr. Jede Minute zählt.",
+    verfallen_text: "Die Nachbarwache brauchte zu lange. Ohne Hilfe sinkt die Chance mit jeder Minute.",
+  },
+  rd_fieberkrampf: {
+    org: "rettungsdienst", name: "Fieberkrampf beim Kind", stichwort: "RD 2 Kind", preis: 1500, patient: "rot", notarzt: true,
+    freischaltung: { nach: "rd_sturz", sterne: 4 },
+    orte: ["schule", "festplatz", "marktplatz"], intervall_min: 4320, ablauf_min: 25, arbeit_min: 20, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ kinder_notfallset: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ sauerstoff: 1 }]] },
+    text: "Ein Kleinkind mit hohem Fieber krampft, die Eltern sind in großer Sorge.",
+    verfallen_text: "Der Krampf hörte von selbst auf, bis Hilfe kam, verging viel Zeit.",
+  },
+  rd_wespenstich: {
+    org: "rettungsdienst", name: "Allergische Reaktion nach Wespenstich", stichwort: "RD 1", preis: 600, patient: "gelb",
+    freischaltung: { nach: "rd_krankentransport", sterne: 3 },
+    orte: ["festplatz", "marktplatz", "sportplatz"], intervall_min: 1440, ablauf_min: 25, arbeit_min: 15, ziel_eintreffen_min: 8,
+    bedingung: { monate: [6, 7, 8, 9], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ sauerstoff: 1 }]] },
+    text: "Nach einem Wespenstich schwillt das Gesicht eines Jungen an.",
+    verfallen_text: "Die Eltern sind selbst in die Klinik gefahren.",
+  },
+  rd_hitze: {
+    org: "rettungsdienst", name: "Kreislaufprobleme bei Hitze", stichwort: "RD 1", preis: 600, patient: "gelb",
+    freischaltung: { nach: "rd_krankentransport", sterne: 3 },
+    orte: ["festplatz", "sportplatz", "marktplatz"], intervall_min: 1440, ablauf_min: 30, arbeit_min: 15, ziel_eintreffen_min: 8,
+    bedingung: { wetter: ["hitze"], faktor: 2, sonst_faktor: 0.3 },
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ waermeerhalt: 1 }], [{ tragestuhl: 1 }]] },
+    text: "Eine Besucherin ist in der Sonne zusammengesackt.",
+    verfallen_text: "Sie hat sich im Schatten erholt, untersucht wurde sie nicht.",
+  },
+  rd_sportverletzung: {
+    org: "rettungsdienst", name: "Sportverletzung am Sportplatz", stichwort: "RD 1", preis: 700, patient: "gelb",
+    freischaltung: { nach: "rd_krankentransport", sterne: 3 }, braucht_gebaeude: { sportplatz: 3 },
+    orte: ["sportplatz"], intervall_min: 2880, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, geraete: [[{ vakuumschienen: 1 }], [{ schaufeltrage: 1 }, { vakuummatratze: 1 }]] },
+    text: "Beim Training ist ein Spieler umgeknickt, der Knöchel ist dick.",
+    verfallen_text: "Mitspieler haben ihn in die Klinik gefahren.",
+  },
+  rd_infektion: {
+    org: "rettungsdienst", name: "Infektionstransport", stichwort: "KTP Infekt", preis: 900, patient: "gruen", infektion: true,
+    freischaltung: { nach: "rd_krankentransport", sterne: 4 },
+    orte: ["bibliothek", "schule", "hauptstrasse_ost"], intervall_min: 2880, ablauf_min: 120, arbeit_min: 20, ziel_eintreffen_min: 30,
+    mindestens: { personen: 2, geraete: [[{ ktw_fahrzeug: 1 }, { rtw_fahrzeug: 1 }], [{ infektionsschutz: 2 }]] },
+    optimal: { personen: 2, qualifikation: { desinfektor: 1 } },
+    text: "Ein Patient mit ansteckender Erkrankung muss in die Klinik. Danach wird das Fahrzeug gründlich desinfiziert.",
+    verfallen_text: "Die Nachbarwache hat den Transport übernommen.",
+  },
+  // Rettungsdienst-Teil in bestehenden Einsätzen (Folgeeinsätze, erst ab Level 16)
+  rd_versorgung: {
+    org: "rettungsdienst", name: "Patient versorgen", stichwort: "RD 1", folge_nur: true, patient: "gelb",
+    ablauf_min: 40, arbeit_min: 15, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ vakuummatratze: 1 }, { tragestuhl: 1 }]] },
+    text: "An der Einsatzstelle gibt es eine verletzte Person, sie muss versorgt und in die Klinik gebracht werden.",
+  },
+  rd_notarzt: {
+    org: "rettungsdienst", name: "Notfallpatient mit Notarzt", stichwort: "RD 2", folge_nur: true, patient: "rot", notarzt: true,
+    ablauf_min: 30, arbeit_min: 25, ziel_eintreffen_min: 8,
+    mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
+    optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }], [{ vakuummatratze: 1 }, { spineboard: 1 }]] },
+    text: "Eine schwer verletzte oder lebensbedrohlich erkrankte Person braucht Rettungsdienst und Notarzt.",
+  },
+  // ---------- Feuerwehr, Polizei und Rettungsdienst (ab Level 16, Konzept DORFDIENSTE.md 13.6) ----------
+  th_vu_mehrere: {
+    org: "feuerwehr", name: "Verkehrsunfall mit mehreren Verletzten", stichwort: "TH VU 2", preis: 2500, ab_level: 16,
+    freischaltung: { nach: "th_vu", sterne: 4 },
+    orte: ["kreuzung", "hauptstrasse_ost"], intervall_min: 4320, ablauf_min: 15, arbeit_min: 50, ziel_eintreffen_min: 10,
+    mindestens: { personen: 6, qualifikation: { th: 2 }, geraete: [[{ rettungssatz: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
+    optimal: { personen: 9, einheit: "gruppe", qualifikation: { erste_hilfe: 2 }, geraete: [[{ notfallrucksack: 1 }], [{ beleuchtung: 1 }], [{ hrt: 2 }]] },
+    regeln: ["einheitsfuehrer", "brandschutz_sicherstellen", "verkehrsabsicherung"],
+    folge: ["p_vollsperrung", "rd_notarzt", "rd_versorgung", "ab_bergung"], gemeinsam: { ziel_min: 10 },
+    text: "Zwei Autos sind frontal zusammengestoßen, in beiden Fahrzeugen sitzen Verletzte.",
+    verfallen_text: "Die Nachbarwehr hat übernommen.",
+  },
+  th_motorrad: {
+    org: "feuerwehr", name: "Motorradunfall nach Wildwechsel", stichwort: "TH VU", preis: 1200, ab_level: 16,
+    freischaltung: { nach: "th_vu", sterne: 3 },
+    orte: ["hauptstrasse_west", "wiese_deich"], intervall_min: 2880, ablauf_min: 15, arbeit_min: 25, ziel_eintreffen_min: 10,
+    bedingung: { monate: [4, 5, 6, 7, 8, 9, 10], faktor: 1, sonst_faktor: 0.2 },
+    mindestens: { personen: 2, geraete: [[{ oelbinder: 2 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
+    optimal: { personen: 4, qualifikation: { erste_hilfe: 1 }, geraete: [[{ notfallrucksack: 1 }], [{ besen_schaufel: 1 }]] },
+    regeln: ["verkehrsabsicherung"],
+    folge: ["p_strassensperre", "rd_notarzt"], gemeinsam: { ziel_min: 10 },
+    text: "Ein Motorradfahrer ist einem Reh ausgewichen und gestürzt. Benzin läuft aus.",
+    verfallen_text: "Die Nachbarwehr hat die Einsatzstelle abgesichert.",
+  },
+  th_trunkenheit: {
+    org: "feuerwehr", name: "Trunkenheitsfahrt endet im Graben", stichwort: "TH VU", preis: 1000, ab_level: 16,
+    freischaltung: { nach: "th_vu", sterne: 3 },
+    orte: ["wiese_deich", "hauptstrasse_west"], intervall_min: 2880, ablauf_min: 20, arbeit_min: 20, ziel_eintreffen_min: 10,
+    bedingung: { stunden: [22, 23, 0, 1, 2, 3, 4], faktor: 1, sonst_faktor: 0.3 },
+    mindestens: { personen: 2, geraete: [[{ leitkegel: 1 }, { warnleuchte: 1 }]] },
+    optimal: { personen: 4, geraete: [[{ beleuchtung: 1 }], [{ unterbaumaterial: 1 }]] },
+    regeln: ["verkehrsabsicherung"],
+    folge: ["p_blutprobe", "rd_versorgung", "ab_graben"], gemeinsam: { ziel_min: 10 },
+    text: "Ein Auto liegt im Graben, der Fahrer riecht nach Alkohol und blutet an der Stirn.",
+    verfallen_text: "Ein Landwirt hat das Auto gesichert, die Polizei kam allein.",
+  },
+  th_stalldach: {
+    org: "feuerwehr", name: "Person auf dem Stalldach verletzt", stichwort: "TH Höhe", preis: 1500, ab_level: 16,
+    freischaltung: { nach: "b_scheune", sterne: 3 },
+    orte: ["scheune"], intervall_min: 4320, ablauf_min: 20, arbeit_min: 40, ziel_eintreffen_min: 10,
+    mindestens: { personen: 4, geraete: [[{ schiebleiter: 1 }, { multifunktionsleiter: 1 }, { dlak_fahrzeug: 1 }]] },
+    optimal: { personen: 6, qualifikation: { erste_hilfe: 1 }, geraete: [[{ dlak_fahrzeug: 1 }], [{ notfallrucksack: 1 }]] },
+    psa: { helm: 2 },
+    folge: ["p_absperrung", "rd_notarzt"], gemeinsam: { ziel_min: 15 },
+    text: "Beim Ausbessern des Stalldachs ist ein Landwirt durchgebrochen und hängt verletzt im Gebälk.",
+    verfallen_text: "Die Höhenretter aus der Stadt haben ihn geholt, nach langer Zeit.",
+  },
+  fr_reanimation_sport: {
+    org: "feuerwehr", name: "Reanimation am Sportplatz", stichwort: "FR", preis: 1500, ab_level: 16,
+    freischaltung: { nach: "fr_reanimation", sterne: 4 },
+    orte: ["sportplatz"], intervall_min: 4320, ablauf_min: 6, arbeit_min: 10, ziel_eintreffen_min: 5,
+    mindestens: { personen: 2, qualifikation: { erste_hilfe: 2 }, geraete: [[{ aed: 1 }], [{ notfallrucksack: 1 }]] },
+    optimal: { personen: 3, geraete: [[{ hrt: 1 }]] },
+    folge: ["p_strassensperre", "rd_notarzt"], gemeinsam: { ziel_min: 8 },
+    text: "Beim Fußball ist ein Spieler zusammengebrochen. Die Polizei hält die Zufahrt für Rettungswagen und Hubschrauber frei.",
+    verfallen_text: "Der Rettungsdienst war allein da, die ersten Minuten fehlten.",
   },
   // ---------- Gemeinsame Einsätze von Feuerwehr und Polizei (ab Level 8, Konzept DORFDIENSTE.md 13.5) ----------
   // gemeinsam.ziel_min: so viele Minuten nach dem Eintreffen der Feuerwehr soll die Polizei da sein (Zusammenarbeit)
@@ -1550,6 +1775,12 @@ const EINSATZARTEN = {
     mindestens: { personen: 2 }, optimal: { personen: 4, geraete: [[{ leitkegel: 2 }], [{ absperrband: 1 }], [{ warnleuchte: 1 }]] },
     text: "Die Straße muss in beide Richtungen gesperrt und der Verkehr umgeleitet werden.",
   },
+  p_blutprobe: {
+    org: "polizei", name: "Blutprobe und Führerschein", stichwort: "Verkehr", folge_nur: true,
+    ablauf_min: 30, arbeit_min: 30, ziel_eintreffen_min: 10,
+    mindestens: { personen: 2 }, optimal: { personen: 2, geraete: [[{ atemalkohol: 1 }]] },
+    text: "Der Fahrer muss zur Blutprobe, der Führerschein wird sichergestellt.",
+  },
   p_silvester: {
     org: "polizei", name: "Sachbeschädigung in der Silvesternacht", stichwort: "Sachbeschädigung", folge_nur: true,
     ablauf_min: 30, arbeit_min: 20, ziel_eintreffen_min: 12,
@@ -1653,11 +1884,36 @@ const STERNE = {
   freischaltung_standard: 3,
 }
 
+/**
+ * Rettungsdienst (Spielwerte, Konzept DORFDIENSTE.md 5.6): Transport ins Krankenhaus über die Hauptstraße nach Süden,
+ * Übergabe, Rückfahrt und Wiederherstellung. Notarzt per NEF (mit Notarztvertrag), tagsüber per Rettungshubschrauber
+ * oder aus der Stadt. Patient: Minuten bis zur Versorgung je Dringlichkeit [stabil bis, verzögert bis].
+ */
+const RETTUNG = {
+  hilfsfrist_min: 8,
+  erreichungsgrad_ziel: 0.95,
+  notarzt_ziel_min: 15,
+  transport_min: 25,
+  uebergabe_min: 10,
+  wiederherstellung_min: 10,
+  infektion_faktor: 3,
+  rth_min: 12,
+  rth_name: "Rettungshubschrauber",
+  notarzt_stadt_min: 25,
+  aed_umkreis: 40,
+  aed_bonus_min: 3,
+  telefon_bonus_min: 2,
+  erste_hilfe_anteil: 0.5,
+  patient: { rot: [10, 18], gelb: [15, 30], gruen: [45, 120] },
+}
+
 /** Personal der Polizei: Beamtinnen und Beamte werden an die Dienststelle versetzt (begrenzt durch personal_max). */
 const PERSONAL = {
   polizei: { name: "Beamtin/Beamter an die Dienststelle versetzen", preis: 600 }, // spielwert
   werkstatt: { org: "werkstatt", name: "Mechanikerin/Mechaniker einstellen", preis: 500, lehrgaenge: ["kfz"] }, // spielwert
   bauhof: { org: "bauhof", name: "Gemeindearbeiterin/Gemeindearbeiter einstellen", preis: 400, lehrgaenge: ["gemeindearbeit"] }, // spielwert
+  rettungssanitaeter: { org: "rettungsdienst", name: "Rettungssanitäterin/Rettungssanitäter einstellen", preis: 500, lehrgaenge: ["rs"] }, // spielwert
+  notfallsanitaeter: { org: "rettungsdienst", name: "Notfallsanitäterin/Notfallsanitäter einstellen", preis: 1500, lehrgaenge: ["rs", "nfs"] }, // spielwert
 }
 
 /**
@@ -1730,6 +1986,7 @@ module.exports = {
   ORGANISATIONEN,
   EXTERN,
   FREISCHALTUNG_LEVEL,
+  RETTUNG,
   ARBEITSZEIT,
   BERUFE,
   SCHICHTEN,

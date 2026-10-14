@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.11.0
+
+- Einsatzspiel, Rettungsdienst (ab Level 16, `ORGANISATIONEN.rettungsdienst`): Rettungswache in vier Stufen (Stufe 1 als RTW-Stellplatz am Feuerwehrhaus nur tagsüber, Stufe 4 als Lehrrettungswache ab Level 27), Personal (Rettungssanitäter, Notfallsanitäter), Lehrgänge (`rs`, `nfs` nur an der Lehrrettungswache, `desinfektor`), Fahrzeuge KTW, RTW und NEF, zwölf Geräte. Ohne eigene Wache oder wenn kein Fahrzeug frei ist, kommt der RTW der Nachbarwache (`EXTERN`, 14 min, höchstens 3 Sterne).
+- Patienten (`patient`: rot, gelb, grün) mit Transport ins Krankenhaus, Übergabe, Rückfahrt und Wiederherstellung (`RETTUNG`, Plan `transport`). Ergebnis im Einsatz (`patient`: stabil, mit Verzögerung, verschlechtert; niemand stirbt). Notarzt (`notarzt`): eigenes NEF mit Notarztvertrag, tagsüber der Rettungshubschrauber, sonst aus der Stadt (Plan `notarzt`). Abzüge für fehlenden oder späten Notarzt und für einen RTW ohne Notfallsanitäter (§ 10 NRettDG).
+- Hilfsfrist im Spiel 8 Minuten, der Stand merkt sich die letzten 50 Notfälle (`hilfsfrist`) für den Erreichungsgrad.
+- Elf Einsatzarten des Rettungsdienstes mit Freischaltbaum ab dem Krankentransport, dazu Rettungsdienst-Teile in neun bestehenden Einsätzen (erst ab Level 16) und fünf gemeinsame Einsätze von Feuerwehr, Polizei und Rettungsdienst (`ab_level` 16) mit dem neuen Polizei-Teil Blutprobe.
+- Leitstelle und Ersthelfer: strukturierte Notrufabfrage (Rettungsdienst wird gleich mit alarmiert), Telefonreanimation, öffentliche Defibrillatoren an vier Orten, Landestelle am Sportplatz. Ausbauten mit `ab_level` und `bereich`.
+- Bewohner können als Rettungsdienstler einziehen (`bewohner: {org: "rettungsdienst"}`, Schichtdienst) und zusätzlich in die Feuerwehr eintreten.
+
 ## 0.10.0
 
 - Einsatzspiel, Werkstatt mit Abschleppdienst und Bauhof (ab Level 12, `FREISCHALTUNG_LEVEL.werkstatt` und `.bauhof`, neue Organisationen in `ORGANISATIONEN`). Gebäude `werkstatt` und `bauhof` in vier Ausbaustufen (Stufe 0: kein Betrieb im Dorf), Personal über `kaufen` mit `art: "personal"` (`id: "werkstatt"` bzw. `"bauhof"`, begrenzt durch `personal_max`), eigene Geräte, Fahrzeuge (gelbes Rundumlicht, keine Sonderrechte: `ohne_sonderrechte`) und Lehrgänge. Arbeitgeber im Dorf: Kfz-Werkstatt und Bauhof.
