@@ -2,6 +2,7 @@
 // Hintergrundaufgaben:
 // - Garmin: alle 15 Minuten die letzten Aktivitäten aus Home Assistant übernehmen (ohne GPS-Koordinaten).
 // - Sonntags: erledigte Vorgänge anonymisieren (Titel = Vorgangsnummer, Nächster Schritt und Warten auf leeren).
+// - Morgens: an Vorgänge beim LKA erinnern, deren Wiedervorlage heute fällig ist (Push ohne dienstliche Inhalte).
 // - Fitness-Welt: um 19 Uhr Ortszeit erinnern, wenn heute noch keine Bewegung eingetragen ist.
 
 cronAdd("garmin", "*/15 * * * *", () => {
@@ -18,6 +19,15 @@ cronAdd("anonymisieren", "0 17 * * 0", () => {
     require(`${__hooks}/hintergrund.js`).anonymisiereVorgaenge()
   } catch (err) {
     console.log("Anonymisieren fehlgeschlagen", err)
+  }
+})
+
+// 5:30 UTC, also 6:30 Uhr Winterzeit bzw. 7:30 Uhr Sommerzeit
+cronAdd("lka_wiedervorlage", "30 5 * * *", () => {
+  try {
+    require(`${__hooks}/vorgaenge.js`).erinnere($app)
+  } catch (err) {
+    console.log("Erinnerung Wiedervorlage LKA fehlgeschlagen", err)
   }
 })
 

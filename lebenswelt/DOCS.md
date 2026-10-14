@@ -21,6 +21,12 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `app_token` | GitHub-Token nur zum Lesen dieses einen Repositorys. Ohne Token gibt es keine Updates per Knopf. |
 | `fcm_dienstkonto` | Schlüssel eines Firebase-Dienstkontos (der ganze JSON-Inhalt) für Push-Nachrichten an die Android-App. Leer = keine Push-Nachrichten. |
 
+## Vorgänge beim LKA
+
+Steht ein Vorgang neu auf „Warten auf LKA (KTA PMK)“, setzt die Datenbank die `frist` auf heute plus zwei Monate (Wiedervorlage). Das gilt für Änderungen aus der App wie über Claude. Ist die Wiedervorlage fällig, kommt morgens eine Push-Nachricht ohne dienstliche Inhalte.
+
+Neue Unteraufgaben (in einem Vorgang oder Projekt, unter einer Aufgabe) bekommen beim Anlegen zwei Wochen als Fälligkeit, sofern keine mitkommt.
+
 ## Fitness-Welt (zum Beispiel für Papa)
 
 Eine zweite Person bekommt dieselbe Lebenswelt als Fitness-Welt: gleiche Karte, gleiches Einsatzspiel, gleicher Shop mit gleichen Preisen, und jede Änderung an der App kommt mit demselben Update auch bei ihr an. Statt Aufgaben, Smarthome und Kraftbuch zählt dort nur Bewegung (Schritte am Deich, Heim-Physio im Elternhaus, Physio in der Praxis, Nilo schieben am Haus). Die Daten liegen getrennt je Person in dieser Datenbank.
