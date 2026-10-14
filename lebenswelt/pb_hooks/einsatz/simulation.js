@@ -165,6 +165,15 @@ function punktVon(R, stand, ort) {
   return bp
 }
 
+/** Darf diese Einsatzart an diesem Ort stattfinden? In Schutzzonen nur harmlose Arten (Katze, Ruhestörung …). */
+function ortErlaubt(R, s, art, ort) {
+  const zonen = R.SCHUTZZONEN || []
+  if (!zonen.length || !art || art.harmlos) return true
+  const p = punktVon(R, s, ort)
+  if (!p) return true
+  return !zonen.some((z) => Math.hypot(p.x - z.x, p.z - z.z) < z.r)
+}
+
 function bauplatz(R, id) {
   for (const b of R.BAUPLAETZE) if (b.id === id) return b
   for (const nb of R.NEUBAUGEBIETE) {
@@ -830,7 +839,10 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const art = R.EINSATZARTEN[id]
   s.zaehler += 1
   const r = zufall(s.zufall + ":" + id + ":ort:" + s.zaehler)
-  const ort = ortFest || (folgeVon ? folgeVon.ort : art.orte[Math.floor(r() * art.orte.length)])
+  // Nur Orte außerhalb der Schutzzonen, außer die Art ist harmlos; gibt es keinen, bleibt die ganze Liste
+  const frei = (art.orte || []).filter((o) => ortErlaubt(R, s, art, o))
+  const auswahl = frei.length ? frei : art.orte
+  const ort = ortFest || (folgeVon ? folgeVon.ort : auswahl[Math.floor(r() * auswahl.length)])
   const e = {
     id: "e_" + t + "_" + id + "_" + s.zaehler,
     art: id,
@@ -903,6 +915,8 @@ function folgen(R, s, e, umwelt) {
     if (!fa) continue
     // Nur, wenn die andere Organisation überhaupt jemanden hat (sonst entsteht der Folgeeinsatz nicht)
     if (!s.personal.some((p) => p.org === fa.org)) continue
+    // Kein dramatischer Folgeeinsatz in einer Schutzzone
+    if (!ortErlaubt(R, s, fa, e.ort)) continue
     erzeuge(R, s, id, t, umwelt, e)
   }
 }
@@ -1063,7 +1077,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const f = bedingungFaktor(art, ev.t, wetter(ev.t))
       // Baustellen-Einsätze nur, solange eine passende Baustelle läuft
       const bst = art.baustelle ? s.baustellen.find((b) => { const ph = bauPhase(R, b, ev.t); return ph && (!art.phasen || art.phasen.indexOf(ph.id) >= 0) }) : null
-      if (f > 0 && (!art.baustelle || bst) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
+      if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f)) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
     } else if (ev.typ === "tag") {
       tagesabschluss(R, s, ev.id)
@@ -1278,5 +1292,5 @@ module.exports = {
   ortszeit,
   preis,
   // für Tests
-  _intern: { tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { ortErlaubt, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

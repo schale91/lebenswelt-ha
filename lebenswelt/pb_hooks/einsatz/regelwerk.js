@@ -779,7 +779,7 @@ const AUSBAU = {
 const EINSATZARTEN = {
   // Feuerwehr, Einstieg
   tier_katze: {
-    org: "feuerwehr", name: "Katze auf Baum", stichwort: "TH Tier", preis: 50, start: true,
+    org: "feuerwehr", name: "Katze auf Baum", stichwort: "TH Tier", preis: 50, start: true, harmlos: true,
     orte: ["baum_feuerwehr", "baum_bibliothek", "baum_markt"],
     intervall_min: 60, ablauf_min: 5, arbeit_min: 4, ziel_eintreffen_min: 4,
     mindestens: { personen: 1, geraete: [[{ steckleiter_teil: 2 }, { klappleiter: 1 }, { multifunktionsleiter: 1 }, { schiebleiter: 1 }]] },
@@ -1017,7 +1017,7 @@ const EINSATZARTEN = {
     verfallen_text: "Die Spuren sind verwischt, die Anzeige läuft gegen Unbekannt.",
   },
   p_baulaerm: {
-    org: "polizei", name: "Beschwerde über Baulärm", stichwort: "Lärm", preis: 0, baustelle: true, phasen: ["erdarbeiten", "rohbau", "anlieferung"],
+    org: "polizei", name: "Beschwerde über Baulärm", stichwort: "Lärm", preis: 0, harmlos: true, baustelle: true, phasen: ["erdarbeiten", "rohbau", "anlieferung"],
     orte: ["baustelle"], intervall_min: 720, ablauf_min: 45, arbeit_min: 8, ziel_eintreffen_min: 20,
     bedingung: { stunden: [6, 7, 20, 21], sonst_faktor: 0.15 },
     mindestens: { personen: 1 },
@@ -1028,7 +1028,7 @@ const EINSATZARTEN = {
 
   // Polizei
   p_ruhestoerung: {
-    org: "polizei", name: "Ruhestörung bei den Nachbarn", stichwort: "Ruhestörung", preis: 80, start_polizei: true,
+    org: "polizei", name: "Ruhestörung bei den Nachbarn", stichwort: "Ruhestörung", preis: 80, start_polizei: true, harmlos: true,
     orte: ["nachbarhaus"], intervall_min: 720, ablauf_min: 30, arbeit_min: 8, ziel_eintreffen_min: 15,
     bedingung: { stunden: [20, 21, 22, 23, 0, 1, 2], sonst_faktor: 0.2 },
     mindestens: { personen: 1 },
@@ -1039,7 +1039,7 @@ const EINSATZARTEN = {
     verfallen_text: "Die Party ist von allein zu Ende gegangen. Die Anrufer sind verärgert.",
   },
   p_falschparker: {
-    org: "polizei", name: "Falschparker in der Feuerwehrzufahrt", stichwort: "Verkehr", preis: 150,
+    org: "polizei", name: "Falschparker in der Feuerwehrzufahrt", stichwort: "Verkehr", preis: 150, harmlos: true,
     freischaltung: { nach: "p_ruhestoerung", sterne: 3 },
     orte: ["schule", "marktplatz"], intervall_min: 480, ablauf_min: 45, arbeit_min: 10, ziel_eintreffen_min: 20,
     mindestens: { personen: 1 },
@@ -1269,6 +1269,13 @@ const PERSONAL = {
   polizei: { name: "Beamtin/Beamter an die Dienststelle versetzen", preis: 600 }, // spielwert
 }
 
+/**
+ * Schutzzonen: Kreise (x, z, r), in denen nur Einsatzarten mit `harmlos: true` stattfinden (z. B. Katze auf Baum,
+ * Ruhestörung), keine Brände, Verletzten oder Überschwemmungen. Gedacht für das eigene Zuhause und das Zuhause von
+ * Angehörigen. Hier leer; gesetzt werden sie nur über die private Karte der Person (Dokument karte/dorf, Feld schutz).
+ */
+const SCHUTZZONEN = []
+
 /** Zeiten der Simulation, die nicht an Orten hängen (spielwert). */
 const ZEITEN = {
   ausruecken_s: 45, // vom Erreichen der Mindeststärke bis zur Abfahrt
@@ -1298,6 +1305,7 @@ module.exports = {
   ORTE,
   BAUPLAETZE,
   NEUBAUGEBIETE,
+  SCHUTZZONEN,
   WETTER,
   ALARMIERUNG,
   HAUS_AUSBAU,

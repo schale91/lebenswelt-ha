@@ -367,3 +367,17 @@ test("Einsatz sofort: nur gekaufte Arten, sonst eine zufällige gekaufte", () =>
   assert.ok(r.einsatz.sofort)
   assert.ok(r.stand.laufend.some((e) => e.id === r.einsatz.id))
 })
+
+test("Schutzzonen: dort nur harmlose Einsätze, dramatische weichen auf andere Orte aus", () => {
+  const h = R.ORTE.hecke_werkstatt
+  const RZ = Object.assign({}, R, { SCHUTZZONEN: [{ x: h.x, z: h.z, r: 5 }] })
+  const s = S.neuerStand(RZ, T0, 7)
+  for (let i = 0; i < 40; i++) {
+    const e = S._intern.erzeuge(RZ, s, "b_hecke", T0 + i * MIN, trocken, null)
+    assert.notEqual(e.ort, "hecke_werkstatt")
+  }
+  assert.equal(S._intern.ortErlaubt(RZ, s, R.EINSATZARTEN.b_hecke, "hecke_werkstatt"), false)
+  assert.equal(S._intern.ortErlaubt(RZ, s, R.EINSATZARTEN.tier_katze, "hecke_werkstatt"), true)
+  // ohne Zonen (öffentliches Regelwerk) ist alles erlaubt
+  assert.equal(S._intern.ortErlaubt(R, s, R.EINSATZARTEN.b_hecke, "hecke_werkstatt"), true)
+})
