@@ -2,6 +2,7 @@
 // Hintergrundaufgaben:
 // - Garmin: alle 15 Minuten die letzten Aktivitäten aus Home Assistant übernehmen (ohne GPS-Koordinaten).
 // - Sonntags: erledigte Vorgänge anonymisieren (Titel = Vorgangsnummer, Nächster Schritt und Warten auf leeren).
+// - Sonntags: XP-Prüfung (levelt jemand zu schnell?), siehe xp_pruefung.js.
 // - Morgens: an Vorgänge beim LKA erinnern, deren Wiedervorlage heute fällig ist (Push ohne dienstliche Inhalte).
 // - Fitness-Welt: um 19 Uhr Ortszeit erinnern, wenn heute noch keine Bewegung eingetragen ist.
 
@@ -57,6 +58,24 @@ onBootstrap((e) => {
   } catch (_) {
     // beim Start nicht kritisch
   }
+})
+
+// Sonntagsprüfung XP: 16 Uhr UTC, also 17 Uhr Winterzeit bzw. 18 Uhr Sommerzeit (vor dem Anonymisieren)
+cronAdd("xp_pruefung", "0 16 * * 0", () => {
+  try {
+    require(`${__hooks}/xp_pruefung.js`).pruefeAlle($app)
+  } catch (err) {
+    console.log("Sonntagsprüfung XP fehlgeschlagen", err)
+  }
+})
+
+// Sonntagsprüfung von Hand auslösen (nur volle Lebenswelt), z. B. zum Ausprobieren
+routerAdd("POST", "/api/lebenswelt/xp-pruefung", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  if (h.profilVon(ich) === "fitness") return e.json(403, { fehler: "Die Prüfung startet nur die volle Lebenswelt." })
+  return e.json(200, { personen: require(`${__hooks}/xp_pruefung.js`).pruefeAlle(e.app) })
 })
 
 // Fitness-Welt: stündlich nachsehen, um 19 Uhr Ortszeit (MEZ/MESZ) einmal erinnern, wer heute noch nichts eingetragen hat

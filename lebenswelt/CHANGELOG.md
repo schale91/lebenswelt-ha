@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.24.0
+
+- Sonntagsprüfung XP (`pb_hooks/xp_pruefung.js`, Sonntag 16 Uhr UTC): Je Person (volle Lebenswelt und Fitness-Welt) werden die XP der Woche aus dem XP-Tagebuch der App (`daten.xpTage` im Spielstand) mit den vier Wochen davor und mit den Nachweisen verglichen (erledigte Aufgaben, Unteraufgaben und Vorgänge, Garmin, Kraftbuch-Sätze, Bewegungen). Mehr XP bei entsprechend mehr Erledigtem gilt als Fleiß. Auffällig sind: mehr als doppelt so viele XP ohne passend mehr Nachweise, XP ohne jeden Nachweis, ein Tag mit dreimal so vielen XP wie üblich bei wenig Nachweisen, zwei oder mehr Level in einer Woche ohne Fleiß.
+- Ergebnis als Dokument `xp_pruefung` (Schlüssel = Sonntag) bei der Person mit voller Lebenswelt; fällt etwas auf, kommt eine Nachricht an sie, auch wenn es die Fitness-Welt betrifft.
+- `POST /api/lebenswelt/xp-pruefung` startet die Prüfung von Hand.
+
 ## 0.23.0
 
 - Wird ein Vorgang erledigt (App, Claude, jede Route), werden seine offenen Aufgaben, Teilaufgaben (`eltern` ist eine Aufgabe des Vorgangs) und Unteraufgaben ebenfalls erledigt. Sie bekommen `xp_offen: true` und `erledigt_durch: "vorgang"`, die App bucht die XP wie bei einzeln abgehakten Aufgaben.
