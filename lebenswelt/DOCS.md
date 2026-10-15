@@ -64,6 +64,10 @@ Route: `GET /api/lebenswelt/schiffe` (`eingerichtet`, `fehler`, `schiffe` mit Na
 
 Wird ein Vorgang erledigt, schließt die Datenbank seine offenen Aufgaben, Teilaufgaben und Unteraufgaben mit ab (`xp_offen: true`). Die App bucht dafür die XP.
 
+## Sonntagsprüfung XP
+
+Sonntags um 17 Uhr (Winterzeit) bzw. 18 Uhr (Sommerzeit) prüft die Datenbank je Person, ob die XP der Woche zu dem passen, was erledigt oder eingetragen wurde. Wer mehr XP hat, weil er mehr geschafft hat, gilt als fleißig. Passt es nicht, bekommt die Person mit voller Lebenswelt eine Nachricht, und Claude spricht sie darauf an (Dokument `xp_pruefung`). `POST /api/lebenswelt/xp-pruefung` startet die Prüfung von Hand.
+
 ## Updates der App per Knopf
 
 Bei jedem Push baut eine GitHub Action die App (nur wenn Typprüfung und Tests bestehen) und legt das fertige Paket auf den Zweig `app-paket`. Das Add-on sieht beim Start und danach alle 10 Minuten nach und lädt eine neue Version herunter, spielt sie aber nicht ein. In der App erscheint dann „Update verfügbar · Installieren“. Erst dieser Tipp schreibt die Version in jeden Ordner `www/lebenswelt-*/`, in dem eine `server.json` liegt: erst die Programmdateien, zuletzt `stand.json` und `index.html`, danach werden alte Dateien früherer Versionen gelöscht. `server.json` und andere Ordner bleiben unberührt.
