@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.21.0"
+version: "0.22.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha
@@ -27,6 +27,7 @@ options:
   fitness_personen: []
   garmin_sensor: sensor.garmin_connect_last_activities
   wetter_entitaet: weather.forecast_home
+  warn_entitaet: ""
   app_quelle: schale91/Claude@app-paket
   app_token: ""
   fcm_dienstkonto: ""
@@ -41,6 +42,7 @@ schema:
     - str
   garmin_sensor: str?
   wetter_entitaet: str?
+  warn_entitaet: str?
   app_quelle: str?
   app_token: password?
   fcm_dienstkonto: password?
