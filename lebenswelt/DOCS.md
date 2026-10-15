@@ -18,6 +18,7 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `ais_radius_km` | Umkreis um das Zuhause (`zone.home`) für den Schiffsverkehr in km, Standard 5. |
 | `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
 | `wetter_entitaet` | Wetter-Entität für das Einsatzspiel (Standard `weather.forecast_home`). |
+| `warn_entitaet` | Sensor der Integration „DWD Weather Warnings“ (aktuelle Warnstufe) für echte Wetterwarnungen im Einsatzspiel. Leer: wird automatisch gesucht. |
 | `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
 | `app_token` | GitHub-Token nur zum Lesen dieses einen Repositorys. Ohne Token gibt es keine Updates per Knopf. |
 | `fcm_dienstkonto` | Schlüssel eines Firebase-Dienstkontos (der ganze JSON-Inhalt) für Push-Nachrichten an die Android-App. Leer = keine Push-Nachrichten. |
