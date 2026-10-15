@@ -1,6 +1,6 @@
 # Änderungen
 
-## 0.23.0
+## 0.24.0
 
 - Einsatzspiel, Geländehöhen (`GELAENDE`): Die private Karte der App kann ein Höhenraster in Metern über NHN mitliefern (`gelaende`: Ursprung, Rasterweite, Spalten, Reihen, Höhen). Einsatzarten mit `tief_gewicht` wählen damit tiefer gelegene Orte häufiger: Gewicht 1 + `tief_gewicht` × Meter unter dem Mittel der möglichen Orte, mindestens 0,2. Ohne Höhen bleibt die Auswahl wie bisher.
 - Wasser im Keller trifft jetzt auch die Wohnhäuser der Karte (`ort_gruppen: ["keller"]`), tiefer gelegene häufiger.
@@ -8,6 +8,11 @@
 - Deichverteidigung: Qualmwasser tritt am landseitigen Deichfuß auf, an den tiefsten Stellen am ehesten (`ort_gruppen: ["qualmwasser"]`).
 - Unwetterwarnung des DWD vor Starkregen oder Dauerregen ab Stufe 3 löst auch „Graben übergelaufen“ aus.
 - `hoeheBei` (Höhe an einem Punkt, bilinear) und lesbare Namen der neuen Zufallsorte.
+
+## 0.23.0
+
+- Wird ein Vorgang erledigt (App, Claude, jede Route), werden seine offenen Aufgaben, Teilaufgaben (`eltern` ist eine Aufgabe des Vorgangs) und Unteraufgaben ebenfalls erledigt. Sie bekommen `xp_offen: true` und `erledigt_durch: "vorgang"`, die App bucht die XP wie bei einzeln abgehakten Aufgaben.
+- Einmaliger Nachtrag (Migration): dasselbe für alle Vorgänge, die schon erledigt sind.
 
 ## 0.22.0
 
