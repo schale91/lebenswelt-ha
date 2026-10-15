@@ -40,3 +40,26 @@ test("Neue Unteraufgaben: zwei Wochen Fälligkeit, wenn keine mitkommt", () => {
   assert.equal(V.ergaenzeFaelligkeit("aufgabe", { titel: "frei" }, tag).faellig, undefined)
   assert.equal(V.ergaenzeFaelligkeit("vorgang", { titel: "v" }, tag).faellig, undefined)
 })
+
+test("Erledigter Vorgang schließt offene Aufgaben, Teilaufgaben und Unteraufgaben ab", () => {
+  assert.equal(V.wirdErledigt("vorgang", { status: "In Bearbeitung" }, { status: "Erledigt" }), true)
+  assert.equal(V.wirdErledigt("vorgang", { status: "Erledigt" }, { status: "Erledigt" }), false)
+  assert.equal(V.wirdErledigt("aufgabe", { status: "Offen" }, { status: "Erledigt" }), false)
+  const liste = [
+    { typ: "aufgabe", schluessel: "a1", daten: { titel: "offen", vorgang: "v1", status: "Nicht begonnen" } },
+    { typ: "aufgabe", schluessel: "a2", daten: { titel: "schon fertig", vorgang: "v1", status: "Erledigt", erledigt_am: "2026-10-01" } },
+    { typ: "aufgabe", schluessel: "a3", daten: { titel: "Teilaufgabe ohne vorgang", eltern: "a1", status: "In Bearbeitung" } },
+    { typ: "unteraufgabe", schluessel: "u1", daten: { titel: "Unteraufgabe", vorgang: "v1", status: "Nicht begonnen" } },
+    { typ: "aufgabe", schluessel: "b1", daten: { titel: "anderer Vorgang", vorgang: "v2", status: "Nicht begonnen" } },
+  ]
+  const treffer = V.abzuschliessen(liste, "v1", "2026-10-15T12:00:00Z")
+  assert.deepEqual(treffer.map((x) => x.schluessel), ["a1", "a3", "u1"])
+  for (const x of treffer) {
+    assert.equal(x.daten.status, "Erledigt")
+    assert.equal(x.daten.xp_offen, true)
+    assert.equal(x.daten.erledigt_durch, "vorgang")
+  }
+  assert.equal(liste[1].daten.erledigt_am, "2026-10-01")
+  assert.equal(liste[4].daten.status, "Nicht begonnen")
+  assert.deepEqual(V.abzuschliessen(liste, "", "x"), [])
+})

@@ -5,11 +5,15 @@
 //
 // Unteraufgaben (Aufgaben in einem Vorgang oder Projekt, Teilaufgaben, Unteraufgaben) bekommen beim Anlegen
 // zwei Wochen als Fälligkeit, wenn keine mitkommt. Ändern lässt sie sich danach jederzeit.
+//
+// Wird ein Vorgang erledigt, gelten auch seine offenen Aufgaben, Teilaufgaben und Unteraufgaben als erledigt.
+// Sie bekommen xp_offen, damit die App die XP bucht, als wären sie einzeln abgehakt worden.
 
 const LKA_STATUS = "Warten auf LKA (KTA PMK)"
 const WIEDERVORLAGE_MONATE = 2
 const STD = 3600000
 const UNTERAUFGABE_TAGE = 14
+const ERLEDIGT = "Erledigt"
 
 /** Kalendertag in Ortszeit (MEZ/MESZ) als JJJJ-MM-TT, wie im Einsatzspiel ohne Zeitzonendatenbank. */
 function heute(ms) {
@@ -63,6 +67,45 @@ function ergaenzeFaelligkeit(typ, neu, tag) {
   return neu
 }
 
+/** Wechselt ein Vorgang mit dieser Änderung auf „Erledigt“? */
+function wirdErledigt(typ, alt, neu) {
+  return typ === "vorgang" && Boolean(neu) && neu.status === ERLEDIGT && (!alt || alt.status !== ERLEDIGT)
+}
+
+/**
+ * Wählt aus Aufgaben und Unteraufgaben ({typ, schluessel, daten}) die offenen eines Vorgangs: direkt mit
+ * `vorgang`, dazu Teilaufgaben, deren `eltern` eine Aufgabe des Vorgangs ist. Gibt die Daten abgeschlossen zurück.
+ */
+function abzuschliessen(liste, vorgang, jetzt) {
+  if (!vorgang) return []
+  const imVorgang = new Set(liste.filter((x) => x.typ === "aufgabe" && x.daten.vorgang === vorgang).map((x) => x.schluessel).filter(Boolean))
+  const treffer = []
+  for (const x of liste) {
+    const d = x.daten
+    if (!d || d.status === ERLEDIGT) continue
+    if (d.vorgang !== vorgang && !(d.eltern && imVorgang.has(d.eltern))) continue
+    d.status = ERLEDIGT
+    d.erledigt_am = jetzt
+    d.xp_offen = true
+    d.erledigt_durch = "vorgang"
+    treffer.push(x)
+  }
+  return treffer
+}
+
+/** Schließt die offenen Unteraufgaben eines erledigten Vorgangs in der Datenbank ab. Gibt die Anzahl zurück. */
+function schliesseUnteraufgabenAb(app, besitzer, vorgang) {
+  if (!vorgang) return 0
+  const records = app.findRecordsByFilter("dokumente", "besitzer = {:b} && geloescht = false && (typ = 'aufgabe' || typ = 'unteraufgabe')", "", 0, 0, { b: besitzer })
+  const liste = records.map((r) => ({ r: r, typ: r.getString("typ"), schluessel: r.getString("schluessel"), daten: JSON.parse(toString(r.get("daten")) || "{}") }))
+  const treffer = abzuschliessen(liste, vorgang, new Date().toISOString())
+  for (const x of treffer) {
+    x.r.set("daten", x.daten)
+    app.save(x.r)
+  }
+  return treffer.length
+}
+
 /** Zahl der Vorgänge beim LKA, deren Wiedervorlage genau heute fällig ist, je Besitzer. */
 function heuteFaellig(app, tag) {
   const liste = app.findRecordsByFilter("dokumente", "typ = 'vorgang' && geloescht = false", "", 0, 0)
@@ -93,4 +136,4 @@ function erinnere(app) {
   }
 }
 
-module.exports = { LKA_STATUS, heute, wiedervorlage, ergaenzeFrist, ergaenzeFaelligkeit, erinnere }
+module.exports = { LKA_STATUS, heute, wiedervorlage, ergaenzeFrist, ergaenzeFaelligkeit, wirdErledigt, abzuschliessen, schliesseUnteraufgabenAb, erinnere }
