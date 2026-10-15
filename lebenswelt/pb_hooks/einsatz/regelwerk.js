@@ -407,6 +407,34 @@ const SIRENEN = {
   warntag: { monat: 9, wochentag: 4, nr: 2, stunde: 11, entwarnung_min: 45 },
 }
 
+/**
+ * Echte Wetterwarnungen des Deutschen Wetterdienstes (Integration „DWD Weather Warnings“ in Home Assistant, Warnzelle
+ * der Gemeinde). Eine Warnung setzt für ihre Dauer das Spielwetter und setzt beim Beginn passende Einsätze an (nach
+ * min Minuten, zufällig im Bereich), sofern die Einsatzart gekauft ist und ihr Level erreicht ist. Erkannt wird am
+ * Namen des DWD-Ereignisses (Großbuchstaben, z. B. STURMBÖEN, GLATTEIS). Die erste passende Regel gilt.
+ * stufe: Warnstufe des DWD (1 Wetterwarnung, 2 markantes Wetter, 3 Unwetter, 4 extremes Unwetter).
+ */
+const DWD_WARNUNGEN = {
+  regeln: [
+    {
+      muster: ["GLATTEIS", "GLÄTTE"], wetter: "glaette",
+      ausloesen: [{ art: "bh_streuen", min: [10, 45] }, { art: "p_vu_sachschaden", min: [40, 180] }, { art: "ab_graben", min: [60, 240], stufe_min: 2 }, { art: "th_vu", min: [60, 240], stufe_min: 3 }],
+    },
+    {
+      muster: ["SCHNEEVERWEHUNG", "SCHNEEFALL"], wetter: "schnee",
+      ausloesen: [{ art: "bh_streuen", min: [20, 60] }, { art: "p_vu_sachschaden", min: [60, 240] }],
+    },
+    {
+      muster: ["ORKAN", "STURM"], stufe_min: 2, wetter: "sturm",
+      ausloesen: [{ art: "th_baum_strasse", min: [20, 90] }, { art: "bh_ast", min: [30, 120] }, { art: "th_stromausfall", min: [60, 180], stufe_min: 3 }, { art: "gl_sturm", min: [30, 90], stufe_min: 3 }],
+    },
+    {
+      muster: ["STARKREGEN", "DAUERREGEN"], stufe_min: 2, wetter: "nass",
+      ausloesen: [{ art: "th_wasser_keller", min: [60, 180] }],
+    },
+  ],
+}
+
 /** Ausbau je Haus: wie schnell die Person zum Gerätehaus bzw. zur Dienststelle kommt. */
 const HAUS_AUSBAU = {
   zu_fuss: { name: "zu Fuß", tempo_ms: 1.6, extra_s: 0, preis: 0 },
@@ -2396,6 +2424,7 @@ const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße" }
 
 module.exports = {
   NACHBARHILFE,
+  DWD_WARNUNGEN,
   SIRENEN,
   ZUFALLSORTE,
   ZUFALLSORT_NAMEN,

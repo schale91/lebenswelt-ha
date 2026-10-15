@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.22.0
+
+- Einsatzspiel, echte Wetterwarnungen des Deutschen Wetterdienstes (`DWD_WARNUNGEN`): Die Sensoren der Home-Assistant-Integration „DWD Weather Warnings“ werden alle 10 Minuten gelesen (Option `warn_entitaet`, sonst automatisch gefunden). Eine Warnung setzt für ihre Dauer das Spielwetter (Glätte, Schnee, Sturm ab markantem Wetter, Starkregen) und setzt bei Beginn passende Einsätze an: Sturm bringt Baum auf der Straße und Ast auf dem Gehweg, bei Unwetter auch Stromausfall und die Sturm-Großlage (ab Level 30); Glätte bringt Streuen und Unfälle; Starkregen Wasser im Keller. Nur gekaufte Einsatzarten, jede Warnung wirkt einmal.
+- `GET /api/lebenswelt/einsatz/stand` liefert die gerade geltenden Warnungen (`warnungen`).
+
 ## 0.21.0
 
 - Einsatzspiel, Sirenen im Dorf (`SIRENEN`): Die Motorsirene am Feuerwehrhaus bleibt, dazu kommen Standorte an Grundschule, Marktplatz, Deich, Werkstatt und Sportplatz (freigeschaltet ab Level 4, 7, 11, 15 und 19). Jeder Standort wird in drei Stufen gebaut: Motorsirene, elektronische Sirene mit Akku und Sprachdurchsage, Hochleistungssirene mit digitaler Auslösung durch die Leitstelle. Mehr Reichweite und weniger Auslöseverzug je Stufe.

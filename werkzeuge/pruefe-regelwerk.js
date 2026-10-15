@@ -176,6 +176,11 @@ for (const [id, a] of Object.entries(R.AUSBAU)) {
 }
 for (const [id, h] of Object.entries(R.HAUS_AUSBAU)) if (h.voraussetzung && !R.HAUS_AUSBAU[h.voraussetzung]) f(`HAUS_AUSBAU.${id}: unbekannte Voraussetzung`)
 for (const [id, a] of Object.entries(R.AUSBAU)) if (a.voraussetzung && !R.AUSBAU[a.voraussetzung]) f(`AUSBAU.${id}: unbekannte Voraussetzung`)
+// Echte DWD-Warnungen: Spielwetter bekannt, ausgelöste Einsatzarten gibt es
+for (const [i, r] of R.DWD_WARNUNGEN.regeln.entries()) {
+  if (!R.WETTER[r.wetter]) f(`DWD_WARNUNGEN.regeln[${i}]: unbekanntes Wetter "${r.wetter}"`)
+  for (const a of r.ausloesen) if (!R.EINSATZARTEN[a.art] || !(a.min[0] <= a.min[1])) f(`DWD_WARNUNGEN.regeln[${i}]: Einsatzart "${a.art}" fehlt oder Zeitspanne falsch`)
+}
 // Sirenen: Standorte an bekannten Orten, Stufen mit Reichweite, Ausbauten zeigen auf Standort und Stufe
 for (const [id, st] of Object.entries(R.SIRENEN.standorte)) if (!R.ORTE[st.ort]) f(`SIRENEN.standorte.${id}: unbekannter Ort "${st.ort}"`)
 for (const [n, st] of Object.entries(R.SIRENEN.stufen)) if (!(st.radius > 0) || !(st.preis > 0)) f(`SIRENEN.stufen.${n}: Reichweite oder Preis fehlt`)

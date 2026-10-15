@@ -17,7 +17,7 @@ routerAdd("GET", "/api/lebenswelt/einsatz/stand", (e) => {
   if (!ich) return e.json(401, h.KEINE_PERSON)
   const jetzt = Date.now()
   const a = d.aktuell(e.app, ich.id, jetzt)
-  return e.json(200, { jetzt: jetzt, version: d.R.VERSION, wetter: a.wetter, stand: a.stand })
+  return e.json(200, { jetzt: jetzt, version: d.R.VERSION, wetter: a.wetter, warnungen: a.warnungen, stand: a.stand })
 })
 
 // Abgeschlossene Einsätze (Protokoll), neueste zuerst. ?seit=<ms> liefert nur neuere.
