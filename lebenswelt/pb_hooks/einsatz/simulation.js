@@ -303,6 +303,43 @@ function orteVon(R, art) {
   return aus
 }
 
+/** Höhe in Metern über NHN an einem Punkt (bilinear aus dem Geländeraster der Karte); ohne Raster null. */
+function hoeheBei(R, x, z) {
+  const g = R.GELAENDE
+  if (!g) return null
+  const fx = Math.max(0, Math.min(g.spalten - 1.000001, (x - g.x0) / g.raster))
+  const fz = Math.max(0, Math.min(g.reihen - 1.000001, (z - g.z0) / g.raster))
+  const i = Math.floor(fx)
+  const j = Math.floor(fz)
+  const u = fx - i
+  const v = fz - j
+  const h = (a, b) => g.nhn[b * g.spalten + a]
+  return (h(i, j) * (1 - u) + h(i + 1, j) * u) * (1 - v) + (h(i, j + 1) * (1 - u) + h(i + 1, j + 1) * u) * v
+}
+
+/**
+ * Ort aus der Auswahl ziehen. Mit tief_gewicht und Geländehöhen zählt ein Ort umso mehr, je tiefer er unter dem
+ * Mittel der Auswahl liegt (Gewicht 1 + tief_gewicht × Meter darunter, mindestens 0,2). Sonst gleich verteilt.
+ */
+function waehleOrt(R, s, art, auswahl, r) {
+  const k = art.tief_gewicht
+  if (!k || !R.GELAENDE || auswahl.length < 2) return auswahl[Math.floor(r() * auswahl.length)]
+  const h = auswahl.map((o) => {
+    const p = punktVon(R, s, o)
+    return p ? hoeheBei(R, p.x, p.z) : null
+  })
+  const bekannt = h.filter((x) => x !== null)
+  if (!bekannt.length) return auswahl[Math.floor(r() * auswahl.length)]
+  const mittel = bekannt.reduce((a, b) => a + b, 0) / bekannt.length
+  const w = h.map((x) => (x === null ? 1 : Math.max(0.2, 1 + k * (mittel - x))))
+  let rest = r() * w.reduce((a, b) => a + b, 0)
+  for (let i = 0; i < auswahl.length; i++) {
+    rest -= w[i]
+    if (rest <= 0) return auswahl[i]
+  }
+  return auswahl[auswahl.length - 1]
+}
+
 /** Lesbarer Name eines Orts (Zufallsorte nach ihrer Gruppe). */
 function ortName(R, ort) {
   if (R.ORTE[ort]) return R.ORTE[ort].name || ort
@@ -1751,7 +1788,7 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const erlaubt = alle.filter((o) => ortErlaubt(R, s, art, o))
   const frei = erlaubt.filter((o) => !ortBesetzt(s, id, o))
   const auswahl = frei.length ? frei : erlaubt.length ? erlaubt : alle
-  const ort = ortFest || (folgeVon ? folgeVon.ort : auswahl[Math.floor(r() * auswahl.length)])
+  const ort = ortFest || (folgeVon ? folgeVon.ort : waehleOrt(R, s, art, auswahl, r))
   const e = {
     id: "e_" + t + "_" + id + "_" + s.zaehler,
     art: id,
@@ -2566,6 +2603,7 @@ module.exports = {
   warnungenAusloesen,
   dwdAus,
   orteVon,
+  hoeheBei,
   fortschreiben,
   kaufe,
   sofort,
@@ -2578,5 +2616,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
