@@ -308,6 +308,7 @@ const ORTE = {
   scheune: { name: "Scheune am Ortsrand", x: 62, z: -28 },
   schule: { name: "Grundschule", x: -40, z: 40 },
   festplatz: { name: "Festplatz", x: 40, z: 74 },
+  graben: { name: "Durchlass am Graben", x: 52, z: 40 },
   sportplatz: { name: "Sportplatz", x: 70, z: 84, fest: true },
   werkstatt_dorf: { name: "Kfz-Werkstatt", x: 20, z: 82, fest: true },
   bauhof: { name: "Bauhof", x: -62, z: 32, fest: true },
@@ -430,7 +431,7 @@ const DWD_WARNUNGEN = {
     },
     {
       muster: ["STARKREGEN", "DAUERREGEN"], stufe_min: 2, wetter: "nass",
-      ausloesen: [{ art: "th_wasser_keller", min: [60, 180] }],
+      ausloesen: [{ art: "th_wasser_keller", min: [60, 180] }, { art: "th_graben", min: [90, 240], stufe_min: 3 }],
     },
   ],
 }
@@ -1230,13 +1231,27 @@ const EINSATZARTEN = {
   th_wasser_keller: {
     org: "feuerwehr", name: "Wasser im Keller", stichwort: "TH Wasser", preis: 500,
     freischaltung: { nach: "b_hecke", sterne: 3 },
-    orte: ["nachbarhaus", "bibliothek"], intervall_min: 720, ablauf_min: 40, arbeit_min: 25, ziel_eintreffen_min: 12,
+    // Wohnhäuser der Karte (keller), tiefer gelegene häufiger (tief_gewicht, nur mit Geländehöhen der Karte)
+    orte: ["nachbarhaus", "bibliothek"], ort_gruppen: ["keller"], tief_gewicht: 2, intervall_min: 720, ablauf_min: 40, arbeit_min: 25, ziel_eintreffen_min: 12,
     bedingung: { wetter: ["nass", "sturm"], sonst_faktor: 0.15 },
     mindestens: { personen: 2, geraete: [[{ tauchpumpe: 1 }], [{ b_schlauch: 1 }, { c_schlauch_15: 2 }]] },
     optimal: { personen: 4, geraete: [[{ wassersauger: 1 }], [{ stromerzeuger: 1 }]] },
     psa: { stiefel: 1 },
     text: "Nach Starkregen steht das Wasser knöcheltief im Keller.",
     verfallen_text: "Die Heizung ist abgesoffen.",
+  },
+  th_graben: {
+    org: "feuerwehr", name: "Graben übergelaufen", stichwort: "TH Wasser", preis: 600,
+    freischaltung: { nach: "th_wasser_keller", sterne: 3 },
+    // Durchlässe, an denen der Graben unter einer Straße hindurchführt (durchlass); tiefer gelegene laufen eher über
+    orte: ["graben"], ort_gruppen: ["durchlass"], tief_gewicht: 2, intervall_min: 1440, ablauf_min: 45, arbeit_min: 30, ziel_eintreffen_min: 15,
+    bedingung: { wetter: ["nass", "sturm"], sonst_faktor: 0.05 },
+    mindestens: { personen: 2, geraete: [[{ tauchpumpe: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
+    optimal: { personen: 6, geraete: [[{ besen_schaufel: 2 }], [{ warnleuchte: 1 }], [{ stromerzeuger: 1 }]] },
+    psa: { stiefel: 1 },
+    regeln: ["verkehrsabsicherung"],
+    text: "Nach Starkregen ist der Durchlass unter der Straße mit Treibgut verstopft. Der Graben läuft über, Wasser steht auf der Fahrbahn.",
+    verfallen_text: "Die Straße stand stundenlang unter Wasser, der Bauhof hat den Durchlass am nächsten Morgen freigeräumt.",
   },
   b_flaeche: {
     org: "feuerwehr", name: "Flächenbrand am Deich", stichwort: "B Wald/Fläche", preis: 900,
@@ -1384,7 +1399,8 @@ const EINSATZARTEN = {
   th_deich: {
     org: "feuerwehr", name: "Deichverteidigung bei Elbhochwasser", stichwort: "TH Hochwasser", preis: 20000,
     freischaltung: { nach: "b_scheune", sterne: 3 },
-    orte: ["deich"], intervall_min: 43200, ablauf_min: 120, arbeit_min: 240, ziel_eintreffen_min: 60,
+    // Qualmwasser tritt am landseitigen Deichfuß aus, am ehesten in den tiefsten Stellen (qualmwasser, tief_gewicht)
+    orte: ["deich"], ort_gruppen: ["qualmwasser"], tief_gewicht: 3, intervall_min: 43200, ablauf_min: 120, arbeit_min: 240, ziel_eintreffen_min: 60,
     bedingung: { monate: [1, 2, 3, 4, 6], sonst_faktor: 0.1 },
     mindestens: { personen: 20, qualifikation: { zf: 1 }, geraete: [[{ sandsack: 10 }], [{ beleuchtung: 2 }]] },
     optimal: { personen: 40, geraete: [[{ sandsack: 20 }], [{ elw_fahrzeug: 1 }], [{ stromerzeuger: 2 }], [{ drohne: 1 }]] },
@@ -2420,7 +2436,14 @@ const NACHBARHILFE = {
  * private Karte der App liefert sie (dienst.js, mitKarte).
  */
 const ZUFALLSORTE = {}
-const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße" }
+const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße", keller: "Wohnhaus im Dorf", durchlass: "Durchlass am Graben", qualmwasser: "Deichfuß" }
+
+/**
+ * Geländehöhen in Metern über NHN als Raster ({ x0, z0, raster, spalten, reihen, nhn: [Reihe für Reihe] }). Einsatzarten
+ * mit tief_gewicht wählen damit tiefer gelegene Orte häufiger (Wasser im Keller, Graben, Qualmwasser). Das öffentliche
+ * Regelwerk hat keine Höhen, die private Karte der App liefert sie (dienst.js, mitKarte); ohne Höhen bleibt alles wie bisher.
+ */
+const GELAENDE = null
 
 module.exports = {
   NACHBARHILFE,
@@ -2428,6 +2451,7 @@ module.exports = {
   SIRENEN,
   ZUFALLSORTE,
   ZUFALLSORT_NAMEN,
+  GELAENDE,
   VERFALL,
   VERSION,
   PREISFAKTOR,
