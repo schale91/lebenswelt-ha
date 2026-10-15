@@ -1,7 +1,7 @@
 // Sonntagsprüfung: Levelt jemand zu schnell, oder ist er einfach fleißig?
 // Als Modul, weil PocketBase jeden Handler in einem eigenen Kontext ausführt.
 //
-// Grundlage ist das XP-Tagebuch der App im Spielstand (daten.xpTage: {tag: {xp, n}}) und als Nachweis, was in der
+// Grundlage ist das XP-Tagebuch der App im Spielstand (zustand: daten.state.xpTage: {tag: {xp, n}}) und als Nachweis, was in der
 // Datenbank in der Woche erledigt oder eingetragen wurde (Aufgaben, Vorgänge, Garmin, Kraftbuch, Bewegungen).
 // Mehr XP bei entsprechend mehr Erledigtem gilt als Fleiß. Auffällig ist, wenn XP ohne passende Nachweise steigen.
 // Ergebnis: ein Dokument typ "xp_pruefung" bei der Person mit voller Lebenswelt und, wenn etwas auffällt,
@@ -149,7 +149,9 @@ function pruefeAlle(app, jetzt) {
   for (const r of app.findRecordsByFilter("spielstaende", "benutzer != ''", "", 0, 0)) {
     let daten = {}
     try {
-      daten = JSON.parse(toString(r.get("daten")) || "{}") || {}
+      const roh = JSON.parse(toString(r.get("daten")) || "{}") || {}
+      // zustand speichert {state, version}; der Stand selbst liegt unter state
+      daten = roh.state && typeof roh.state === "object" ? roh.state : roh
     } catch (_) {
       continue
     }
