@@ -53,6 +53,12 @@ function wetterVerlauf(app, besitzer) {
   return r ? lies(r).verlauf || [] : []
 }
 
+/** Echte DWD-Warnungen der Person (Dokument „warnungen“, geschrieben vom Wetterabgleich). */
+function warnungenVon(app, besitzer) {
+  const r = finde(app, besitzer, WELT, "warnungen")
+  return r ? lies(r).liste || [] : []
+}
+
 /**
  * Private Karte der Person (Dokument typ "karte", schluessel "dorf"), geschrieben von der App. Sie ersetzt Straßennetz,
  * Lage der Orte und Bauplätze des öffentlichen Regelwerks. So steht die echte Karte nur in der eigenen Datenbank und
@@ -159,14 +165,18 @@ function aktuell(app, besitzer, jetzt) {
   // Level der Lebenswelt aus dem Spielstand (nur steigend, XP gehen nie verloren); schaltet Dienste frei
   stand.level = Math.max(stand.level || 0, levelVon(app, besitzer))
   const verlauf = wetterVerlauf(app, besitzer)
+  const warnungen = warnungenVon(app, besitzer)
   const bekannt = new Set(stand.laufend.map((e) => e.id))
-  stand = S.fortschreiben(stand, jetzt, (t) => S.wetterBei(verlauf, t), R)
+  // Echte Wetterwarnungen setzen das Spielwetter und passende Einsätze an
+  stand = S.warnungenAusloesen(R, stand, warnungen, jetzt)
+  stand = S.fortschreiben(stand, jetzt, (t) => S.wetterMitWarnungen(R, warnungen, verlauf, t), R)
   meldeNeue(app, besitzer, stand.laufend.filter((e) => !bekannt.has(e.id)), jetzt)
   for (const e of stand.abgeschlossen) schreibe(app, besitzer, "einsatz", e.id, e)
   stand.abgeschlossen = []
   if (stand.ausgaben.length > AUSGABEN_MAX) stand.ausgaben = stand.ausgaben.slice(-AUSGABEN_MAX)
   schreibe(app, besitzer, WELT, "stand", stand)
-  return { stand: stand, wetter: S.wetterBei(verlauf, jetzt) }
+  const gilt = warnungen.filter((w) => w.ab <= jetzt && jetzt < w.bis && S.warnungsRegel(R, w))
+  return { stand: stand, wetter: S.wetterMitWarnungen(R, warnungen, verlauf, jetzt), warnungen: gilt.map((w) => ({ name: w.name, stufe: w.stufe, bis: w.bis })) }
 }
 
 /** Push für neue Einsätze (höchstens drei, nur frische, nicht nach langer Pause alles nachholen). */
@@ -232,14 +242,65 @@ function wetterAbgleich(app) {
   const j = antwort.json || {}
   const w = wetterAus(j.state, j.attributes && j.attributes.temperature)
   const jetzt = Date.now()
+  const dwd = dwdWarnungen(h, token)
   for (const b of besitzerMitWelt(app)) {
+    if (dwd) {
+      // Warnungen sammeln (eine Warnung kann sich ändern: Stufe und Ende aktualisieren), nach 14 Tagen vergessen
+      const liste = warnungenVon(app, b).filter((x) => x.bis > jetzt - WETTER_TAGE * 24 * 3600 * 1000)
+      let geaendert = liste.length !== warnungenVon(app, b).length
+      for (const n of dwd) {
+        const alt = liste.find((x) => x.id === n.id)
+        if (!alt) {
+          liste.push(n)
+          geaendert = true
+        } else if (alt.bis !== n.bis || alt.stufe !== n.stufe) {
+          alt.bis = n.bis
+          alt.stufe = n.stufe
+          geaendert = true
+        }
+      }
+      if (geaendert) schreibe(app, b, WELT, "warnungen", { liste: liste })
+    }
     const verlauf = wetterVerlauf(app, b).filter((e) => e.ab > jetzt - WETTER_TAGE * 24 * 3600 * 1000)
     if (!verlauf.length || verlauf[verlauf.length - 1].wetter !== w) {
       verlauf.push({ ab: jetzt, wetter: w })
       schreibe(app, b, WELT, "wetter", { verlauf: verlauf })
     }
   }
-  return { ok: true, wetter: w }
+  return { ok: true, wetter: w, warnungen: dwd ? dwd.length : null }
 }
+
+/**
+ * Warnungen aus den Sensoren der Integration „DWD Weather Warnings“ (aktuelle Warnstufe und Vorwarnstufe). Option
+ * warn_entitaet: einer der beiden Sensoren; ohne Option werden die Sensoren gesucht (Attribute region_id und
+ * warning_count). Je Warnung: id, name (DWD-Ereignis), stufe, ab, bis. null, wenn es keine Sensoren gibt.
+ */
+let dwdSensoren = null
+function dwdWarnungen(h, token) {
+  const hole = (pfad) => {
+    try {
+      const a = $http.send({ url: "http://supervisor/core/api/states" + pfad, headers: { Authorization: "Bearer " + token }, timeout: 15 })
+      return a.statusCode === 200 ? a.json : null
+    } catch (_) {
+      return null
+    }
+  }
+  const option = String(h.optionen().warn_entitaet || "")
+  let zustaende
+  if (option) {
+    const paar = [option, option.replace(/_aktuelle_warnstufe$/, "_vorwarnstufe").replace(/_current_warning_level$/, "_advance_warning_level")]
+    zustaende = paar.filter((x, i) => i === 0 || x !== paar[0]).map((e) => hole("/" + e)).filter(Boolean)
+  } else {
+    if (!dwdSensoren) {
+      const alle = hole("") || []
+      dwdSensoren = alle.filter((z) => z.entity_id.indexOf("sensor.") === 0 && z.attributes && z.attributes.region_id !== undefined && z.attributes.warning_count !== undefined).map((z) => z.entity_id)
+      if (!dwdSensoren.length) dwdSensoren = null
+      return dwdSensoren ? S.dwdAus(alle.filter((z) => dwdSensoren.indexOf(z.entity_id) >= 0)) : null
+    }
+    zustaende = dwdSensoren.map((e) => hole("/" + e)).filter(Boolean)
+  }
+  return zustaende.length ? S.dwdAus(zustaende) : null
+}
+
 
 module.exports = { regelwerkFuer, aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }

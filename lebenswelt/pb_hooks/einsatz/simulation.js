@@ -396,6 +396,83 @@ function wetterBei(verlauf, ms) {
   return "trocken"
 }
 
+// ---------- Echte Wetterwarnungen (DWD) ----------
+
+/** Regel für eine Warnung ({ name, stufe }): die erste, deren Muster im Namen vorkommt und deren Mindeststufe erreicht ist. */
+function warnungsRegel(R, w) {
+  const D = R.DWD_WARNUNGEN
+  if (!D || !w) return null
+  const name = String(w.name || "").toUpperCase()
+  return D.regeln.find((r) => r.muster.some((m) => name.indexOf(m) >= 0) && (Number(w.stufe) || 0) >= (r.stufe_min || 0)) || null
+}
+
+/** Spielwetter aus den Warnungen, die zum Zeitpunkt gelten (die wichtigste Regel zuerst), sonst null. */
+function wetterAusWarnungen(R, warnungen, t) {
+  let best = null
+  let rang = Infinity
+  for (const w of warnungen || []) {
+    if (!(w.ab <= t && t < w.bis)) continue
+    const r = warnungsRegel(R, w)
+    const i = r ? R.DWD_WARNUNGEN.regeln.indexOf(r) : -1
+    if (r && i < rang) {
+      rang = i
+      best = r.wetter
+    }
+  }
+  return best
+}
+
+/** Wetter zum Zeitpunkt: eine gültige Warnung geht vor, sonst der Verlauf aus der Wetter-Entität. */
+function wetterMitWarnungen(R, warnungen, verlauf, t) {
+  return wetterAusWarnungen(R, warnungen, t) || wetterBei(verlauf, t)
+}
+
+/**
+ * Neue Warnungen, die begonnen haben, setzen passende Einsätze an: Die nächste Meldung der Einsatzart kommt dann
+ * spätestens einige Minuten nach Beginn (nur gekaufte Einsatzarten; Level und Wetter prüft die Meldung selbst).
+ * Jede Warnung wirkt einmal (warnungen_gesehen). Vor dem Fortschreiben aufrufen.
+ */
+function warnungenAusloesen(R, stand, warnungen, jetzt) {
+  if (!warnungen || !warnungen.length || !R.DWD_WARNUNGEN) return stand
+  const s = kopie(stand)
+  const gesehen = (s.warnungen_gesehen || []).slice()
+  for (const w of warnungen.slice().sort((a, b) => a.ab - b.ab || (a.id < b.id ? -1 : 1))) {
+    if (gesehen.indexOf(w.id) >= 0 || w.ab > jetzt) continue
+    gesehen.push(w.id)
+    const regel = warnungsRegel(R, w)
+    // Schon vorbei, bevor die Welt das letzte Mal lief: nichts nachholen
+    if (!regel || w.bis <= s.bis) continue
+    const beginn = Math.max(w.ab, s.bis)
+    for (const a of regel.ausloesen) {
+      const st = s.einsatzarten[a.art]
+      if (!st || (Number(w.stufe) || 0) < (a.stufe_min || 0)) continue
+      const r = zufall(s.zufall + ":warnung:" + w.id + ":" + a.art)
+      const faellig = beginn + Math.round((a.min[0] + (a.min[1] - a.min[0]) * r()) * MIN)
+      st.naechster = Math.min(st.naechster, faellig)
+    }
+  }
+  s.warnungen_gesehen = gesehen.slice(-50)
+  return s
+}
+
+/** Warnungen aus den Zuständen der DWD-Sensoren (Attribute warning_<n>_name, _level, _start, _end): id, name, stufe, ab, bis. */
+function dwdAus(zustaende) {
+  const aus = []
+  for (const z of zustaende) {
+    const a = z.attributes || {}
+    for (let i = 1; i <= (Number(a.warning_count) || 0); i++) {
+      const name = String(a["warning_" + i + "_name"] || "")
+      const ab = Date.parse(a["warning_" + i + "_start"])
+      if (!name || !Number.isFinite(ab)) continue
+      const ende = Date.parse(a["warning_" + i + "_end"])
+      const id = name + "|" + ab
+      if (aus.some((x) => x.id === id)) continue
+      aus.push({ id: id, name: name, stufe: Number(a["warning_" + i + "_level"]) || 0, ab: ab, bis: Number.isFinite(ende) ? ende : ab + 6 * 3600 * 1000 })
+    }
+  }
+  return aus
+}
+
 // ---------- Stand ----------
 
 /** Neuer, leerer Stand. "Katze auf Baum" ist von Anfang an gekauft (Entscheidung vom 13.10.2026). */
@@ -2520,6 +2597,11 @@ function einraeumen(stand, auftrag, R) {
 
 module.exports = {
   ortName,
+  warnungsRegel,
+  wetterAusWarnungen,
+  wetterMitWarnungen,
+  warnungenAusloesen,
+  dwdAus,
   orteVon,
   hoeheBei,
   fortschreiben,

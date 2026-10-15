@@ -317,7 +317,7 @@ App (Repository `Claude`, Ordner `app/`):
 - **Warnung:** Bei Elbhochwasser, Bombenfund und Scheunenbrand mit Stromausfall wird bis zu 25 % schneller geräumt, je nach Anteil des Dorfes in Reichweite; bei Stromausfall zählen nur Sirenen mit Akku.
 - **Darstellung (App):** Masten mit Motorsirene oder Schallbechern. Beim Feueralarm laufen rote Schallwellen bis zur Reichweite, im Takt des Signals (drei Töne zu 12 s mit 12 s Pause), bei der Warnung gelb und auf- und abschwellend, bei der Entwarnung grün. Am bundesweiten Warntag (zweiter Donnerstag im September, 11 Uhr) heulen alle Sirenen zur Probe. Im Store ein eigener Abschnitt mit Stufe, Reichweite und erreichten Häusern; die Personenkarte schlägt die Sirene vor, die der Person am meisten bringt.
 
-## 17. Geländehöhen und Wassereinsätze (15.10.2026, Add-on 0.22.0)
+## 17. Geländehöhen und Wassereinsätze (15.10.2026, Add-on 0.23.0)
 
 - **Höhen:** Die App leitet aus der amtlichen topografischen Karte (Höhenlinien) ein grobes Höhenraster ab und legt es in die private Karte (`gelaende`, 5 m Raster). Das öffentliche Regelwerk enthält keine Höhen.
 - **Auswahl der Orte:** Einsatzarten mit `tief_gewicht` ziehen ihren Ort gewichtet: je Meter unter dem Mittel der möglichen Orte zählt ein Ort `tief_gewicht`-mal mehr, höher gelegene mindestens 0,2. Wasser im Keller (Gewicht 2, alle Wohnhäuser der Karte), Graben übergelaufen (2, Durchlässe) und Deichverteidigung (3, Stellen am Deichfuß).

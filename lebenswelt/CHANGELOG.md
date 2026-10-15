@@ -1,12 +1,18 @@
 # Änderungen
 
-## 0.22.0
+## 0.23.0
 
 - Einsatzspiel, Geländehöhen (`GELAENDE`): Die private Karte der App kann ein Höhenraster in Metern über NHN mitliefern (`gelaende`: Ursprung, Rasterweite, Spalten, Reihen, Höhen). Einsatzarten mit `tief_gewicht` wählen damit tiefer gelegene Orte häufiger: Gewicht 1 + `tief_gewicht` × Meter unter dem Mittel der möglichen Orte, mindestens 0,2. Ohne Höhen bleibt die Auswahl wie bisher.
 - Wasser im Keller trifft jetzt auch die Wohnhäuser der Karte (`ort_gruppen: ["keller"]`), tiefer gelegene häufiger.
 - Neuer Einsatz „Graben übergelaufen“ (`th_graben`, TH Wasser, nach Wasser im Keller mit drei Sternen): Nach Starkregen ist ein Durchlass unter der Straße verstopft, Wasser steht auf der Fahrbahn. Tauchpumpe und Absicherung nötig, schneller mit Besen und Schaufel, Warnleuchten und Stromerzeuger. Fester Ort `graben`, weitere Durchlässe als Zufallsorte (`durchlass`).
 - Deichverteidigung: Qualmwasser tritt am landseitigen Deichfuß auf, an den tiefsten Stellen am ehesten (`ort_gruppen: ["qualmwasser"]`).
+- Unwetterwarnung des DWD vor Starkregen oder Dauerregen ab Stufe 3 löst auch „Graben übergelaufen“ aus.
 - `hoeheBei` (Höhe an einem Punkt, bilinear) und lesbare Namen der neuen Zufallsorte.
+
+## 0.22.0
+
+- Einsatzspiel, echte Wetterwarnungen des Deutschen Wetterdienstes (`DWD_WARNUNGEN`): Die Sensoren der Home-Assistant-Integration „DWD Weather Warnings“ werden alle 10 Minuten gelesen (Option `warn_entitaet`, sonst automatisch gefunden). Eine Warnung setzt für ihre Dauer das Spielwetter (Glätte, Schnee, Sturm ab markantem Wetter, Starkregen) und setzt bei Beginn passende Einsätze an: Sturm bringt Baum auf der Straße und Ast auf dem Gehweg, bei Unwetter auch Stromausfall und die Sturm-Großlage (ab Level 30); Glätte bringt Streuen und Unfälle; Starkregen Wasser im Keller. Nur gekaufte Einsatzarten, jede Warnung wirkt einmal.
+- `GET /api/lebenswelt/einsatz/stand` liefert die gerade geltenden Warnungen (`warnungen`).
 
 ## 0.21.0
 
