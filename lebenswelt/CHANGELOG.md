@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.22.0
+
+- Einsatzspiel, Geländehöhen (`GELAENDE`): Die private Karte der App kann ein Höhenraster in Metern über NHN mitliefern (`gelaende`: Ursprung, Rasterweite, Spalten, Reihen, Höhen). Einsatzarten mit `tief_gewicht` wählen damit tiefer gelegene Orte häufiger: Gewicht 1 + `tief_gewicht` × Meter unter dem Mittel der möglichen Orte, mindestens 0,2. Ohne Höhen bleibt die Auswahl wie bisher.
+- Wasser im Keller trifft jetzt auch die Wohnhäuser der Karte (`ort_gruppen: ["keller"]`), tiefer gelegene häufiger.
+- Neuer Einsatz „Graben übergelaufen“ (`th_graben`, TH Wasser, nach Wasser im Keller mit drei Sternen): Nach Starkregen ist ein Durchlass unter der Straße verstopft, Wasser steht auf der Fahrbahn. Tauchpumpe und Absicherung nötig, schneller mit Besen und Schaufel, Warnleuchten und Stromerzeuger. Fester Ort `graben`, weitere Durchlässe als Zufallsorte (`durchlass`).
+- Deichverteidigung: Qualmwasser tritt am landseitigen Deichfuß auf, an den tiefsten Stellen am ehesten (`ort_gruppen: ["qualmwasser"]`).
+- `hoeheBei` (Höhe an einem Punkt, bilinear) und lesbare Namen der neuen Zufallsorte.
+
 ## 0.21.0
 
 - Einsatzspiel, Sirenen im Dorf (`SIRENEN`): Die Motorsirene am Feuerwehrhaus bleibt, dazu kommen Standorte an Grundschule, Marktplatz, Deich, Werkstatt und Sportplatz (freigeschaltet ab Level 4, 7, 11, 15 und 19). Jeder Standort wird in drei Stufen gebaut: Motorsirene, elektronische Sirene mit Akku und Sprachdurchsage, Hochleistungssirene mit digitaler Auslösung durch die Leitstelle. Mehr Reichweite und weniger Auslöseverzug je Stufe.

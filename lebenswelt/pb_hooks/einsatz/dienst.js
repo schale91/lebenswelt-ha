@@ -99,6 +99,12 @@ function mitKarte(r) {
   if (k.zufallsorte && typeof k.zufallsorte === "object")
     for (const [g, liste] of Object.entries(k.zufallsorte))
       if (/^[a-z_]+$/.test(g) && Array.isArray(liste)) zufallsorte[g] = liste.filter((o) => o && zahl(o.x) && zahl(o.z)).slice(0, 80).map((o) => ({ x: o.x, z: o.z }))
+  // Geländehöhen der echten Karte (m über NHN als Raster): Wassereinsätze eher in Senken (tief_gewicht)
+  const gl = k.gelaende
+  const gelaende =
+    gl && zahl(gl.x0) && zahl(gl.z0) && zahl(gl.raster) && gl.raster > 0 && Number.isInteger(gl.spalten) && Number.isInteger(gl.reihen) && gl.spalten >= 2 && gl.reihen >= 2 && Array.isArray(gl.nhn) && gl.nhn.length === gl.spalten * gl.reihen && gl.nhn.length <= 5000 && gl.nhn.every(zahl)
+      ? { x0: gl.x0, z0: gl.z0, raster: gl.raster, spalten: gl.spalten, reihen: gl.reihen, nhn: gl.nhn.slice() }
+      : R.GELAENDE || null
   return Object.assign({}, R, {
     STRASSEN: k.strassen,
     ORTE: orte,
@@ -109,6 +115,7 @@ function mitKarte(r) {
     HYDRANT_PLAETZE: hydrantPlaetze,
     GEWAESSER: gewaesser,
     ZUFALLSORTE: zufallsorte,
+    GELAENDE: gelaende,
     KARTE: "privat",
   })
 }
