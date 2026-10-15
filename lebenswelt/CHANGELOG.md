@@ -1,9 +1,12 @@
 # Änderungen
 
-## 0.22.0
+## 0.23.0
 
 - Wird ein Vorgang erledigt (App, Claude, jede Route), werden seine offenen Aufgaben, Teilaufgaben (`eltern` ist eine Aufgabe des Vorgangs) und Unteraufgaben ebenfalls erledigt. Sie bekommen `xp_offen: true` und `erledigt_durch: "vorgang"`, die App bucht die XP wie bei einzeln abgehakten Aufgaben.
 - Einmaliger Nachtrag (Migration): dasselbe für alle Vorgänge, die schon erledigt sind.
+
+## 0.22.0
+
 - Einsatzspiel, echte Wetterwarnungen des Deutschen Wetterdienstes (`DWD_WARNUNGEN`): Die Sensoren der Home-Assistant-Integration „DWD Weather Warnings“ werden alle 10 Minuten gelesen (Option `warn_entitaet`, sonst automatisch gefunden). Eine Warnung setzt für ihre Dauer das Spielwetter (Glätte, Schnee, Sturm ab markantem Wetter, Starkregen) und setzt bei Beginn passende Einsätze an: Sturm bringt Baum auf der Straße und Ast auf dem Gehweg, bei Unwetter auch Stromausfall und die Sturm-Großlage (ab Level 30); Glätte bringt Streuen und Unfälle; Starkregen Wasser im Keller. Nur gekaufte Einsatzarten, jede Warnung wirkt einmal.
 - `GET /api/lebenswelt/einsatz/stand` liefert die gerade geltenden Warnungen (`warnungen`).
 
