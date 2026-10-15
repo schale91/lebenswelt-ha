@@ -56,9 +56,12 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
       }
       if (r && h.spielDokument(r.getString("typ"))) throw new BadRequestError(h.NUR_LESEN.fehler)
       const neu = d.daten && typeof d.daten === "object" ? d.daten : {}
+      let erledigt = false
       if (r) {
         const alt = JSON.parse(toString(r.get("daten")) || "{}")
-        r.set("daten", vorgaenge.ergaenzeFrist(typ, alt, d.ersetzen ? neu : h.verschmelze(alt, neu), neu))
+        const daten = vorgaenge.ergaenzeFrist(typ, alt, d.ersetzen ? neu : h.verschmelze(alt, neu), neu)
+        erledigt = vorgaenge.wirdErledigt(typ, alt, daten)
+        r.set("daten", daten)
         r.set("geloescht", false)
       } else {
         r = new Record(sammlung)
@@ -68,6 +71,8 @@ routerAdd("POST", "/api/lebenswelt/dokumente", (e) => {
         r.set("daten", vorgaenge.ergaenzeFaelligkeit(typ, vorgaenge.ergaenzeFrist(typ, null, h.verschmelze({}, neu), neu)))
       }
       tx.save(r)
+      // Vorgang erledigt: offene Aufgaben und Unteraufgaben mit abschließen
+      if (erledigt) vorgaenge.schliesseUnteraufgabenAb(tx, ich.id, r.getString("schluessel"))
       ergebnis.push(h.alsDokument(r))
     }
   })
@@ -99,10 +104,14 @@ routerAdd("PATCH", "/api/lebenswelt/dokumente/{id}", (e) => {
   if (h.spielDokument(r.getString("typ"))) return e.json(403, h.NUR_LESEN)
   const body = e.requestInfo().body || {}
   if (!body.daten || typeof body.daten !== "object") return e.json(400, { fehler: "daten muss ein Objekt sein." })
+  const vorgaenge = require(`${__hooks}/vorgaenge.js`)
   const alt = JSON.parse(toString(r.get("daten")) || "{}")
   // Neu auf „Warten auf LKA“: Wiedervorlage in zwei Monaten, sofern keine Frist mitkommt
-  r.set("daten", require(`${__hooks}/vorgaenge.js`).ergaenzeFrist(r.getString("typ"), alt, h.verschmelze(alt, body.daten), body.daten))
+  const daten = vorgaenge.ergaenzeFrist(r.getString("typ"), alt, h.verschmelze(alt, body.daten), body.daten)
+  r.set("daten", daten)
   e.app.save(r)
+  // Vorgang erledigt: offene Aufgaben und Unteraufgaben mit abschließen (XP bucht die App beim nächsten Abgleich)
+  if (vorgaenge.wirdErledigt(r.getString("typ"), alt, daten)) vorgaenge.schliesseUnteraufgabenAb(e.app, ich.id, r.getString("schluessel"))
   return e.json(200, h.alsDokument(r))
 })
 

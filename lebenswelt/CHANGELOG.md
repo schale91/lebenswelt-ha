@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.22.0
+
+- Wird ein Vorgang erledigt (App, Claude, jede Route), werden seine offenen Aufgaben, Teilaufgaben (`eltern` ist eine Aufgabe des Vorgangs) und Unteraufgaben ebenfalls erledigt. Sie bekommen `xp_offen: true` und `erledigt_durch: "vorgang"`, die App bucht die XP wie bei einzeln abgehakten Aufgaben.
+- Einmaliger Nachtrag (Migration): dasselbe für alle Vorgänge, die schon erledigt sind.
+
 ## 0.21.0
 
 - Einsatzspiel, Sirenen im Dorf (`SIRENEN`): Die Motorsirene am Feuerwehrhaus bleibt, dazu kommen Standorte an Grundschule, Marktplatz, Deich, Werkstatt und Sportplatz (freigeschaltet ab Level 4, 7, 11, 15 und 19). Jeder Standort wird in drei Stufen gebaut: Motorsirene, elektronische Sirene mit Akku und Sprachdurchsage, Hochleistungssirene mit digitaler Auslösung durch die Leitstelle. Mehr Reichweite und weniger Auslöseverzug je Stufe.

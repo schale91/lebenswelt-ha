@@ -59,6 +59,10 @@ Das Programm `ais/ais.py` liest die Lage von `zone.home` aus Home Assistant, abo
 
 Route: `GET /api/lebenswelt/schiffe` (`eingerichtet`, `fehler`, `schiffe` mit Name, AIS-Typ, Länge, Lage, Fahrt, Kurs und Ziel).
 
+## Erledigte Vorgänge
+
+Wird ein Vorgang erledigt, schließt die Datenbank seine offenen Aufgaben, Teilaufgaben und Unteraufgaben mit ab (`xp_offen: true`). Die App bucht dafür die XP.
+
 ## Updates der App per Knopf
 
 Bei jedem Push baut eine GitHub Action die App (nur wenn Typprüfung und Tests bestehen) und legt das fertige Paket auf den Zweig `app-paket`. Das Add-on sieht beim Start und danach alle 10 Minuten nach und lädt eine neue Version herunter, spielt sie aber nicht ein. In der App erscheint dann „Update verfügbar · Installieren“. Erst dieser Tipp schreibt die Version in jeden Ordner `www/lebenswelt-*/`, in dem eine `server.json` liegt: erst die Programmdateien, zuletzt `stand.json` und `index.html`, danach werden alte Dateien früherer Versionen gelöscht. `server.json` und andere Ordner bleiben unberührt.
