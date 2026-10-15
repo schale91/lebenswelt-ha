@@ -374,6 +374,38 @@ const ALARMIERUNG = {
   app: { name: "Alarmierungs-App mit Verfügbarkeit", reaktion_s: 25, preis: 900, rueckmeldung: true, verfuegbarkeit: true },
 }
 
+/**
+ * Sirenen im Dorf (Spielwerte; Reichweiten in Karteneinheiten, auf das verkleinerte Dorf bezogen).
+ * Signale wie in Niedersachsen üblich: Feueralarm eine Minute Dauerton, zweimal unterbrochen (drei Töne zu 12 s mit 12 s
+ * Pause), Warnung der Bevölkerung eine Minute auf- und abschwellend, Entwarnung eine Minute Dauerton.
+ * Wer mit der Sirene alarmiert wird (ALARMIERUNG.sirene), reagiert je nachdem, wie gut die nächste Sirene am Haus zu
+ * hören ist: nah (innerhalb nah_anteil der Reichweite), am Rand, gar nicht (dann ruft erst ein Nachbar an). Nachts hört
+ * man eine entfernte Sirene schlechter. Meldeempfänger und App hängen nicht davon ab.
+ * Großlagen mit `warnung` räumen schneller, je mehr vom Dorf die Sirenen erreichen; mit `stromausfall` heulen nur
+ * Sirenen mit Akku. Die Sirene am Feuerwehrhaus ist von Anfang an da (grundstufe), die anderen werden gebaut.
+ * Aus den Stufen entstehen Ausbauten (AUSBAU, gebaeude "ort", Feld sirene), gebaut wird wie bei allen Ausbauten.
+ */
+const SIRENEN = {
+  standorte: {
+    feuerwehrhaus: { ort: "feuerwehrhaus", name: "Feuerwehrhaus", grundstufe: 1, ab_level: 0 },
+    schule: { ort: "schule", name: "Grundschule", ab_level: 4 },
+    marktplatz: { ort: "marktplatz", name: "Marktplatz", ab_level: 7 },
+    deich: { ort: "deich", name: "Deich", ab_level: 11 },
+    werkstatt: { ort: "werkstatt", name: "Werkstatt", ab_level: 15 },
+    sportplatz: { ort: "sportplatz", name: "Sportplatz", ab_level: 19 },
+  },
+  stufen: {
+    1: { name: "Motorsirene", radius: 55, verzug_s: 10, akku: false, sprache: false, preis: 1800, bauzeit_h: 6 },
+    2: { name: "Elektronische Sirene mit Akku und Sprachdurchsage", radius: 75, verzug_s: 5, akku: true, sprache: true, preis: 4500, bauzeit_h: 6 },
+    3: { name: "Hochleistungssirene, digital von der Leitstelle ausgelöst", radius: 95, verzug_s: 0, akku: true, sprache: true, preis: 8000, bauzeit_h: 8 },
+  },
+  hoeren: { nah_s: 55, fern_s: 80, ohne_s: 130, nacht_s: 30, nah_anteil: 0.5 },
+  nacht: { von: 22, bis: 6 },
+  warnung: { faktor_max: 0.25 },
+  // Bundesweiter Warntag: zweiter Donnerstag im September gegen 11 Uhr, Entwarnung gegen 11:45 Uhr
+  warntag: { monat: 9, wochentag: 4, nr: 2, stunde: 11, entwarnung_min: 45 },
+}
+
 /** Ausbau je Haus: wie schnell die Person zum Gerätehaus bzw. zur Dienststelle kommt. */
 const HAUS_AUSBAU = {
   zu_fuss: { name: "zu Fuß", tempo_ms: 1.6, extra_s: 0, preis: 0 },
@@ -1052,7 +1084,6 @@ const AUSBAU = {
   hydrant_a: { gebaeude: "ort", name: "Unterflurhydrant mit Hinweisschild (Platz 1)", preis: 2500, effekt: { hydrant_platz: 0 }, bauzeit_h: 8, ab_stufe: 0, quelle: "nbrandschg", hinweis: "verkürzt den Weg zur Wasserversorgung bei Bränden in der Nähe" },
   hydrant_b: { gebaeude: "ort", name: "Unterflurhydrant mit Hinweisschild (Platz 2)", preis: 2500, effekt: { hydrant_platz: 1 }, bauzeit_h: 8, ab_stufe: 0, quelle: "nbrandschg", hinweis: "verkürzt den Weg zur Wasserversorgung bei Bränden in der Nähe" },
   hydrantennetz: { gebaeude: "ort", name: "Hydrantennetz im Dorf erneuern", preis: 15000, effekt: { hydrant_l_min: 1600 }, bauzeit_h: 72, ab_stufe: 0, quelle: "nbrandschg", hinweis: "Grundversorgung mit Löschwasser ist Aufgabe der Gemeinde" },
-  sirene_neu: { gebaeude: "ort", name: "Elektronische Sirene", preis: 2000, effekt: { reaktion_s: -15 }, bauzeit_h: 4, klein: true, ab_stufe: 0 },
   wache_kueche: { gebaeude: "dienststelle", name: "Sozialraum", preis: 1500, effekt: { schicht: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 1 },
   gewahrsam: { gebaeude: "dienststelle", name: "Gewahrsamsraum", preis: 6000, effekt: { festnahme: 1 }, bauzeit_h: 24, ab_stufe: 2 },
   // Rettungswache
@@ -1068,6 +1099,26 @@ const AUSBAU = {
   aed_sportplatz: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator am Sportplatz", preis: 1500, effekt: { aed_ort: "sportplatz" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
   landestelle: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Landestelle am Sportplatz", preis: 4000, effekt: { rth_min: -3 }, bauzeit_h: 12, ab_stufe: 0, quelle: "luftvg25", hinweis: "der Rettungshubschrauber landet näher" },
   hvo_parallel: { gebaeude: "ort", bereich: "drk", ab_level: 20, name: "Paralleler Alarm Helfer vor Ort", preis: 2500, effekt: { hvo_parallel: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 0, hinweis: "die Leitstelle alarmiert den Helfer vor Ort gleichzeitig mit dem RTW" },
+}
+
+// Sirenen als Ausbauten: je Standort die Stufen über der Grundstufe, jede setzt die vorige voraus. Die elektronische
+// Sirene am Feuerwehrhaus behält ihre alte Kennung (sirene_neu), damit vorhandene Stände sie behalten.
+for (const sid of Object.keys(SIRENEN.standorte)) {
+  const st = SIRENEN.standorte[sid]
+  let vorher = null
+  for (const n of [1, 2, 3]) {
+    if (n <= (st.grundstufe || 0)) continue
+    const stufe = SIRENEN.stufen[n]
+    const id = sid === "feuerwehrhaus" && n === 2 ? "sirene_neu" : "sirene_" + sid + "_" + n
+    const a = {
+      gebaeude: "ort", name: stufe.name + " (" + st.name + ")", preis: stufe.preis, bauzeit_h: stufe.bauzeit_h, klein: true, ab_stufe: 0, ab_level: st.ab_level,
+      sirene: { standort: sid, stufe: n },
+      hinweis: n === 1 ? "Kräfte mit Sirenenalarm in der Nähe hören den Alarm" : n === 2 ? "größere Reichweite, heult auch bei Stromausfall, warnt mit Sprachdurchsage" : "noch größere Reichweite, löst ohne Verzug aus",
+    }
+    if (vorher) a.voraussetzung = vorher
+    AUSBAU[id] = a
+    vorher = id
+  }
 }
 
 /**
@@ -1659,7 +1710,7 @@ const EINSATZARTEN = {
   // grosslage: wird nicht gekauft, kommt ab dem Level von selbst, selten. Die Leitstelle alarmiert alle Teile zugleich
   // (außer Nachforderungen wie das THW). Wie oft, hängt an der Zusammenarbeit der letzten gemeinsamen Einsätze.
   gl_hochwasser: {
-    org: "feuerwehr", name: "Großlage Elbhochwasser", stichwort: "Großlage Hochwasser", preis: 0, ab_level: 30, grosslage: true,
+    org: "feuerwehr", name: "Großlage Elbhochwasser", stichwort: "Großlage Hochwasser", preis: 0, ab_level: 30, grosslage: true, warnung: true,
     orte: ["deich"], intervall_min: 20160, ablauf_min: 90, arbeit_min: 300, ziel_eintreffen_min: 20,
     bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.05 },
     mindestens: { personen: 9, qualifikation: { gf: 1 }, geraete: [[{ sandsack: 10 }]] },
@@ -1696,7 +1747,7 @@ const EINSATZARTEN = {
     verfallen_text: "Rettungskräfte aus dem ganzen Kreis haben übernommen.",
   },
   gl_bombe: {
-    org: "feuerwehr", name: "Großlage Bombenfund mit Evakuierung", stichwort: "Großlage Kampfmittel", preis: 0, ab_level: 30, grosslage: true, baustelle: true, phasen: ["erdarbeiten"],
+    org: "feuerwehr", name: "Großlage Bombenfund mit Evakuierung", stichwort: "Großlage Kampfmittel", preis: 0, ab_level: 30, grosslage: true, baustelle: true, phasen: ["erdarbeiten"], warnung: true,
     orte: ["baustelle"], intervall_min: 4320, ablauf_min: 60, arbeit_min: 240, ziel_eintreffen_min: 20,
     mindestens: { personen: 6, qualifikation: { gf: 1 } },
     optimal: { personen: 12, geraete: [[{ elw_fahrzeug: 1 }], [{ leitkegel: 2 }]] },
@@ -1707,7 +1758,7 @@ const EINSATZARTEN = {
     verfallen_text: "Kräfte aus dem Landkreis haben geräumt, die Entschärfung verzögerte sich um Stunden.",
   },
   gl_grossbrand: {
-    org: "feuerwehr", name: "Großlage Scheunenbrand mit Stromausfall", stichwort: "Großlage Brand", preis: 0, ab_level: 30, grosslage: true,
+    org: "feuerwehr", name: "Großlage Scheunenbrand mit Stromausfall", stichwort: "Großlage Brand", preis: 0, ab_level: 30, grosslage: true, warnung: true, stromausfall: true,
     orte: ["scheune"], intervall_min: 20160, ablauf_min: 15, arbeit_min: 240, ziel_eintreffen_min: 10,
     bedingung: { wetter: ["hitze"], faktor: 1, sonst_faktor: 0.1 },
     mindestens: { personen: 9, qualifikation: { gf: 1 }, geraete: [[{ pressluftatmer: 2 }], [{ fahrzeug_wasser: 1 }]] },
@@ -2344,6 +2395,7 @@ const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße" }
 
 module.exports = {
   NACHBARHILFE,
+  SIRENEN,
   ZUFALLSORTE,
   ZUFALLSORT_NAMEN,
   VERFALL,

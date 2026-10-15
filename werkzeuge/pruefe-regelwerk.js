@@ -175,6 +175,15 @@ for (const [id, a] of Object.entries(R.AUSBAU)) {
   else if (a.gebaeude !== "ort" && a.ab_stufe >= R.GEBAEUDE[a.gebaeude].length) f(`AUSBAU.${id}: Stufe ${a.ab_stufe} gibt es nicht`)
 }
 for (const [id, h] of Object.entries(R.HAUS_AUSBAU)) if (h.voraussetzung && !R.HAUS_AUSBAU[h.voraussetzung]) f(`HAUS_AUSBAU.${id}: unbekannte Voraussetzung`)
+for (const [id, a] of Object.entries(R.AUSBAU)) if (a.voraussetzung && !R.AUSBAU[a.voraussetzung]) f(`AUSBAU.${id}: unbekannte Voraussetzung`)
+// Sirenen: Standorte an bekannten Orten, Stufen mit Reichweite, Ausbauten zeigen auf Standort und Stufe
+for (const [id, st] of Object.entries(R.SIRENEN.standorte)) if (!R.ORTE[st.ort]) f(`SIRENEN.standorte.${id}: unbekannter Ort "${st.ort}"`)
+for (const [n, st] of Object.entries(R.SIRENEN.stufen)) if (!(st.radius > 0) || !(st.preis > 0)) f(`SIRENEN.stufen.${n}: Reichweite oder Preis fehlt`)
+for (const [id, a] of Object.entries(R.AUSBAU)) {
+  if (!a.sirene) continue
+  if (!R.SIRENEN.standorte[a.sirene.standort]) f(`AUSBAU.${id}: unbekannter Sirenenstandort`)
+  if (!R.SIRENEN.stufen[a.sirene.stufe]) f(`AUSBAU.${id}: unbekannte Sirenenstufe`)
+}
 
 // Bauplätze: eindeutig und nicht übereinander
 const plaetze = R.BAUPLAETZE.slice()

@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.21.0
+
+- Einsatzspiel, Sirenen im Dorf (`SIRENEN`): Die Motorsirene am Feuerwehrhaus bleibt, dazu kommen Standorte an Grundschule, Marktplatz, Deich, Werkstatt und Sportplatz (freigeschaltet ab Level 4, 7, 11, 15 und 19). Jeder Standort wird in drei Stufen gebaut: Motorsirene, elektronische Sirene mit Akku und Sprachdurchsage, Hochleistungssirene mit digitaler Auslösung durch die Leitstelle. Mehr Reichweite und weniger Auslöseverzug je Stufe.
+- Wer mit der Sirene alarmiert wird, reagiert je nachdem, wie gut die nächste Sirene am Haus (oder am Arbeitsplatz) zu hören ist: nah schneller, am Rand wie bisher, außer Reichweite deutlich langsamer. Nachts (22 bis 6 Uhr) weckt eine entfernte Sirene nicht jeden. Meldeempfänger und App hängen nicht von Sirenen ab.
+- Warnung der Bevölkerung: Bei Elbhochwasser, Bombenfund und Scheunenbrand mit Stromausfall wird schneller geräumt, je mehr vom Dorf die Sirenen erreichen. Bei Stromausfall heulen nur Sirenen mit Akku.
+- Die elektronische Sirene am Feuerwehrhaus (`sirene_neu`) ist jetzt die zweite Stufe dieses Standorts. Sie wirkt nur noch auf Kräfte mit Sirenenalarm und nicht mehr pauschal auf alle.
+- Ausbauten können eine Voraussetzung haben (`voraussetzung`).
+
 ## 0.20.0
 
 - Einsatzspiel, Nachttest im Vollausbau (Level 30, 44 Feuerwehrleute, 42 Fahrzeuge, bis zu 19 Einsätze gleichzeitig):

@@ -691,6 +691,61 @@ function ausbauEffekt(R, s, schluessel) {
   return summe
 }
 
+/** Stufe einer Sirene (0: keine): Grundstufe des Standorts oder die höchste gebaute Stufe. */
+function sireneStufe(R, s, sid) {
+  const st = R.SIRENEN && R.SIRENEN.standorte[sid]
+  if (!st) return 0
+  let n = st.grundstufe || 0
+  for (const id of s.ausbau) {
+    const a = R.AUSBAU[id]
+    if (a && a.sirene && a.sirene.standort === sid && a.sirene.stufe > n) n = a.sirene.stufe
+  }
+  return n
+}
+
+/** Alle Sirenen im Dorf mit Lage, Reichweite und Verzug (nurAkku: bei Stromausfall). */
+function sirenenVon(R, s, nurAkku) {
+  const aus = []
+  if (!R.SIRENEN) return aus
+  for (const sid of Object.keys(R.SIRENEN.standorte)) {
+    const n = sireneStufe(R, s, sid)
+    const o = R.ORTE[R.SIRENEN.standorte[sid].ort]
+    const st = R.SIRENEN.stufen[n]
+    if (!n || !o || !st || (nurAkku && !st.akku)) continue
+    aus.push({ id: sid, x: o.x, z: o.z, stufe: n, radius: st.radius, verzug_s: st.verzug_s })
+  }
+  return aus
+}
+
+/** Nachtruhe (Ortszeit): Eine entfernte Sirene weckt nicht jeden. */
+function nachtruhe(R, t) {
+  const n = R.SIRENEN.nacht
+  const h = ortszeit(t).stunde
+  return n.von > n.bis ? h >= n.von || h < n.bis : h >= n.von && h < n.bis
+}
+
+/** Sekunden vom Alarm, bis jemand mit Sirenenalarm an diesem Punkt losgeht: die am besten hörbare Sirene zählt. */
+function sirenenReaktion(R, s, punkt, t) {
+  const H = R.SIRENEN.hoeren
+  const nacht = nachtruhe(R, t) ? H.nacht_s : 0
+  let best = H.ohne_s + nacht
+  for (const si of sirenenVon(R, s, false)) {
+    const d = luftlinie(punkt, si)
+    if (d > si.radius) continue
+    const nah = d <= si.radius * H.nah_anteil
+    best = Math.min(best, si.verzug_s + (nah ? H.nah_s : H.fern_s + nacht))
+  }
+  return best
+}
+
+/** Anteil des Dorfes (feste Orte und Bauplätze), den die Sirenen erreichen (nurAkku: bei Stromausfall). */
+function sirenenAbdeckung(R, s, nurAkku) {
+  const si = sirenenVon(R, s, nurAkku)
+  const punkte = Object.values(R.ORTE).filter((o) => o.fest).concat(R.BAUPLAETZE || [])
+  if (!punkte.length) return 0
+  return punkte.filter((p) => si.some((x) => luftlinie(p, x) <= x.radius)).length / punkte.length
+}
+
 function ausbauFaktor(R, s, schluessel) {
   let f = 1
   for (const id of s.ausbau) {
@@ -1042,8 +1097,10 @@ function heimweg(R, s, p, alarm, wetter) {
   // Noch auf dem Heimweg vom letzten Einsatz: dreht um und kommt von dort, mit dem Rad oder Auto, auf dem sie oder er sitzt
   const rueck = !vonArbeit && haus ? aufDemHeimweg(R, s, p, alarm) : null
   if (rueck) start = rueck.punkt
-  const al = R.ALARMIERUNG[(haus && haus.alarmierung) || "sirene"]
-  const reaktion = Math.max(5, al.reaktion_s + ausbauEffekt(R, s, "reaktion_s"))
+  const alarmierung = (haus && haus.alarmierung) || "sirene"
+  // Mit Sirenenalarm hängt es daran, wie gut die nächste Sirene dort zu hören ist, wo die Person gerade ist
+  const grund = alarmierung === "sirene" && R.SIRENEN ? sirenenReaktion(R, s, start, alarm) : R.ALARMIERUNG[alarmierung].reaktion_s
+  const reaktion = Math.max(5, grund + ausbauEffekt(R, s, "reaktion_s"))
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
   const ziel = R.ORTE.feuerwehrhaus
   const unterwegs = luftlinie(start, ziel) > 1
@@ -1237,6 +1294,11 @@ function plane(R, s, e, alarm, umwelt) {
     if (k.bauVerzug) faktoren.push({ grund: "baustelle", sekunden: Math.round(k.bauVerzug / 1000), text: "Hindernis an der Strecke (" + amWeg.map((b) => b.name).join(", ") + ")" })
     if (behelfAus) faktoren.push({ grund: "behelf", sekunden: behelfAus + R.BAU.behelf.umziehen_s, text: "Behelfsbetrieb wegen Umbau am Gerätehaus" })
     merke("personen", Math.pow(Math.max(1, (opt.personen || vorhanden) / vorhanden), 0.5), vorhanden + " von optimal " + (opt.personen || vorhanden) + " Einsatzkräften")
+    // Warnung der Bevölkerung: Wer die Sirene hört, ist schon draußen, wenn geräumt wird (bei Stromausfall nur mit Akku)
+    if (art.warnung && R.SIRENEN) {
+      const anteil = sirenenAbdeckung(R, s, Boolean(art.stromausfall))
+      merke("sirene", 1 - R.SIRENEN.warnung.faktor_max * anteil, "Sirenen warnen " + Math.round(anteil * 100) + " % des Dorfes" + (art.stromausfall ? " (bei Stromausfall nur mit Akku)" : ""))
+    }
     const fehltOpt = fehlendeGruppen(opt.geraete, k.bestand)
     const fehltOptQ = fehlendeQualifikation(opt.qualifikation, k.leute, alarm)
     if (fehltOpt.length + fehltOptQ.length)
@@ -2338,11 +2400,13 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (imBau(s, "ausbau", id)) return fehler("Wird schon gebaut.")
     if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
     if (a.gebaeude !== "ort" && (s.gebaeude[a.gebaeude] || 0) < a.ab_stufe) return fehler("Das Gebäude ist dafür noch zu klein.")
+    if (a.voraussetzung && s.ausbau.indexOf(a.voraussetzung) < 0) return fehler("Zuerst " + R.AUSBAU[a.voraussetzung].name + ".")
     roh = a.preis
     const platz = a.effekt && a.effekt.hydrant_platz !== undefined && (R.HYDRANT_PLAETZE || [])[a.effekt.hydrant_platz]
     if (a.effekt && a.effekt.hydrant_platz !== undefined && !platz) return fehler("Für diesen Hydranten gibt es auf der Karte keinen Platz.")
     const aedOrt = a.effekt && a.effekt.aed_ort && R.ORTE[a.effekt.aed_ort]
-    const wo = platz || aedOrt || (id === "landestelle" && R.ORTE.sportplatz) || (a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "rettungswache" ? standortVon(R, s, "rettungsdienst") : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus)
+    const sirenenOrt = a.sirene && R.SIRENEN && R.ORTE[R.SIRENEN.standorte[a.sirene.standort].ort]
+    const wo = platz || aedOrt || sirenenOrt || (id === "landestelle" && R.ORTE.sportplatz) || (a.gebaeude === "dienststelle" ? R.ORTE.dienststelle : a.gebaeude === "rettungswache" ? standortVon(R, s, "rettungsdienst") : a.gebaeude === "ort" && R.ORTE.kreuzung ? R.ORTE.kreuzung : R.ORTE.feuerwehrhaus)
     beginneBau(R, s, jetzt, { art: "ausbau", ziel: id, name: a.name, ort: { x: wo.x, z: wo.z }, bauzeit_h: a.bauzeit_h || 1, klein: Boolean(a.klein) })
   } else if (art === "neubaugebiet") {
     const nb = R.NEUBAUGEBIETE.find((n) => n.id === id)
@@ -2432,5 +2496,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
