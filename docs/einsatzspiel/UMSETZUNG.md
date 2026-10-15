@@ -310,3 +310,10 @@ App (Repository `Claude`, Ordner `app/`):
 - Heimweg der Kräfte vom Gerätehaus nach Hause sichtbar, gestaffelt (zu Fuß zuerst, Autos zuletzt).
 - Für Abwechslung: Schaulustige mit Handy, ab und zu rutscht jemand auf der Ölspur aus, eine Entenfamilie überquert gelegentlich die Hauptstraße und der Verkehr wartet.
 
+## 16. Sirenen im Dorf (15.10.2026, Add-on 0.21.0)
+
+- **Standorte:** Feuerwehrhaus (von Anfang an, Motorsirene), Grundschule (ab Level 4), Marktplatz (7), Deich (11), Werkstatt (15), Sportplatz (19). Jeder Standort in drei Stufen: Motorsirene, elektronische Sirene mit Akku und Sprachdurchsage, Hochleistungssirene mit digitaler Auslösung durch die Leitstelle. Gebaut wird wie bei allen Ausbauten (`AUSBAU` mit Feld `sirene`, jede Stufe setzt die vorige voraus).
+- **Alarmierung:** Wer per Sirene alarmiert wird, geht los, sobald er die nächste Sirene hört: nah 45 s, am Rand 65 s, plus Auslöseverzug der Sirene (10, 5 oder 0 s). Ohne Sirene in Reichweite bleibt es bei den bisherigen 90 s, langsamer wird es also nie. Nachts bringt eine entfernte Sirene weniger. Gemessen über die 20 Bauplätze der Karte: im Mittel 85 s mit der Sirene am Feuerwehrhaus allein, 72 s mit Motorsirenen an allen Standorten, 64 s elektronisch, 50 s mit Hochleistungssirenen. Meldeempfänger und App bleiben schneller.
+- **Warnung:** Bei Elbhochwasser, Bombenfund und Scheunenbrand mit Stromausfall wird bis zu 25 % schneller geräumt, je nach Anteil des Dorfes in Reichweite; bei Stromausfall zählen nur Sirenen mit Akku.
+- **Darstellung (App):** Masten mit Motorsirene oder Schallbechern. Beim Feueralarm laufen rote Schallwellen bis zur Reichweite, im Takt des Signals (drei Töne zu 12 s mit 12 s Pause), bei der Warnung gelb und auf- und abschwellend, bei der Entwarnung grün. Am bundesweiten Warntag (zweiter Donnerstag im September, 11 Uhr) heulen alle Sirenen zur Probe. Im Store ein eigener Abschnitt mit Stufe, Reichweite und erreichten Häusern; die Personenkarte schlägt die Sirene vor, die der Person am meisten bringt.
+

@@ -379,8 +379,8 @@ const ALARMIERUNG = {
  * Signale wie in Niedersachsen üblich: Feueralarm eine Minute Dauerton, zweimal unterbrochen (drei Töne zu 12 s mit 12 s
  * Pause), Warnung der Bevölkerung eine Minute auf- und abschwellend, Entwarnung eine Minute Dauerton.
  * Wer mit der Sirene alarmiert wird (ALARMIERUNG.sirene), reagiert je nachdem, wie gut die nächste Sirene am Haus zu
- * hören ist: nah (innerhalb nah_anteil der Reichweite), am Rand, gar nicht (dann ruft erst ein Nachbar an). Nachts hört
- * man eine entfernte Sirene schlechter. Meldeempfänger und App hängen nicht davon ab.
+ * hören ist: nah (innerhalb nah_anteil der Reichweite), am Rand, gar nicht (wie bisher: Nachbarn, Telefonkette). Nachts
+ * weckt eine entfernte Sirene nicht jeden (nie langsamer als ohne). Meldeempfänger und App hängen nicht davon ab.
  * Großlagen mit `warnung` räumen schneller, je mehr vom Dorf die Sirenen erreichen; mit `stromausfall` heulen nur
  * Sirenen mit Akku. Die Sirene am Feuerwehrhaus ist von Anfang an da (grundstufe), die anderen werden gebaut.
  * Aus den Stufen entstehen Ausbauten (AUSBAU, gebaeude "ort", Feld sirene), gebaut wird wie bei allen Ausbauten.
@@ -399,7 +399,8 @@ const SIRENEN = {
     2: { name: "Elektronische Sirene mit Akku und Sprachdurchsage", radius: 75, verzug_s: 5, akku: true, sprache: true, preis: 4500, bauzeit_h: 6 },
     3: { name: "Hochleistungssirene, digital von der Leitstelle ausgelöst", radius: 95, verzug_s: 0, akku: true, sprache: true, preis: 8000, bauzeit_h: 8 },
   },
-  hoeren: { nah_s: 55, fern_s: 80, ohne_s: 130, nacht_s: 30, nah_anteil: 0.5 },
+  // ohne_s wie früher die Sirene für alle (ALARMIERUNG.sirene): Sirenen machen schneller, nie langsamer als bisher
+  hoeren: { nah_s: 45, fern_s: 65, ohne_s: 90, nacht_s: 20, nah_anteil: 0.5 },
   nacht: { von: 22, bis: 6 },
   warnung: { faktor_max: 0.25 },
   // Bundesweiter Warntag: zweiter Donnerstag im September gegen 11 Uhr, Entwarnung gegen 11:45 Uhr

@@ -32,16 +32,18 @@ test("Am Anfang gibt es nur die Motorsirene am Feuerwehrhaus", () => {
   assert.equal(I.sireneStufe(R, s, "schule"), 0)
 })
 
-test("Reaktion beim Sirenenalarm: nah schneller, am Rand normal, außer Reichweite langsam, nachts schlechter", () => {
+test("Reaktion beim Sirenenalarm: nah am schnellsten, am Rand schneller, außer Reichweite wie bisher, nachts am Rand schlechter", () => {
   const s = stand()
   const v = R.SIRENEN.stufen[1].verzug_s
   assert.equal(I.sirenenReaktion(R, s, fw, T0), v + H.nah_s)
   const rand = { x: fw.x + R.SIRENEN.stufen[1].radius * 0.8, z: fw.z }
   assert.equal(I.sirenenReaktion(R, s, rand, T0), v + H.fern_s)
   assert.equal(I.sirenenReaktion(R, s, weit, T0), H.ohne_s)
-  assert.equal(I.sirenenReaktion(R, s, rand, NACHT), v + H.fern_s + H.nacht_s)
+  assert.equal(I.sirenenReaktion(R, s, rand, NACHT), Math.min(H.ohne_s, v + H.fern_s + H.nacht_s))
   assert.equal(I.sirenenReaktion(R, s, fw, NACHT), v + H.nah_s, "nah weckt die Sirene auch nachts")
-  assert.equal(I.sirenenReaktion(R, s, weit, NACHT), H.ohne_s + H.nacht_s)
+  assert.equal(I.sirenenReaktion(R, s, weit, NACHT), H.ohne_s)
+  // Nie langsamer als die frühere Sirene für alle
+  assert.equal(H.ohne_s, R.ALARMIERUNG.sirene.reaktion_s)
 })
 
 test("Eine Sirene an der Schule macht Häuser dort schneller, Meldeempfänger hängen nicht davon ab", () => {

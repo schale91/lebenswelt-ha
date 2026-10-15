@@ -728,7 +728,7 @@ function nachtruhe(R, t) {
 function sirenenReaktion(R, s, punkt, t) {
   const H = R.SIRENEN.hoeren
   const nacht = nachtruhe(R, t) ? H.nacht_s : 0
-  let best = H.ohne_s + nacht
+  let best = H.ohne_s
   for (const si of sirenenVon(R, s, false)) {
     const d = luftlinie(punkt, si)
     if (d > si.radius) continue
