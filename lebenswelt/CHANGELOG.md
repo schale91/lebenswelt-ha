@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.31.0
+
+- Einsätze entstehen nicht mehr im Nebel: Hat eine Einsatzart Orte in freien Gebieten, wählt der Server nur unter diesen.
+- Gebäude, deren Gelände noch im Nebel liegt (etwa ein Sportplatz auf einem gesperrten Quadrat), lassen sich erst bauen, wenn das Gebiet freigeschaltet ist.
+
 ## 0.30.1
 
 - Gebiete im Nebel kosten mehr (je Ring rund 300, 600, 1000 und 1500 Münzen statt 30 bis 150), passend zu Fahrzeugen und Gebäuden.
