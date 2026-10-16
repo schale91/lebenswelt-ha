@@ -2337,6 +2337,33 @@ const VERFALL = {
  * sie liegt eine Weile im Krankenhaus und fällt so lange aus. Bis das Dorf ein eigenes Krankenhaus hat (ab_level,
  * später im Erweiterungsgebiet), geht es ins Kreiskrankenhaus in der Stadt, und das dauert länger.
  */
+/**
+ * Gebiete im Nebel: Die Karte ist in Quadrate geteilt (raster Welteinheiten, ab ursprung). Das Startgebiet ist frei,
+ * alles andere liegt im Nebel. Ein Quadrat lässt sich kaufen, wenn es an ein freies grenzt; Preis und Level steigen mit
+ * dem Abstand (Ring) zum Startgebiet. Besondere Quadrate tragen ein Gelände (THW, Krankenhaus). Hier die Werte der
+ * erfundenen Karte; die private Karte der Person ersetzt ursprung, start, grenze und besonders.
+ */
+const GEBIETE = {
+  ursprung: { x: -150, z: -110 },
+  raster: 60,
+  /** Startgebiet: Spalten i0..i1 und Reihen j0..j1 (einschließlich) */
+  start: { i0: 0, i1: 4, j0: 0, j1: 3 },
+  /** äußerste Quadrate, die es gibt (nördlich liegt die Elbe) */
+  grenze: { i0: -3, i1: 8, j0: 0, j1: 6 },
+  /** je Ring: Preis (roh) und Level */
+  ringe: [
+    { preis: 0, ab_level: 0 },
+    { preis: 600, ab_level: 4 },
+    { preis: 1200, ab_level: 10 },
+    { preis: 2000, ab_level: 16 },
+    { preis: 3000, ab_level: 22 },
+  ],
+  besonders: {
+    "6:1": { art: "thw", name: "THW-Gelände", hinweis: "Hier kann später die THW-Unterkunft stehen." },
+    "1:5": { art: "krankenhaus", name: "Krankenhausgelände", hinweis: "Mit dem Krankenhaus im Dorf sind Verletzte schneller wieder da." },
+  },
+}
+
 const KRANKENHAUS = {
   ab_level: 24,
   name_dorf: "Krankenhaus im Dorf",
@@ -2488,6 +2515,7 @@ const ZUFALLSORT_BEWOHNT = ["keller"]
 
 module.exports = {
   KRANKENHAUS,
+  GEBIETE,
   NACHBARHILFE,
   DWD_WARNUNGEN,
   SIRENEN,

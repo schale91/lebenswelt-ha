@@ -40,6 +40,8 @@ test("Mit Chance 1 liegt jeder Beteiligte im Kreiskrankenhaus und fällt aus, da
 test("Mit eigenem Krankenhaus im Dorf (ab Level) geht es schneller; ohne Glück passiert nichts", () => {
   const s = stand()
   s.level = R.KRANKENHAUS.ab_level
+  // Krankenhaus im Dorf: Level und das Krankenhausgelände (Gebiet im Nebel)
+  s.gebiete.push(Object.entries(R.GEBIETE.besonders).find(([, g]) => g.art === "krankenhaus")[0])
   const R2 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 1 } }
   S._intern.verletzungen(R2, s, einsatz(s, "e2", "th_oelspur"), T0)
   assert.equal(s.personal[0].krankenhaus.ort, R.KRANKENHAUS.name_dorf)

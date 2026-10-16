@@ -111,7 +111,21 @@ function mitKarte(r) {
     gl && zahl(gl.x0) && zahl(gl.z0) && zahl(gl.raster) && gl.raster > 0 && Number.isInteger(gl.spalten) && Number.isInteger(gl.reihen) && gl.spalten >= 2 && gl.reihen >= 2 && Array.isArray(gl.nhn) && gl.nhn.length === gl.spalten * gl.reihen && gl.nhn.length <= 5000 && gl.nhn.every(zahl)
       ? { x0: gl.x0, z0: gl.z0, raster: gl.raster, spalten: gl.spalten, reihen: gl.reihen, nhn: gl.nhn.slice() }
       : R.GELAENDE || null
+  // Gebiete im Nebel nach der echten Karte: Ursprung, Startgebiet, Grenze und besondere Quadrate
+  const g = k.gebiete
+  const rechteck = (r) => r && Number.isInteger(r.i0) && Number.isInteger(r.i1) && Number.isInteger(r.j0) && Number.isInteger(r.j1) && r.i0 <= r.i1 && r.j0 <= r.j1
+  const gebiete =
+    g && g.ursprung && zahl(g.ursprung.x) && zahl(g.ursprung.z) && zahl(g.raster) && g.raster >= 20 && rechteck(g.start) && rechteck(g.grenze)
+      ? Object.assign({}, R.GEBIETE, {
+          ursprung: { x: g.ursprung.x, z: g.ursprung.z },
+          raster: g.raster,
+          start: g.start,
+          grenze: g.grenze,
+          besonders: g.besonders && typeof g.besonders === "object" ? Object.fromEntries(Object.entries(g.besonders).filter(([key, b]) => /^-?\d+:-?\d+$/.test(key) && b && typeof b.art === "string" && typeof b.name === "string").slice(0, 20)) : R.GEBIETE.besonders,
+        })
+      : R.GEBIETE
   return Object.assign({}, R, {
+    GEBIETE: gebiete,
     STRASSEN: k.strassen,
     ORTE: orte,
     BAUPLAETZE: bauplaetze,
