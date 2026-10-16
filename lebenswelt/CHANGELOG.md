@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.27.0
+
+- Einsatzspiel: Einsatzkräfte lassen sich verabschieden (`POST /api/lebenswelt/einsatz/personal` mit `{"ziel": "<id>", "verabschieden": true}`). Die Person zieht weg; war sie die Letzte in ihrem Haus, wird das Haus abgerissen und der Bauplatz ist wieder frei. Ein Bauplatzkauf der letzten 7 Tage wird erstattet (Kaufbuch-Eintrag `erstattung:bauplatz:<id>` mit negativem Betrag). Während eines Einsatzes geht es nicht.
+
 ## 0.26.1
 
 - Zurückgenommen: Gekaufte Einsätze entstehen wieder auch dann, wenn für ihre Organisation niemand kommen kann. Wer eine Einsatzart kauft, muss auch für Kräfte sorgen; der Einsatz wartet und verfällt sonst wie gewohnt. Wartende Einsätze werden nicht mehr gestrichen.

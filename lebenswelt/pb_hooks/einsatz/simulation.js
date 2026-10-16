@@ -2612,7 +2612,43 @@ function einraeumen(stand, auftrag, R) {
   return { stand: s }
 }
 
+
+/** Bauplatzkäufe der letzten Tage lassen sich beim Verabschieden noch erstatten (Fehlkauf). */
+const ERSTATTUNG_TAGE = 7
+
+/**
+ * Einsatzkraft verabschieden: Die Person zieht weg. War sie die Letzte in ihrem Haus, wird das Haus abgerissen und
+ * der Bauplatz wieder frei; ein Bauplatzkauf der letzten 7 Tage wird erstattet. Nicht, solange sie im Einsatz ist.
+ * Gibt {stand, erstattung, text} oder {fehler} zurück; der Stand wird nicht verändert, wenn es nicht geht.
+ */
+function verabschiede(stand, id, jetzt) {
+  const s = JSON.parse(JSON.stringify(stand))
+  const p = s.personal.find((x) => x.id === id)
+  if (!p) return { fehler: "Unbekannte Person." }
+  const imEinsatz = (p.belegt_bis || 0) > jetzt || s.laufend.some((e) => e.plan && (e.plan.personen || []).some((x) => x.id === id))
+  if (imEinsatz) return { fehler: "Die Einsatzkraft ist gerade im Einsatz. Danach geht es." }
+  s.personal = s.personal.filter((x) => x.id !== id)
+  let erstattung = 0
+  let bauplatz = null
+  let text = (p.name || "Die Einsatzkraft") + " ist weggezogen."
+  const h = p.haus ? s.haeuser.find((x) => x.id === p.haus) : null
+  if (h && !s.personal.some((x) => x.haus === h.id) && !(s.baustellen || []).some((b) => b.ziel === h.id && b.bewohner)) {
+    s.haeuser = s.haeuser.filter((x) => x.id !== h.id)
+    s.baustellen = (s.baustellen || []).filter((b) => b.ziel !== h.id)
+    text += " Das Haus auf " + String(h.bauplatz).toUpperCase() + " ist abgerissen, der Bauplatz ist wieder frei."
+    const kauf = (s.ausgaben || []).slice().reverse().find((a) => a.text === "bauplatz:" + h.bauplatz && a.betrag > 0)
+    const schonErstattet = (s.ausgaben || []).some((a) => a.text === "erstattung:bauplatz:" + h.bauplatz && kauf && a.zeit > kauf.zeit)
+    if (kauf && !schonErstattet && jetzt - kauf.zeit <= ERSTATTUNG_TAGE * 86400000) {
+      erstattung = kauf.betrag
+      bauplatz = h.bauplatz
+      text += " " + erstattung + " Münzen kommen zurück."
+    }
+  }
+  return { stand: s, erstattung, bauplatz, text }
+}
+
 module.exports = {
+  verabschiede,
   ortName,
   warnungsRegel,
   wetterAusWarnungen,
