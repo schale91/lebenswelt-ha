@@ -54,3 +54,26 @@ test("Krankenhaus im Dorf erst mit dem Krankenhausgelände", () => {
   S._intern.verletzungen(R2, s, e("k2"), T0)
   assert.equal(s.personal[0].krankenhaus.ort, R.KRANKENHAUS.name_dorf)
 })
+
+test("Gebäude im Nebel erst nach dem Freischalten, Einsätze nicht im Nebel", () => {
+  // Sportplatz auf ein Quadrat im Nebel legen (wie auf der echten Karte)
+  const R2 = { ...R, ORTE: { ...R.ORTE, sportplatz: { ...R.ORTE.sportplatz, x: 400, z: 0 } } }
+  let s = neu()
+  s.level = 60
+  s.muenzen = 1e7
+  const key = S.gebietAn(R2, 400, 0)
+  assert.ok(!S.gebietFrei(R2, s, key))
+  const r = S.kaufe(s, { art: "gebaeude", id: "sportplatz" }, T0, R2)
+  assert.match(r.fehler || "", /Nebel/)
+  s = { ...s, gebiete: [...(s.gebiete || []), key] }
+  const r2 = S.kaufe(s, { art: "gebaeude", id: "sportplatz" }, T0, R2)
+  assert.ok(!r2.fehler, r2.fehler)
+  // Einsatzart mit Orten im Nebel und im Freien: es trifft nur die freien
+  const s3 = neu()
+  const art = Object.entries(R2.EINSATZARTEN).find(([, a]) => (a.orte || []).includes("sportplatz") && a.orte.length > 1)
+  if (!art) return
+  for (let k = 0; k < 30; k++) {
+    const e = S._intern.erzeuge(R2, s3, art[0], T0 + k, () => "trocken")
+    assert.notEqual(e.ort, "sportplatz")
+  }
+})

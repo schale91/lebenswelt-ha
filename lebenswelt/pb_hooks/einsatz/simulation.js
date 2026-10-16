@@ -514,6 +514,13 @@ function aktiviereArt(R, s, id, jetzt) {
 
 // ---------- Gebiete im Nebel ----------
 
+/** Liegt ein Ort in einem freien Gebiet? Orte ohne bekannte Lage zählen als frei. */
+function ortImFreien(R, s, ort) {
+  if (!R.GEBIETE) return true
+  const p = punktVon(R, s, ort)
+  return !p || gebietFrei(R, s, gebietAn(R, p.x, p.z))
+}
+
 /** Schlüssel "i:j" des Quadrats an einem Weltpunkt, oder null ohne Gebietsraster. */
 function gebietAn(R, x, z) {
   const G = R.GEBIETE
@@ -1876,8 +1883,11 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   // Nur Orte außerhalb der Schutzzonen, außer die Art ist harmlos; gibt es keinen, bleibt die ganze Liste.
   // Wo gerade ein Einsatz derselben Art läuft (die Katze sitzt noch im Baum), entsteht kein zweiter.
   // Ohne Haus kein Wasser im Keller: Zufallsorte an Wohnhäusern nur, wo eins steht
-  const bewohnt = orteVon(R, art).filter((o) => ortBewohnt(R, s, o))
-  const alle = bewohnt.length ? bewohnt : orteVon(R, art)
+  // Im Nebel (noch nicht freigeschaltete Gebiete) entsteht nichts, solange es anderswo einen Ort gibt
+  const sichtbar = orteVon(R, art).filter((o) => ortImFreien(R, s, o))
+  const basis = sichtbar.length ? sichtbar : orteVon(R, art)
+  const bewohnt = basis.filter((o) => ortBewohnt(R, s, o))
+  const alle = bewohnt.length ? bewohnt : basis
   const erlaubt = alle.filter((o) => ortErlaubt(R, s, art, o))
   const frei = erlaubt.filter((o) => !ortBesetzt(s, id, o))
   const auswahl = frei.length ? frei : erlaubt.length ? erlaubt : alle
@@ -2604,8 +2614,10 @@ function kaufe(stand, auftrag, jetzt, R) {
     const st = stufen[neu]
     if (!st) return fehler("Schon die höchste Stufe.")
     if (!levelReicht(s, st.ab_level)) return fehler("Erst ab Level " + st.ab_level + ".")
-    roh = st.preis
     const ortId = st.ort || (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[id]) || "feuerwehrhaus"
+    const ortP = R.ORTE[ortId]
+    if (ortP && !gebietFrei(R, s, gebietAn(R, ortP.x, ortP.z))) return fehler("Das Gelände liegt noch im Nebel. Erst das Gebiet freischalten.")
+    roh = st.preis
     const winter = st.bauzeit_winter_h && R.FITNESS.winter_monate.indexOf(ortszeit(jetzt).monat) >= 0
     const bau = { art: "gebaeude", ziel: id, stufe: neu, name: st.name, ort: { x: R.ORTE[ortId].x, z: R.ORTE[ortId].z }, bauzeit_h: (winter ? st.bauzeit_winter_h : st.bauzeit_h) || 1, klein: false }
     if (st.phasen) bau.phasen = st.phasen
