@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.30.1
+
+- Gebiete im Nebel kosten mehr (je Ring rund 300, 600, 1000 und 1500 Münzen statt 30 bis 150), passend zu Fahrzeugen und Gebäuden.
+
 ## 0.30.0
 
 - Gebiete im Nebel: Die Karte ist in Quadrate geteilt (`GEBIETE` im Regelwerk). Das Startgebiet ist frei, alles andere liegt im Nebel und lässt sich Quadrat für Quadrat kaufen (`kaufe` mit `art: "gebiet"`, `id: "i:j"`), wenn es an ein freies grenzt. Preis und Level steigen mit dem Abstand zum Startgebiet. Besondere Quadrate tragen ein Gelände (THW, Krankenhaus). Gekaufte Quadrate stehen in `stand.gebiete`.

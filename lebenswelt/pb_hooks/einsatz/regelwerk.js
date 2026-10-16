@@ -2353,10 +2353,10 @@ const GEBIETE = {
   /** je Ring: Preis (roh) und Level */
   ringe: [
     { preis: 0, ab_level: 0 },
-    { preis: 600, ab_level: 4 },
-    { preis: 1200, ab_level: 10 },
-    { preis: 2000, ab_level: 16 },
-    { preis: 3000, ab_level: 22 },
+    { preis: 6000, ab_level: 4 },
+    { preis: 12000, ab_level: 10 },
+    { preis: 20000, ab_level: 16 },
+    { preis: 30000, ab_level: 22 },
   ],
   besonders: {
     "6:1": { art: "thw", name: "THW-Gelände", hinweis: "Hier kann später die THW-Unterkunft stehen." },
