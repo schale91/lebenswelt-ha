@@ -90,8 +90,16 @@ function mitKarte(r) {
     const alt = R.BAUPLAETZE.find((x) => x.id === b.id)
     return Object.assign({}, alt || { preis: 500 }, { id: b.id, x: b.x, z: b.z }, b.preis ? { preis: b.preis } : {})
   })
-  const neubaugebiete = R.NEUBAUGEBIETE.map((n) => (k.neubaugebiete && k.neubaugebiete[n.id] ? Object.assign({}, n, { ursprung: k.neubaugebiete[n.id] }) : n))
   const zahl = (v) => typeof v === "number" && isFinite(v)
+  // Neubaugebiete: Ursprung und, wenn die App sie kennt, die einzelnen Plätze (echte Grundstücke oder an einer
+  // Planstraße), genau so viele wie das Raster des Regelwerks hat
+  const neubaugebiete = R.NEUBAUGEBIETE.map((n) => {
+    const g = k.neubaugebiete && k.neubaugebiete[n.id]
+    if (!g || !zahl(g.x) || !zahl(g.z)) return n
+    const aus = Object.assign({}, n, { ursprung: { x: g.x, z: g.z } })
+    if (Array.isArray(g.plaetze) && g.plaetze.length === n.spalten * n.reihen && g.plaetze.every((p) => p && zahl(p.x) && zahl(p.z))) aus.plaetze = g.plaetze.map((p) => ({ x: p.x, z: p.z }))
+    return aus
+  })
   const schutz = Array.isArray(k.schutz) ? k.schutz.filter((z) => z && zahl(z.x) && zahl(z.z) && zahl(z.r) && z.r > 0) : R.SCHUTZZONEN || []
   // Löschwasser der echten Karte; fehlt ein Feld, gilt das Regelwerk
   const punkte = (l) => (Array.isArray(l) ? l.filter((h) => h && typeof h.id === "string" && zahl(h.x) && zahl(h.z)).map((h) => ({ id: h.id, x: h.x, z: h.z })) : null)

@@ -372,13 +372,20 @@ function ortErlaubt(R, s, art, ort) {
   return !zonen.some((z) => Math.hypot(p.x - z.x, p.z - z.z) < z.r)
 }
 
+/** Platz i eines Neubaugebiets: aus der Karte, sonst im Raster ab dem Ursprung */
+function nbPlatz(nb, i) {
+  if (nb.plaetze && nb.plaetze[i]) return nb.plaetze[i]
+  return { x: nb.ursprung.x + (i % nb.spalten) * nb.raster, z: nb.ursprung.z + Math.floor(i / nb.spalten) * nb.raster }
+}
+
 function bauplatz(R, id) {
   for (const b of R.BAUPLAETZE) if (b.id === id) return b
   for (const nb of R.NEUBAUGEBIETE) {
     if (id.indexOf(nb.id + "_") !== 0) continue
     const i = Number(id.slice(nb.id.length + 1))
     if (!(i >= 0 && i < nb.spalten * nb.reihen)) return null
-    return { id, x: nb.ursprung.x + (i % nb.spalten) * nb.raster, z: nb.ursprung.z + Math.floor(i / nb.spalten) * nb.raster, preis: nb.preis, neubaugebiet: nb.id }
+    const p = nbPlatz(nb, i)
+    return { id, x: p.x, z: p.z, preis: nb.preis, neubaugebiet: nb.id }
   }
   return null
 }
@@ -2644,7 +2651,9 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (imBau(s, "neubaugebiet", id)) return fehler("Wird schon erschlossen.")
     if (s.gebaeude.geraetehaus < nb.ab_geraetehaus) return fehler("Erst das Gerätehaus ausbauen.")
     roh = nb.erschliessung
-    const mitte = { x: nb.ursprung.x + ((nb.spalten - 1) * nb.raster) / 2, z: nb.ursprung.z + ((nb.reihen - 1) * nb.raster) / 2 }
+    const n = nb.spalten * nb.reihen
+    const plaetze = Array.from({ length: n }, (_, i) => nbPlatz(nb, i))
+    const mitte = { x: plaetze.reduce((a, p) => a + p.x, 0) / n, z: plaetze.reduce((a, p) => a + p.z, 0) / n }
     beginneBau(R, s, jetzt, { art: "neubaugebiet", ziel: id, name: nb.name, ort: mitte, bauzeit_h: nb.bauzeit_h || 24, klein: false })
   } else if (art === "mitgliedschaft") {
     const p = person()
@@ -2814,5 +2823,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
