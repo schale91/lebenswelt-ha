@@ -324,3 +324,8 @@ App (Repository `Claude`, Ordner `app/`):
 - **Graben übergelaufen:** neuer Einsatz bei Nässe und Sturm, sonst selten. Tauchpumpe Pflicht, dazu Absicherung mit Leitkegeln oder Warnleuchten.
 - **Darstellung (App):** Boden nach Höhe getönt und auf freien Wiesen leicht verformt (zweifach überhöht, im Dorf eben), Entwässerungsgraben mit Durchlass und Stirnwänden, bei Regen mehr Wasser und Pfützen in Senken. Das Einsatzfenster nennt bei Wassereinsätzen die Geländehöhe.
 
+## 18. Einsätze nur mit Kräften (16.10.2026, Add-on 0.26.0)
+
+- **Besetzung:** Eine Einsatzart meldet sich nur, wenn für ihre Organisation jemand kommen kann: eigene Mitglieder, Hilfe von außen (`EXTERN` ab Level) oder die Nachbarhilfe (`NACHBARHILFE`, Feuerwehr). Wartende Einsätze ohne jede mögliche Kraft werden beim Fortschreiben gestrichen.
+- **Wohnhäuser:** Zufallsorte der Gruppen in `ZUFALLSORT_BEWOHNT` (bisher `keller`) gelten nur, wenn auf dem Bauplatz ein Haus steht. Ohne bewohnte Häuser bleiben die festen Orte der Einsatzart.
+

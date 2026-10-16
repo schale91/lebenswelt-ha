@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.26.0
+
+- Einsatzspiel: Einsätze einer Organisation entstehen nur, wenn überhaupt jemand kommen kann (eigene Mitglieder, Hilfe von außen ab ihrem Level oder die Nachbarhilfe der Feuerwehr). Vorher meldete sich zum Beispiel eine Ruhestörung, obwohl an der Dienststelle noch niemand arbeitete, und wartete dann 24 Stunden. Solche wartenden Einsätze werden still gestrichen, ohne Verfall und ohne Wertung.
+- Wasser im Keller an Wohnhäusern der Karte (`keller`) nur dort, wo auf dem Bauplatz ein Haus steht (`ZUFALLSORT_BEWOHNT`).
+
 ## 0.25.1
 
 - Sonntagsprüfung XP liest den Spielstand richtig (`daten.state`); vorher galten XP und Level als 0.
