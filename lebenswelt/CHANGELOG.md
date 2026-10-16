@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.30.0
+
+- Gebiete im Nebel: Die Karte ist in Quadrate geteilt (`GEBIETE` im Regelwerk). Das Startgebiet ist frei, alles andere liegt im Nebel und lässt sich Quadrat für Quadrat kaufen (`kaufe` mit `art: "gebiet"`, `id: "i:j"`), wenn es an ein freies grenzt. Preis und Level steigen mit dem Abstand zum Startgebiet. Besondere Quadrate tragen ein Gelände (THW, Krankenhaus). Gekaufte Quadrate stehen in `stand.gebiete`.
+- Bauplätze im Nebel sind erst nach dem Freischalten kaufbar.
+- Das Krankenhaus im Dorf (kürzere Liegezeit) braucht jetzt zusätzlich das Krankenhausgelände.
+- Die private Karte kann Ursprung, Startgebiet, Grenze und besondere Quadrate ersetzen (`gebiete` im Dokument karte/dorf).
+
 ## 0.29.0
 
 - Krankenhaus: Nach jedem Einsatz kann sich eine Einsatzkraft leicht verletzen (1,5 % je Person, bei Brand doppelt, bei technischer Hilfe 1,5-fach; fest nach Einsatz und Person). Niemand stirbt: Sie liegt im Kreiskrankenhaus (48 h) und fällt so lange aus, danach ist sie wieder da. Ab Level 24 gibt es ein Krankenhaus im Dorf, dann sind es 24 h. Im Stand stehen `krankenhaus` {bis, grund, ort} an der Person und `verletzt` am Einsatz.

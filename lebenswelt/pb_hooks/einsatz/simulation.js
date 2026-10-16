@@ -512,6 +512,53 @@ function aktiviereArt(R, s, id, jetzt) {
   s.einsatzarten[id] = { gekauft: jetzt, naechster: jetzt + Math.round(a.intervall_min * MIN * (0.3 + 0.7 * r())), nr: 0, anzahl: 0, erfolgreich: 0, beste_sterne: 0 }
 }
 
+// ---------- Gebiete im Nebel ----------
+
+/** Schlüssel "i:j" des Quadrats an einem Weltpunkt, oder null ohne Gebietsraster. */
+function gebietAn(R, x, z) {
+  const G = R.GEBIETE
+  if (!G) return null
+  return Math.floor((x - G.ursprung.x) / G.raster) + ":" + Math.floor((z - G.ursprung.z) / G.raster)
+}
+
+function gebietTeile(key) {
+  const [i, j] = String(key).split(":").map(Number)
+  return { i, j }
+}
+
+/** Abstand zum Startgebiet in Quadraten (0 = Startgebiet). */
+function gebietRing(R, key) {
+  const { i, j } = gebietTeile(key)
+  const st = R.GEBIETE.start
+  return Math.max(Math.max(0, st.i0 - i, i - st.i1), Math.max(0, st.j0 - j, j - st.j1))
+}
+
+/** Ist das Quadrat frei (Startgebiet oder gekauft)? Ohne Gebietsraster ist alles frei. */
+function gebietFrei(R, s, key) {
+  if (!R.GEBIETE || key === null) return true
+  return gebietRing(R, key) === 0 || (s.gebiete || []).indexOf(key) >= 0
+}
+
+/** Warum ein Quadrat nicht gekauft werden kann, oder null. */
+function gebietSperre(R, s, key) {
+  const G = R.GEBIETE
+  if (!G) return "Hier gibt es keine Gebiete."
+  const { i, j } = gebietTeile(key)
+  if (!Number.isInteger(i) || !Number.isInteger(j) || i < G.grenze.i0 || i > G.grenze.i1 || j < G.grenze.j0 || j > G.grenze.j1) return "Dieses Gebiet gibt es nicht."
+  if (gebietFrei(R, s, key)) return "Schon frei."
+  const nachbarn = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([di, dj]) => gebietFrei(R, s, i + di + ":" + (j + dj)))
+  if (!nachbarn) return "Erst ein angrenzendes Gebiet freischalten."
+  const ring = G.ringe[Math.min(G.ringe.length - 1, gebietRing(R, key))]
+  if (!levelReicht(s, ring.ab_level)) return "Erst ab Level " + ring.ab_level + "."
+  return null
+}
+
+/** Preis (roh) eines Quadrats nach seinem Ring. */
+function gebietPreis(R, key) {
+  const G = R.GEBIETE
+  return G.ringe[Math.min(G.ringe.length - 1, gebietRing(R, key))].preis
+}
+
 // ---------- Bestand ----------
 
 function frei(obj, t) {
@@ -539,7 +586,8 @@ function verletzungen(R, s, e, ende) {
   const K = R.KRANKENHAUS
   if (!K || !e.plan) return []
   const faktor = Object.entries(K.chance_faktor || {}).reduce((f, [k, v]) => (String(e.art).indexOf(k) === 0 ? Math.max(f, v) : f), 1)
-  const dorf = (s.level || 0) >= K.ab_level
+  const kh = R.GEBIETE && Object.entries(R.GEBIETE.besonders || {}).find(([, g]) => g.art === "krankenhaus")
+  const dorf = (s.level || 0) >= K.ab_level && (!kh || (s.gebiete || []).indexOf(kh[0]) >= 0)
   const aus = []
   for (const x of e.plan.personen) {
     const p = s.personal.find((q) => q.id === x.id)
@@ -919,6 +967,7 @@ function bauFelder(s) {
   if (!s.baustellen) s.baustellen = []
   if (!s.bauchronik) s.bauchronik = []
   if (!s.tage) s.tage = {}
+  if (!s.gebiete) s.gebiete = []
   // Version 2: Bewohner mit Beruf, Level, Sportplatz. Wer schon da war, bleibt "wie bisher" verfügbar.
   if (!s.version || s.version < 2) {
     for (const p of s.personal || []) if (!p.beruf) p.beruf = "frei"
@@ -2460,9 +2509,15 @@ function kaufe(stand, auftrag, jetzt, R) {
     for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
     roh = a.preis
     aktiviereArt(R, s, id, jetzt)
+  } else if (art === "gebiet") {
+    const sperre = gebietSperre(R, s, id)
+    if (sperre) return fehler(sperre)
+    roh = gebietPreis(R, id)
+    s.gebiete.push(id)
   } else if (art === "bauplatz") {
     const bp = bauplatz(R, id)
     if (!bp) return fehler("Diesen Bauplatz gibt es nicht.")
+    if (!gebietFrei(R, s, gebietAn(R, bp.x, bp.z))) return fehler("Der Bauplatz liegt noch im Nebel. Erst das Gebiet freischalten.")
     if (bp.neubaugebiet && s.neubaugebiete.indexOf(bp.neubaugebiet) < 0) return fehler("Das Neubaugebiet ist noch nicht erschlossen.")
     if (s.haeuser.some((h) => h.bauplatz === id)) return fehler("Der Bauplatz ist schon bebaut.")
     const bw = pruefeBewohner(R, s, auftrag.bewohner)
@@ -2719,6 +2774,11 @@ function verabschiede(stand, id, jetzt) {
 }
 
 module.exports = {
+  gebietSperre,
+  gebietPreis,
+  gebietAn,
+  gebietFrei,
+  gebietRing,
   verabschiede,
   fahrzeugSperre,
   fahrzeugeDurchEinsatz,
