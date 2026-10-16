@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.32.0
+
+- Neubaugebiete können einzelne Plätze aus der Karte der App haben (echte Grundstücke oder Plätze an einer Planstraße) statt eines starren Rasters. Bauplätze, Wege und die Baustelle der Erschließung richten sich danach.
+
 ## 0.31.0
 
 - Einsätze entstehen nicht mehr im Nebel: Hat eine Einsatzart Orte in freien Gebieten, wählt der Server nur unter diesen.
