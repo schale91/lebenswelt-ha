@@ -2332,6 +2332,30 @@ const VERFALL = {
  * Übergabe, Rückfahrt und Wiederherstellung. Notarzt per NEF (mit Notarztvertrag), tagsüber per Rettungshubschrauber
  * oder aus der Stadt. Patient: Minuten bis zur Versorgung je Dringlichkeit [stabil bis, verzögert bis].
  */
+/**
+ * Krankenhaus: Bei jedem Einsatz kann sich eine Einsatzkraft leicht verletzen (Chance je Person). Niemand stirbt;
+ * sie liegt eine Weile im Krankenhaus und fällt so lange aus. Bis das Dorf ein eigenes Krankenhaus hat (ab_level,
+ * später im Erweiterungsgebiet), geht es ins Kreiskrankenhaus in der Stadt, und das dauert länger.
+ */
+const KRANKENHAUS = {
+  ab_level: 24,
+  name_dorf: "Krankenhaus im Dorf",
+  name_stadt: "Kreiskrankenhaus",
+  chance: 0.015,
+  /** höhere Chance bei Einsatzarten mit diesem Anfang (b_ Brand, th_ technische Hilfe) */
+  chance_faktor: { b_: 2, th_: 1.5 },
+  dauer_h: { stadt: 48, dorf: 24 },
+  gruende: [
+    "Knöchel verstaucht beim Aussteigen",
+    "Schnittwunde an der Hand",
+    "Rauchgas eingeatmet, zur Beobachtung",
+    "Rücken verhoben",
+    "Über einen Schlauch gestolpert",
+    "Wespenstich mit dicker Hand",
+    "Prellung am Knie",
+  ],
+}
+
 const RETTUNG = {
   verpflegung_ab_min: 180, // spielwert: danach arbeiten die Kräfte mit Verpflegung durch das DRK schneller
   verpflegung_faktor: 0.85,
@@ -2463,6 +2487,7 @@ const ZUFALLSORT_BEWOHNT = ["keller"]
 })()
 
 module.exports = {
+  KRANKENHAUS,
   NACHBARHILFE,
   DWD_WARNUNGEN,
   SIRENEN,

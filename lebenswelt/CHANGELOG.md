@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.29.0
+
+- Krankenhaus: Nach jedem Einsatz kann sich eine Einsatzkraft leicht verletzen (1,5 % je Person, bei Brand doppelt, bei technischer Hilfe 1,5-fach; fest nach Einsatz und Person). Niemand stirbt: Sie liegt im Kreiskrankenhaus (48 h) und fällt so lange aus, danach ist sie wieder da. Ab Level 24 gibt es ein Krankenhaus im Dorf, dann sind es 24 h. Im Stand stehen `krankenhaus` {bis, grund, ort} an der Person und `verletzt` am Einsatz.
+
 ## 0.28.0
 
 - Fahrzeuge werden je Organisation freigeschaltet: das günstigste ab dem Level der Organisation, jedes teurere ein Level später (`ab_level` im Regelwerk, gleich teure gemeinsam; der RTW gehört zur Grundausstattung der Rettungswache). Früher frei macht ein passender Einsatz: Jede gekaufte Einsatzart schaltet das günstigste Fahrzeug ihrer Organisation frei, das ihre Pflichtgeräte schon in der Grundbeladung hat (z. B. Katze auf Baum das TSF).

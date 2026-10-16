@@ -523,7 +523,34 @@ function hatLehrgang(p, id, t) {
 }
 
 function verfuegbar(p, t) {
-  return frei(p, t) && !(p.lehrgang_laeuft && p.lehrgang_laeuft.bis > t)
+  return frei(p, t) && !(p.lehrgang_laeuft && p.lehrgang_laeuft.bis > t) && !imKrankenhaus(p, t)
+}
+
+function imKrankenhaus(p, t) {
+  return Boolean(p.krankenhaus && p.krankenhaus.bis > t)
+}
+
+/**
+ * Nach einem Einsatz: Hat sich jemand leicht verletzt? Fest nach Einsatz und Person (zufall), Chance aus dem
+ * Regelwerk, höher bei Brand und technischer Hilfe. Niemand stirbt: Die Person liegt im Krankenhaus und ist danach
+ * wieder da. Gibt die Verletzten zurück.
+ */
+function verletzungen(R, s, e, ende) {
+  const K = R.KRANKENHAUS
+  if (!K || !e.plan) return []
+  const faktor = Object.entries(K.chance_faktor || {}).reduce((f, [k, v]) => (String(e.art).indexOf(k) === 0 ? Math.max(f, v) : f), 1)
+  const dorf = (s.level || 0) >= K.ab_level
+  const aus = []
+  for (const x of e.plan.personen) {
+    const p = s.personal.find((q) => q.id === x.id)
+    if (!p || imKrankenhaus(p, ende)) continue
+    const r = zufall(s.zufall + ":" + e.id + ":verletzt:" + p.id)
+    if (r() >= K.chance * faktor) continue
+    const grund = K.gruende[Math.floor(r() * K.gruende.length)]
+    p.krankenhaus = { bis: ende + Math.round((dorf ? K.dauer_h.dorf : K.dauer_h.stadt) * STD), grund, ort: dorf ? K.name_dorf : K.name_stadt, seit: ende, einsatz: e.id }
+    aus.push(p.id)
+  }
+  return aus
 }
 
 /** Gehört die Person zu dieser Organisation (Hauptorganisation oder zusätzliche Mitgliedschaft)? */
@@ -2107,6 +2134,8 @@ function abschliessen(R, s, e) {
       const p = s.personal.find((q) => q.id === x.id)
       if (p) p.einsaetze = (p.einsaetze || 0) + 1
     }
+    const verletzt = verletzungen(R, s, e, e.ende || e.plan.zurueck)
+    if (verletzt.length) e.verletzt = verletzt
     pflege(R, s, e)
   } else {
     e.bewertung = { sterne: 0, abzuege: [{ grund: "verfallen", sterne: 5, text: e.grund }] }
@@ -2211,6 +2240,7 @@ function aufraeumen(s, t) {
       p.lehrgaenge[p.lehrgang_laeuft.id] = p.lehrgang_laeuft.bis
       p.lehrgang_laeuft = null
     }
+    if (p.krankenhaus && p.krankenhaus.bis <= t) p.krankenhaus = null
   }
   s.pflege = s.pflege.filter((e) => e.bis > t)
 }
@@ -2712,5 +2742,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }
