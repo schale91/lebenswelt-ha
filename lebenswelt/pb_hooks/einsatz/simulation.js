@@ -531,6 +531,32 @@ function istMitglied(p, org) {
   return p.org === org || (p.mitglied || []).indexOf(org) >= 0
 }
 
+/**
+ * Kann für diese Organisation überhaupt jemand kommen: eigene Mitglieder, Hilfe von außen (EXTERN ab ihrem Level) oder
+ * die Nachbarhilfe? Ohne das entsteht kein Einsatz der Organisation (keine Ruhestörung, solange an der Dienststelle
+ * niemand arbeitet), und wartende Einsätze ohne jede Kraft werden still gestrichen.
+ */
+function orgBesetzt(R, s, org) {
+  if (s.personal.some((p) => istMitglied(p, org))) return true
+  if (R.EXTERN && R.EXTERN[org] && levelReicht(s, R.EXTERN[org].ab_level)) return true
+  return Boolean(R.NACHBARHILFE && R.NACHBARHILFE[org])
+}
+
+/** Zufallsorte an Wohnhäusern (ZUFALLSORT_BEWOHNT, z. B. keller) zählen nur, wo ein Haus steht. */
+function ortBewohnt(R, s, ort) {
+  if (String(ort).indexOf("zufall:") !== 0) return true
+  const g = ort.split(":")[1]
+  if ((R.ZUFALLSORT_BEWOHNT || []).indexOf(g) < 0) return true
+  const p = punktVon(R, s, ort)
+  return Boolean(
+    p &&
+      (s.haeuser || []).some((h) => {
+        const b = bauplatz(R, h.bauplatz)
+        return b && Math.hypot(b.x - p.x, b.z - p.z) < 1
+      }),
+  )
+}
+
 /** Werktags in der Arbeitszeit (Ortszeit)? */
 function inArbeitszeit(R, t) {
   const z = ortszeit(t)
@@ -1784,7 +1810,9 @@ function erzeuge(R, s, id, t, umwelt, folgeVon, ortFest) {
   const r = zufall(s.zufall + ":" + id + ":ort:" + s.zaehler)
   // Nur Orte außerhalb der Schutzzonen, außer die Art ist harmlos; gibt es keinen, bleibt die ganze Liste.
   // Wo gerade ein Einsatz derselben Art läuft (die Katze sitzt noch im Baum), entsteht kein zweiter.
-  const alle = orteVon(R, art)
+  // Ohne Haus kein Wasser im Keller: Zufallsorte an Wohnhäusern nur, wo eins steht
+  const bewohnt = orteVon(R, art).filter((o) => ortBewohnt(R, s, o))
+  const alle = bewohnt.length ? bewohnt : orteVon(R, art)
   const erlaubt = alle.filter((o) => ortErlaubt(R, s, art, o))
   const frei = erlaubt.filter((o) => !ortBesetzt(s, id, o))
   const auswahl = frei.length ? frei : erlaubt.length ? erlaubt : alle
@@ -2242,6 +2270,8 @@ function fortschreiben(stand, bis, umwelt, R) {
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)
   levelFreischalten(R, s, s.bis)
+  // Wartende Einsätze einer Organisation, für die gar niemand kommen kann, still streichen (kein Verfall, keine Wertung)
+  s.laufend = s.laufend.filter((e) => !(e.wartet && !e.plan && R.EINSATZARTEN[e.art] && !orgBesetzt(R, s, R.EINSATZARTEN[e.art].org)))
   if (!s.training_naechster && R.FITNESS) s.training_naechster = naechstesTraining(R, s.bis)
   let schutz = 0
   let vorher = s.bis
@@ -2256,7 +2286,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const st = s.einsatzarten[ev.id]
       st.nr += 1
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
-      let f = levelReicht(s, art.ab_level) ? bedingungFaktor(art, ev.t, wetter(ev.t)) : 0
+      let f = levelReicht(s, art.ab_level) && orgBesetzt(R, s, art.org) ? bedingungFaktor(art, ev.t, wetter(ev.t)) : 0
       // Großlagen kommen öfter, wenn die Zusammenarbeit gut ist
       if (art.grosslage && R.GROSSLAGE) {
         const z = s.zusammenarbeit || []
@@ -2616,5 +2646,5 @@ module.exports = {
   preis,
   levelAusXp,
   // für Tests
-  _intern: { waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { orgBesetzt, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

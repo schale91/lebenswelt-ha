@@ -22,6 +22,8 @@ function dorf() {
   let s = S.neuerStand(R, T0 - STD, 7)
   s.freigeschaltet.push("th_baum_strasse", "bh_ast", "bh_streuen", "p_vu_sachschaden")
   for (const id of ["th_baum_strasse", "p_vu_sachschaden"]) s = kaufe(s, { art: "einsatzart", id })
+  // Eine Polizistin im Dorf, sonst entsteht kein Polizeieinsatz
+  s = kaufe(s, { art: "bauplatz", id: "bp01", bewohner: { org: "polizei", beruf: "schicht" } })
   for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
   s.bis = T0 - MIN
   return s

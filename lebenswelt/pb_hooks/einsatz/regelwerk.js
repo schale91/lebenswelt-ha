@@ -2445,6 +2445,9 @@ const ZUFALLSORT_NAMEN = { baum: "Baum im Dorf", strasse: "Dorfstraße", keller:
  */
 const GELAENDE = null
 
+/** Gruppen von Zufallsorten an Wohnhäusern: Dort entsteht ein Einsatz nur, wenn auf dem Bauplatz ein Haus steht. */
+const ZUFALLSORT_BEWOHNT = ["keller"]
+
 module.exports = {
   NACHBARHILFE,
   DWD_WARNUNGEN,
@@ -2452,6 +2455,7 @@ module.exports = {
   ZUFALLSORTE,
   ZUFALLSORT_NAMEN,
   GELAENDE,
+  ZUFALLSORT_BEWOHNT,
   VERFALL,
   VERSION,
   PREISFAKTOR,
