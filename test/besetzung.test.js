@@ -1,4 +1,4 @@
-// Einsätze nur, wenn jemand kommen kann, und Keller nur an Häusern: node --test test/*.test.js
+// Gekaufte Einsätze kommen auch ohne Kräfte; Keller nur an bewohnten Häusern: node --test test/*.test.js
 const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
@@ -24,30 +24,10 @@ function ohnePolizei() {
   return s
 }
 
-test("Ohne Beamte entsteht keine Ruhestörung", () => {
+test("Gekaufte Ruhestörung kommt auch ohne Beamte und wartet auf Kräfte (wer kauft, muss besetzen)", () => {
   const s = S.fortschreiben(ohnePolizei(), T0 + 3 * 24 * STD, trocken, R)
   const alle = s.laufend.concat(s.abgeschlossen || [])
-  assert.equal(alle.filter((e) => e.art === "p_ruhestoerung").length, 0)
-  assert.equal(S._intern.orgBesetzt(R, s, "polizei"), false)
-  // Feuerwehr hat die Nachbarhilfe, Werkstatt erst ab Level 12 Hilfe von außen
-  assert.equal(S._intern.orgBesetzt(R, s, "feuerwehr"), true)
-  assert.equal(S._intern.orgBesetzt(R, s, "werkstatt"), false)
-})
-
-test("Mit einer Beamtin kommt die Ruhestörung", () => {
-  let s = ohnePolizei()
-  s = kaufe(s, { art: "bauplatz", id: "bp01", bewohner: { org: "polizei", beruf: "schicht" } }, T0 - STD)
-  s.bis = T0 - STD
-  s = S.fortschreiben(s, T0 + 5 * 24 * STD, trocken, R)
-  assert.ok(s.laufend.concat(s.abgeschlossen || []).some((e) => e.art === "p_ruhestoerung"))
-})
-
-test("Ein wartender Einsatz ohne jede Kraft wird still gestrichen", () => {
-  const s = ohnePolizei()
-  s.laufend.push({ id: "e_alt", art: "p_ruhestoerung", ort: "nachbarhaus", meldung: T0 - 30 * MIN, verfall: T0 + 23 * STD, status: "gemeldet", wartet: true, plan: null })
-  const n = S.fortschreiben(s, T0 + MIN, trocken, R)
-  assert.ok(!n.laufend.some((e) => e.id === "e_alt"))
-  assert.ok(!(n.abgeschlossen || []).some((e) => e.id === "e_alt"), "zählt nicht als verfallen")
+  assert.ok(alle.some((e) => e.art === "p_ruhestoerung"))
 })
 
 test("Wasser im Keller nur an Wohnhäusern, auf denen ein Haus steht", () => {

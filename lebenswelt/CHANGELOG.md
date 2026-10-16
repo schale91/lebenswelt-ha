@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.26.1
+
+- Zurückgenommen: Gekaufte Einsätze entstehen wieder auch dann, wenn für ihre Organisation niemand kommen kann. Wer eine Einsatzart kauft, muss auch für Kräfte sorgen; der Einsatz wartet und verfällt sonst wie gewohnt. Wartende Einsätze werden nicht mehr gestrichen.
+- Bleibt: Wasser im Keller an Wohnhäusern der Karte nur, wo ein Haus steht.
+
 ## 0.26.0
 
 - Einsatzspiel: Einsätze einer Organisation entstehen nur, wenn überhaupt jemand kommen kann (eigene Mitglieder, Hilfe von außen ab ihrem Level oder die Nachbarhilfe der Feuerwehr). Vorher meldete sich zum Beispiel eine Ruhestörung, obwohl an der Dienststelle noch niemand arbeitete, und wartete dann 24 Stunden. Solche wartenden Einsätze werden still gestrichen, ohne Verfall und ohne Wertung.
