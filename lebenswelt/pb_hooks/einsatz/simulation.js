@@ -2503,10 +2503,11 @@ function kaufe(stand, auftrag, jetzt, R) {
     const f = R.FAHRZEUGE[id]
     if (!f) return fehler("Unbekanntes Fahrzeug.")
     if (!orgFrei(R, s, f.org)) return fehler("Erst ab Level " + R.ORGANISATIONEN[f.org].ab_level + ".")
+    const sperre = fahrzeugSperre(R, s, id, jetzt)
+    if (sperre) return fehler(sperre)
     const geb = gebaeudeVon(R, f.org)
     const plaetze = R.GEBAEUDE[geb][s.gebaeude[geb] || 0].stellplaetze
     if (f.stellplatz && stellplaetzeBelegt(R, s, f.org) + f.stellplatz > plaetze) return fehler("Kein freier Stellplatz. Erst das Gebäude ausbauen.")
-    if (f.voraussetzung_fahrzeug && !s.fahrzeuge.some((x) => f.voraussetzung_fahrzeug.indexOf(x.typ) >= 0)) return fehler("Braucht ein Zugfahrzeug.")
     roh = f.preis
     s.zaehler += 1
     s.fahrzeuge.push({ id: "f" + s.zaehler, typ: id, beladung: Object.assign({}, f.grundbeladung), belegt_bis: 0 })
@@ -2613,6 +2614,46 @@ function einraeumen(stand, auftrag, R) {
 }
 
 
+/** Deckt die Grundbeladung eines Fahrzeugs eine Alternative dieser Gerätegruppe vollständig ab? */
+function beladungDeckt(beladung, gruppe) {
+  return (gruppe || []).some((alt) => Object.entries(alt).every(([g, n]) => (beladung[g] || 0) >= n))
+}
+
+/**
+ * Fahrzeuge, die ein gekaufter Einsatz freischaltet: je Einsatzart und Pflicht-Gerätegruppe das günstigste Fahrzeug
+ * der Organisation, das alles Nötige schon mitbringt.
+ */
+function fahrzeugeDurchEinsatz(R, s) {
+  const frei = new Set()
+  for (const art of Object.keys(s.einsatzarten || {})) {
+    const a = R.EINSATZARTEN[art]
+    if (!a) continue
+    for (const gruppe of (a.mindestens && a.mindestens.geraete) || []) {
+      let best = null
+      for (const [id, f] of Object.entries(R.FAHRZEUGE)) {
+        if (f.org !== a.org || !beladungDeckt(f.grundbeladung || {}, gruppe)) continue
+        if (!best || f.preis < R.FAHRZEUGE[best].preis) best = id
+      }
+      if (best) frei.add(best)
+    }
+  }
+  return frei
+}
+
+/**
+ * Warum ein Fahrzeug (noch) nicht gekauft werden kann, oder null. Reihenfolge: Freischaltung (Level oder passender
+ * Einsatz; ein schon vorhandener Typ gilt als frei), Fahrerin oder Fahrer mit Lehrgang, Zugfahrzeug für Anhänger.
+ */
+function fahrzeugSperre(R, s, id, t) {
+  const f = R.FAHRZEUGE[id]
+  if (!f) return "Unbekanntes Fahrzeug."
+  const vorhanden = s.fahrzeuge.some((x) => x.typ === id)
+  if (!vorhanden && !levelReicht(s, f.ab_level) && !fahrzeugeDurchEinsatz(R, s).has(id)) return "Erst ab Level " + f.ab_level + " oder mit einem passenden Einsatz."
+  if (f.fahrer && R.LEHRGAENGE[f.fahrer] && !s.personal.some((p) => istMitglied(p, f.org) && hatLehrgang(p, f.fahrer, t))) return "Niemand darf es fahren: Es fehlt der Lehrgang " + R.LEHRGAENGE[f.fahrer].name + "."
+  if (f.voraussetzung_fahrzeug && !s.fahrzeuge.some((x) => f.voraussetzung_fahrzeug.indexOf(x.typ) >= 0)) return "Braucht ein Zugfahrzeug."
+  return null
+}
+
 /** Bauplatzkäufe der letzten Tage lassen sich beim Verabschieden noch erstatten (Fehlkauf). */
 const ERSTATTUNG_TAGE = 7
 
@@ -2649,6 +2690,8 @@ function verabschiede(stand, id, jetzt) {
 
 module.exports = {
   verabschiede,
+  fahrzeugSperre,
+  fahrzeugeDurchEinsatz,
   ortName,
   warnungsRegel,
   wetterAusWarnungen,

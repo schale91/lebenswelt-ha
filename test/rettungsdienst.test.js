@@ -192,6 +192,7 @@ test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, mit Rettungsdienst"
   s = kaufe(s, { art: "einsatzart", id: "rd_krankentransport" })
   s.freigeschaltet.push("rd_sturz")
   s = kaufe(s, { art: "einsatzart", id: "rd_sturz" })
+  s.level = R.FAHRZEUGE.ktw.ab_level
   s = kaufe(s, { art: "fahrzeug", id: "ktw" })
   const ende = T0 + 4 * 24 * STD
   const ganz = S.fortschreiben(s, ende, trocken, R)
