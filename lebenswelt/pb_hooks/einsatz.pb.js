@@ -87,6 +87,28 @@ routerAdd("POST", "/api/lebenswelt/einsatz/personal", (e) => {
   const a = d.aktuell(e.app, ich.id, Date.now())
   const p = a.stand.personal.find((x) => x.id === body.ziel)
   if (!p) return e.json(404, { fehler: "Unbekannte Person." })
+  // Verabschieden: Person zieht weg, leeres Haus wird abgerissen, ein frischer Bauplatzkauf erstattet
+  if (body.verabschieden) {
+    const jetzt = Date.now()
+    const v = d.S.verabschiede(a.stand, p.id, jetzt)
+    if (v.fehler) return e.json(400, { fehler: v.fehler })
+    if (v.erstattung > 0) {
+      const kb = require(`${__hooks}/einsatz/kaufbuch.js`)
+      let r = h.spielstandVon(e.app, ich.id)
+      const daten = r ? JSON.parse(toString(r.get("daten")) || "null") : null
+      const vorher = kb.abgleich(daten, a.stand.ausgaben).daten
+      // Negativer Betrag: das Kaufbuch schreibt die Münzen wieder gut
+      const b = kb.buche(vorher, -v.erstattung, jetzt, "erstattung:bauplatz:" + v.bauplatz)
+      v.stand.ausgaben.push(b.ausgabe)
+      if (r) {
+        r.set("zeit", jetzt)
+        r.set("daten", b.daten)
+        e.app.save(r)
+      }
+    }
+    d.speichere(e.app, ich.id, v.stand)
+    return e.json(200, { ok: true, erstattung: v.erstattung, text: v.text, stand: v.stand })
+  }
   if (body.name !== undefined) p.name = String(body.name).slice(0, 40)
   if (body.anrede !== undefined) p.anrede = String(body.anrede).slice(0, 30)
   d.speichere(e.app, ich.id, a.stand)
