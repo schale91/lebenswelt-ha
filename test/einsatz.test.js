@@ -129,11 +129,12 @@ function ausgebaut(saat) {
   s = kaufe(s, { art: "gebaeude", id: "geraetehaus" })
   s = kaufe(s, { art: "gebaeude", id: "dienststelle" })
   for (let i = 0; i < 3; i++) s = kaufe(s, { art: "personal", id: "polizei" })
+  const fw = s.personal.filter((p) => p.org === "feuerwehr")
+  for (const p of fw.slice(0, 3)) p.lehrgaenge.fahrberechtigung = T0
+  s.level = Math.max(s.level || 0, R.FAHRZEUGE.tsf_w.ab_level, R.FAHRZEUGE.fustw.ab_level)
   s = kaufe(s, { art: "fahrzeug", id: "handzugwagen" })
   s = kaufe(s, { art: "fahrzeug", id: "tsf_w" })
   s = kaufe(s, { art: "fahrzeug", id: "fustw" })
-  const fw = s.personal.filter((p) => p.org === "feuerwehr")
-  for (const p of fw.slice(0, 3)) p.lehrgaenge.fahrberechtigung = T0
   for (const id of ["klappleiter", "tierhandschuhe", "transportbox", "pulverloescher", "schaumloescher", "oelbinder", "oelbinder", "besen_schaufel"]) s = kaufe(s, { art: "geraet", id })
   // Freischalten und kaufen wie im Spiel
   s.freigeschaltet.push("b_muelltonne", "b_hecke", "th_oelspur", "p_falschparker", "p_verkehrsregelung")
@@ -265,8 +266,9 @@ test("Ohne Verteiler wird mit nur einem Strahlrohr gelöscht", () => {
   const brand = (mitVerteiler) => {
     let s = S.neuerStand(R, T0, 23)
     for (const bp of ["bp01", "bp02", "bp03", "bp04"]) s = kaufe(s, { art: "bauplatz", id: bp })
-    s = kaufe(s, { art: "fahrzeug", id: "tsf_w" })
     for (const p of s.personal) p.lehrgaenge.fahrberechtigung = T0 - 1
+    s.level = R.FAHRZEUGE.tsf_w.ab_level
+    s = kaufe(s, { art: "fahrzeug", id: "tsf_w" })
     if (!mitVerteiler) s = S.einraeumen(s, { fahrzeug: s.fahrzeuge[0].id, geraet: "verteiler", richtung: "aus" }, R).stand
     s.freigeschaltet.push("b_hecke")
     s = kaufe(s, { art: "einsatzart", id: "b_hecke" })

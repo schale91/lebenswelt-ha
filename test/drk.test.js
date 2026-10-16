@@ -120,6 +120,7 @@ test("Verpflegung durch das DRK: lange Einsätze gehen danach schneller", () => 
     s = r.stand
     for (const b of s.baustellen.slice()) S._intern.fertigstellen(RL, s, b, T0)
   }
+  s.level = Math.max(s.level || 0, R.FAHRZEUGE.mtw_drk.ab_level, R.FAHRZEUGE.feldkueche.ab_level)
   for (const typ of ["mtw_drk", "feldkueche"]) {
     const r = S.kaufe(s, { art: "fahrzeug", id: typ }, T0, RL)
     assert.ok(!r.fehler, r.fehler)

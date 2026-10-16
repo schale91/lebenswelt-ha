@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.28.0
+
+- Fahrzeuge werden je Organisation freigeschaltet: das günstigste ab dem Level der Organisation, jedes teurere ein Level später (`ab_level` im Regelwerk, gleich teure gemeinsam; der RTW gehört zur Grundausstattung der Rettungswache). Früher frei macht ein passender Einsatz: Jede gekaufte Einsatzart schaltet das günstigste Fahrzeug ihrer Organisation frei, das ihre Pflichtgeräte schon in der Grundbeladung hat (z. B. Katze auf Baum das TSF).
+- Gekauft werden kann ein Fahrzeug nur, wenn jemand aus der Organisation den nötigen Lehrgang zum Fahren hat (Fahrberechtigung, Führerschein Klasse C usw.); Anhänger brauchen wie bisher ein Zugfahrzeug. Ein schon vorhandener Typ gilt als freigeschaltet.
+
 ## 0.27.0
 
 - Einsatzspiel: Einsatzkräfte lassen sich verabschieden (`POST /api/lebenswelt/einsatz/personal` mit `{"ziel": "<id>", "verabschieden": true}`). Die Person zieht weg; war sie die Letzte in ihrem Haus, wird das Haus abgerissen und der Bauplatz ist wieder frei. Ein Bauplatzkauf der letzten 7 Tage wird erstattet (Kaufbuch-Eintrag `erstattung:bauplatz:<id>` mit negativem Betrag). Während eines Einsatzes geht es nicht.

@@ -22,7 +22,9 @@ function wehr() {
   }
   for (let i = 0; i < 5; i++) kaufe({ art: "gebaeude", id: "geraetehaus" })
   for (const bp of R.BAUPLAETZE.slice(0, 12)) kaufe({ art: "bauplatz", id: bp.id, bewohner: { org: "feuerwehr", beruf: "auswaerts" } })
-  for (const id of ["lf10", "tlf3000", "elw1"]) kaufe({ art: "fahrzeug", id })
+  // Lehrgänge vor den Fahrzeugen: fahren darf nur, wer den Führerschein hat
+  for (const p of s.personal) for (const [id, l] of Object.entries(R.LEHRGAENGE)) if (l.org === "feuerwehr") p.lehrgaenge[id] = T0 - 30 * 24 * STD
+  for (const id of ["lf10", "tlf3000", "elw1"]) assert.ok(kaufe({ art: "fahrzeug", id }), id)
   for (const id of ["pulverloescher", "schaumloescher", "klappleiter", "tierhandschuhe", "transportbox"]) kaufe({ art: "geraet", id })
   for (const p of s.personal) {
     for (const [id, l] of Object.entries(R.LEHRGAENGE)) if (l.org === "feuerwehr") p.lehrgaenge[id] = T0 - 30 * 24 * STD

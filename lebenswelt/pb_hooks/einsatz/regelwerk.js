@@ -960,7 +960,8 @@ const FAHRZEUGE = {
   kehrmaschine: { org: "bauhof", name: "Kehrmaschine", besatzung: [0, 1], slots: 3, preis: 9000, tempo_kmh: 25, stellplatz: 1, fahrer: "gemeindearbeit", ohne_sonderrechte: true, grundbeladung: { kehrbesen: 1 } },
   // Rettungsdienst (DIN EN 1789, DIN 75079). Das NEF bringt den Notarzt, wenn es einen Notarztvertrag gibt.
   ktw: { org: "rettungsdienst", name: "Krankentransportwagen (KTW, Typ A2)", besatzung: [0, 2], slots: 5, preis: 7000, tempo_kmh: 60, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { tragestuhl: 1 } },
-  rtw: { org: "rettungsdienst", name: "Rettungswagen (RTW, Typ C)", besatzung: [0, 2], slots: 9, preis: 14000, tempo_kmh: 65, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { notfallrucksack: 1, sauerstoff: 1 } },
+  // Der RTW ist das Grundfahrzeug jeder Rettungswache: frei ab dem Level des Rettungsdienstes
+  rtw: { ab_level: 16, org: "rettungsdienst", name: "Rettungswagen (RTW, Typ C)", besatzung: [0, 2], slots: 9, preis: 14000, tempo_kmh: 65, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { notfallrucksack: 1, sauerstoff: 1 } },
   nef: { org: "rettungsdienst", name: "Notarzteinsatzfahrzeug (NEF)", besatzung: [0, 1], slots: 4, preis: 6500, tempo_kmh: 75, stellplatz: 1, fahrer: "rs", quelle: "din_75079", nef: true, grundbeladung: { defi_monitor: 1 }, hinweis: "bringt den Notarzt, wenn es einen Notarztvertrag gibt" },
   // DRK-Ortsverein (Katastrophenschutz, ohne Logo und ohne Kreuz in der Darstellung)
   hvo_pkw: { org: "drk", name: "PKW Helfer vor Ort", besatzung: [0, 2], slots: 3, preis: 4500, tempo_kmh: 70, stellplatz: 1, fahrer: "sanitaetshelfer", grundbeladung: { notfallrucksack: 1 } },
@@ -2447,6 +2448,19 @@ const GELAENDE = null
 
 /** Gruppen von Zufallsorten an Wohnhäusern: Dort entsteht ein Einsatz nur, wenn auf dem Bauplatz ein Haus steht. */
 const ZUFALLSORT_BEWOHNT = ["keller"]
+
+// Fahrzeuge werden je Organisation nach Preis gestaffelt freigeschaltet: das günstigste ab dem Level der
+// Organisation, jedes teurere ein Level später (gleich teure gemeinsam). Ein passender Einsatz schaltet früher frei
+// (simulation.js, fahrzeugSperre). ab_level steht dann im Regelwerk, damit die App dasselbe anzeigt.
+;(function staffeln() {
+  const jeOrg = {}
+  for (const [id, f] of Object.entries(FAHRZEUGE)) (jeOrg[f.org] = jeOrg[f.org] || []).push([id, f])
+  for (const [org, liste] of Object.entries(jeOrg)) {
+    const start = (ORGANISATIONEN[org] && ORGANISATIONEN[org].ab_level) || 0
+    const preise = [...new Set(liste.map(([, f]) => f.preis))].sort((a, b) => a - b)
+    for (const [, f] of liste) if (f.ab_level === undefined) f.ab_level = start + preise.indexOf(f.preis)
+  }
+})()
 
 module.exports = {
   NACHBARHILFE,
