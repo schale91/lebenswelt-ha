@@ -1219,7 +1219,14 @@ function fertigstellen(R, s, b, t) {
     if (h) {
       h.im_bau = false
       const bw = b.bewohner || { org: "feuerwehr", beruf: "frei" }
-      s.personal.push(neuePerson(s, bw.org, h.id, t, bw))
+      const p = neuePerson(s, bw.org, h.id, t, bw)
+      // Nach dem Neustart in Elbe Springs ziehen die Bekannten aus dem Dorf als Erste wieder ein
+      const wer = (s.rueckkehrer || []).shift()
+      if (wer) {
+        p.name = wer.name
+        p.anrede = wer.anrede || ""
+      }
+      s.personal.push(p)
     }
   } else if (b.art === "haus_ausbau") {
     const h = s.haeuser.find((x) => x.id === b.ziel)
@@ -2369,7 +2376,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const st = s.einsatzarten[ev.id]
       st.nr += 1
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
-      let f = levelReicht(s, art.ab_level) ? bedingungFaktor(art, ev.t, wetter(ev.t)) : 0
+      let f = levelReicht(s, art.ab_level) && !pausiert(s, art) ? bedingungFaktor(art, ev.t, wetter(ev.t)) : 0
       // Großlagen kommen öfter, wenn die Zusammenarbeit gut ist
       if (art.grosslage && R.GROSSLAGE) {
         const z = s.zusammenarbeit || []
@@ -2515,6 +2522,8 @@ function kaufe(stand, auftrag, jetzt, R) {
   const person = () => s.personal.find((p) => p.id === auftrag.ziel)
   const haus = () => s.haeuser.find((h) => h.id === auftrag.ziel)
   let roh = 0
+  /** Text im Kaufbuch, sonst "art:id" */
+  let buchung = null
 
   if (art === "einsatzart") {
     const a = R.EINSATZARTEN[id]
@@ -2531,6 +2540,22 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (sperre) return fehler(sperre)
     roh = gebietPreis(R, id)
     s.gebiete.push(id)
+  } else if (art === "wohnhaus") {
+    // Elbe Springs: Das Haus steht dort, wo es im Baumodus gesetzt wurde. Die Wege rechnet die Simulation bis Stufe 6
+    // noch im Dorf, deshalb gehört zu jedem Wohnhaus der günstigste freie Bauplatz als Lage.
+    if (s.welt !== "elbe") return fehler("Wohnhäuser gibt es nur in Elbe Springs.")
+    const bp = wohnhausPlatz(R, s)
+    if (!bp) return fehler("Es ist kein Platz mehr frei.")
+    const bw = pruefeBewohner(R, s, auftrag.bewohner)
+    if (bw.fehler) return fehler(bw.fehler)
+    roh = bp.preis
+    buchung = "wohnhaus:" + bp.id
+    s.zaehler += 1
+    const h = { id: "h" + s.zaehler, bauplatz: bp.id, gekauft: jetzt, ausbau: [], alarmierung: "sirene", im_bau: true }
+    s.haeuser.push(h)
+    beginneBau(R, s, jetzt, { art: "haus", ziel: h.id, name: "Wohnhaus", ort: { x: bp.x, z: bp.z }, bauzeit_h: R.BAU.haus_h, klein: false, bewohner: bw.bewohner })
+  } else if ((art === "bauplatz" || art === "neubaugebiet") && s.welt === "elbe") {
+    return fehler("In Elbe Springs baust du Wohnhäuser im Baumodus.")
   } else if (art === "bauplatz") {
     const bp = bauplatz(R, id)
     if (!bp) return fehler("Diesen Bauplatz gibt es nicht.")
@@ -2695,7 +2720,7 @@ function kaufe(stand, auftrag, jetzt, R) {
 
   // Vielleicht kann ein wartender Einsatz jetzt alarmiert werden
   versucheWartende(R, s, jetzt, (t) => wetterBei(null, t))
-  return { stand: s, preis: preis(R, roh) }
+  return buchung ? { stand: s, preis: preis(R, roh), buchung } : { stand: s, preis: preis(R, roh) }
 }
 
 /** Gerät zwischen Lager und Fahrzeug bewegen. richtung "ein" (Lager → Fahrzeug) oder "aus". */
@@ -2760,6 +2785,46 @@ function fahrzeugSperre(R, s, id, t) {
   return null
 }
 
+// ---------- Elbe Springs ----------
+
+/** In Elbe Springs kommen Einsätze einer Organisation erst, wenn dort jemand von ihr wohnt oder arbeitet. */
+function pausiert(s, art) {
+  if (s.welt !== "elbe") return false
+  const org = art.org || "feuerwehr"
+  return !s.personal.some((p) => istMitglied(p, org))
+}
+
+/** Lage für ein neues Wohnhaus in Elbe Springs: der günstigste freie Bauplatz des Dorfs (ohne Nebel und Neubaugebiete). */
+function wohnhausPlatz(R, s) {
+  const belegt = new Set(s.haeuser.map((h) => h.bauplatz))
+  const frei = R.BAUPLAETZE.filter((b) => !belegt.has(b.id)).sort((a, b) => a.preis - b.preis || (a.id < b.id ? -1 : 1))
+  return frei[0] || null
+}
+
+/**
+ * Neustart des Einsatzspiels für Elbe Springs (Entscheidung vom 17.10.2026): Ohne Wohnhäuser gibt es keine Kräfte und
+ * ohne Kauf keine Ausrüstung. Alles Gekaufte geht auf Anfang, die Münzen dafür kommen als Gutschrift zurück (eine
+ * Ausgabe mit negativem Betrag, das Kaufbuch rechnet sie dem Spielstand gut). Level, Tagesbilanzen und Protokoll
+ * bleiben. Wer einen Namen hatte, zieht später als Erste oder Erster in ein neues Wohnhaus.
+ * Gibt {stand, erstattung} oder {fehler} zurück.
+ */
+function neustart(stand, jetzt, R) {
+  if (stand.welt === "elbe") return { fehler: "Das Einsatzspiel läuft schon in Elbe Springs." }
+  const s = neuerStand(R, jetzt, stand.zufall)
+  s.welt = "elbe"
+  s.level = stand.level || 0
+  s.tage = stand.tage || {}
+  s.zaehler = stand.zaehler || 0
+  s.rueckkehrer = (stand.personal || []).filter((p) => p.name).map((p) => ({ name: p.name, anrede: p.anrede || "" }))
+  const ausgaben = stand.ausgaben || []
+  const erstattung = Math.max(0, ausgaben.reduce((n, a) => n + (Number(a.betrag) || 0), 0))
+  // Alte Ausgaben bleiben stehen, damit ein Gerät mit älterem Spielstand nichts doppelt oder gar nicht bucht
+  s.ausgaben = ausgaben.slice()
+  if (erstattung) s.ausgaben.push({ zeit: jetzt, betrag: -erstattung, text: "neustart:elbe" })
+  s.neustart = { zeit: jetzt, erstattung, einsaetze: Object.values(stand.einsatzarten || {}).reduce((n, a) => n + (a.anzahl || 0), 0), personal: (stand.personal || []).length }
+  return { stand: s, erstattung }
+}
+
 /** Bauplatzkäufe der letzten Tage lassen sich beim Verabschieden noch erstatten (Fehlkauf). */
 const ERSTATTUNG_TAGE = 7
 
@@ -2782,8 +2847,8 @@ function verabschiede(stand, id, jetzt) {
   if (h && !s.personal.some((x) => x.haus === h.id) && !(s.baustellen || []).some((b) => b.ziel === h.id && b.bewohner)) {
     s.haeuser = s.haeuser.filter((x) => x.id !== h.id)
     s.baustellen = (s.baustellen || []).filter((b) => b.ziel !== h.id)
-    text += " Das Haus auf " + String(h.bauplatz).toUpperCase() + " ist abgerissen, der Bauplatz ist wieder frei."
-    const kauf = (s.ausgaben || []).slice().reverse().find((a) => a.text === "bauplatz:" + h.bauplatz && a.betrag > 0)
+    text += s.welt === "elbe" ? " Das Wohnhaus ist abgerissen." : " Das Haus auf " + String(h.bauplatz).toUpperCase() + " ist abgerissen, der Bauplatz ist wieder frei."
+    const kauf = (s.ausgaben || []).slice().reverse().find((a) => (a.text === "bauplatz:" + h.bauplatz || a.text === "wohnhaus:" + h.bauplatz) && a.betrag > 0)
     const schonErstattet = (s.ausgaben || []).some((a) => a.text === "erstattung:bauplatz:" + h.bauplatz && kauf && a.zeit > kauf.zeit)
     if (kauf && !schonErstattet && jetzt - kauf.zeit <= ERSTATTUNG_TAGE * 86400000) {
       erstattung = kauf.betrag
@@ -2795,6 +2860,8 @@ function verabschiede(stand, id, jetzt) {
 }
 
 module.exports = {
+  neustart,
+  wohnhausPlatz,
   gebietSperre,
   gebietPreis,
   gebietAn,
