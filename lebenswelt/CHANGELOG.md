@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.32.1
+
+- App-Update: Der Knopf „Nach Update suchen“ und die Prüfung alle 10 Minuten können nicht mehr gleichzeitig laden (Sperre, eigener Zwischenordner je Lauf). Vorher konnten sie sich den Zwischenordner gegenseitig löschen, dann lag eine unvollständige Version bereit und das Installieren scheiterte mit „no such file or directory“. Eine unvollständige Version wird jetzt erkannt und neu geladen.
+
 ## 0.32.0
 
 - Neubaugebiete können einzelne Plätze aus der Karte der App haben (echte Grundstücke oder Plätze an einer Planstraße) statt eines starren Rasters. Bauplätze, Wege und die Baustelle der Erschließung richten sich danach.

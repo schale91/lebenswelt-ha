@@ -124,17 +124,57 @@ function zustand() {
   }
 }
 
+/** Liegen alle Dateien des Manifests im Ordner "bereit"? */
+function vollstaendig(manifest) {
+  try {
+    for (const d of pruefeManifest(manifest)) $os.stat(`${BEREIT}/${d}`)
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
+const SPERRE = `${DATEN}/app_paket/sperre`
+const SPERRE_MS = 5 * 60 * 1000
+
+/**
+ * Nur ein Abruf zur Zeit: Der Knopf in der App und die Prüfung alle 10 Minuten liefen sonst gleichzeitig und löschten
+ * sich gegenseitig den Zwischenordner (Fehler "no such file or directory"). Eine Sperre älter als 5 Minuten gilt als
+ * liegen geblieben.
+ */
+function sperren() {
+  try {
+    const seit = Number(text($os.readFile(SPERRE)))
+    if (Date.now() - seit < SPERRE_MS) return false
+  } catch (_) {
+    // keine Sperre
+  }
+  $os.mkdirAll(`${DATEN}/app_paket`, 0o755)
+  $os.writeFile(SPERRE, String(Date.now()), 0o644)
+  return true
+}
+
+function entsperren() {
+  try {
+    $os.remove(SPERRE)
+  } catch (_) {
+    // schon weg
+  }
+}
+
 /** Sieht nach einer neuen Version und lädt sie herunter, spielt sie aber nicht ein. */
 function pruefe() {
+  if (!sperren()) return zustand()
   try {
     const q = quelle()
     if (q.github && !q.token) throw new Error("Kein app_token in der Konfiguration des Add-ons.")
     const manifest = JSON.parse(text(hole(q, "manifest.json")))
     const dateien = pruefeManifest(manifest)
     const vorhanden = bereitesManifest()
-    if (!vorhanden || vorhanden.erstellt !== manifest.erstellt) {
-      // Erst vollständig in einen Zwischenordner, dann umbenennen: "bereit" ist nie halb
-      const neu = `${DATEN}/app_paket/neu`
+    // Auch eine unvollständige bereitliegende Version (frühere Läufe) wird neu geladen
+    if (!vorhanden || vorhanden.erstellt !== manifest.erstellt || !vollstaendig(vorhanden)) {
+      // Erst vollständig in einen eigenen Zwischenordner, dann umbenennen: "bereit" ist nie halb
+      const neu = `${DATEN}/app_paket/neu-${Date.now()}`
       $os.removeAll(neu)
       $os.mkdirAll(neu, 0o755)
       for (const d of dateien) $os.writeFile(`${neu}/${d}`, hole(q, d), 0o644)
@@ -149,14 +189,22 @@ function pruefe() {
     const fehler = String(err && err.message ? err.message : err)
     console.log("App-Paket: " + fehler)
     merke({ geprueft: new Date().toISOString(), fehler })
+  } finally {
+    entsperren()
   }
   return zustand()
 }
 
 /** Spielt die bereitliegende Version in alle App-Ordner ein. */
 function installiere() {
-  const m = bereitesManifest()
+  let m = bereitesManifest()
   if (!m) return Object.assign(zustand(), { fehler: "Es liegt keine neue Version bereit." })
+  // Fehlt eine Datei, erst neu laden; nie eine halbe Version einspielen
+  if (!vollstaendig(m)) {
+    pruefe()
+    m = bereitesManifest()
+    if (!m || !vollstaendig(m)) return Object.assign(zustand(), { fehler: "Die bereitliegende Version ist unvollständig und wird neu geladen. Bitte gleich noch einmal versuchen." })
+  }
   try {
     const dateien = pruefeManifest(m)
     const ordner = zielordner()
