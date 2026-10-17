@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.35.0
+
+- Elbe Springs: Die Simulation rechnet mit der Karte der Stadt (Dokument `karte`/`elbe`, von der App aus dem Stadtplan geschrieben): Straßennetz, Orte, Haustüren der Wohnhäuser, Hydranten und Zufallsorte, 10 m je Kachel, ohne Gebiete und Gelände. Damit hängen Alarmwege und Anfahrt von der Lage der Häuser und Wachen in der Stadt ab.
+- Das Zusammenführen von Karte und Regelwerk liegt jetzt in `einsatz/karte.js` (reine Funktion, getestet in `test/karte_elbe.test.js`).
+
 ## 0.34.0
 
 - Elbe Springs: Die bekannten Einsatzkräfte aus dem Dorf (mit Namen) ziehen beim Neustart gleich mit um und bekommen sofort ein fertiges Wohnhaus, ohne Baukosten. Stände, die schon neu gestartet sind, holen das beim nächsten Fortschreiben nach.
