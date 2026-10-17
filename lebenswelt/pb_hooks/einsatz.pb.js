@@ -49,7 +49,7 @@ routerAdd("POST", "/api/lebenswelt/einsatz/kaufen", (e) => {
   const daten = r ? JSON.parse(toString(r.get("daten")) || "null") : null
   // Erst nachziehen, was dieser Spielstand noch nicht kennt, dann den neuen Kauf buchen
   const vorher = kb.abgleich(daten, a.stand.ausgaben).daten
-  const b = kb.buche(vorher, k.preis, jetzt, (auftrag.art || "") + ":" + (auftrag.id || ""))
+  const b = kb.buche(vorher, k.preis, jetzt, k.buchung || (auftrag.art || "") + ":" + (auftrag.id || ""))
   if (b.fehler) return e.json(409, { fehler: b.fehler })
   const stand = k.stand
   stand.ausgaben.push(b.ausgabe)
@@ -149,4 +149,33 @@ cronAdd("einsatz_wetter", "*/10 * * * *", () => {
   } catch (err) {
     console.log("Einsatzspiel: Wetter fehlgeschlagen", err)
   }
+})
+
+// Neustart für Elbe Springs: Gekauftes auf Anfang, Münzen zurück, Kräfte erst mit Wohnhäusern. Nur einmal möglich;
+// der alte Stand wird als "archiv_dorf" aufgehoben. Antwort wie beim Kaufen: neue Münzen und der Stand.
+routerAdd("POST", "/api/lebenswelt/einsatz/neustart", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const kb = require(`${__hooks}/einsatz/kaufbuch.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  const auftrag = e.requestInfo().body || {}
+  if (auftrag.welt !== "elbe") return e.json(400, { fehler: "Neustart nur für Elbe Springs." })
+  const jetzt = Date.now()
+  const a = d.aktuell(e.app, ich.id, jetzt)
+  const n = d.S.neustart(a.stand, jetzt, d.regelwerkFuer(e.app, ich.id))
+  if (n.fehler) return e.json(409, { fehler: n.fehler })
+  d.schreibe(e.app, ich.id, "einsatzwelt", "archiv_dorf", a.stand)
+  let r = h.spielstandVon(e.app, ich.id)
+  const daten = r ? JSON.parse(toString(r.get("daten")) || "null") : null
+  // Gutschrift und alles, was dieser Spielstand noch nicht kennt, über das Kaufbuch verrechnen
+  const ab = kb.abgleich(daten, n.stand.ausgaben)
+  d.speichere(e.app, ich.id, n.stand)
+  if (r && ab.nachgezogen) {
+    r.set("zeit", jetzt)
+    r.set("daten", ab.daten)
+    e.app.save(r)
+  }
+  const st = ab.daten && ab.daten.state
+  return e.json(200, { ok: true, erstattung: n.erstattung, muenzen: st ? st.muenzen : null, bekannt: st ? st.einsatzAusgabenBekannt || jetzt : jetzt, zeit: jetzt, stand: n.stand })
 })

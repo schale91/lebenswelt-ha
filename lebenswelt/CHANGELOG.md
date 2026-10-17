@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.33.0
+
+- Einsatzspiel in Elbe Springs: `POST /api/lebenswelt/einsatz/neustart` (einmalig) setzt Kräfte, Häuser, Geräte, Fahrzeuge, Ausbau und gekaufte Einsatzarten auf Anfang und schreibt die dafür ausgegebenen Münzen über das Kaufbuch gut. Level, Tagesbilanzen und Protokoll bleiben, der alte Stand liegt als `archiv_dorf`. Wer einen Namen hatte, zieht in die ersten neuen Wohnhäuser.
+- Neue Kaufart `wohnhaus` (nur in Elbe Springs, gesetzt im Baumodus der App). Bauplätze und Neubaugebiete des Dorfs sind dort gesperrt.
+- In Elbe Springs pausieren die Einsätze einer Organisation, solange niemand von ihr dort wohnt oder arbeitet.
+
 ## 0.32.1
 
 - App-Update: Der Knopf „Nach Update suchen“ und die Prüfung alle 10 Minuten können nicht mehr gleichzeitig laden (Sperre, eigener Zwischenordner je Lauf). Vorher konnten sie sich den Zwischenordner gegenseitig löschen, dann lag eine unvollständige Version bereit und das Installieren scheiterte mit „no such file or directory“. Eine unvollständige Version wird jetzt erkannt und neu geladen.
