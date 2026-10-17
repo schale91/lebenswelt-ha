@@ -2358,6 +2358,7 @@ function naechstesEreignis(R, s, bis, vorher) {
 function fortschreiben(stand, bis, umwelt, R) {
   const s = kopie(stand)
   bauFelder(s)
+  rueckkehrerEinziehen(R, s, s.bis)
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)
@@ -2709,7 +2710,13 @@ function kaufe(stand, auftrag, jetzt, R) {
     const zahl = porg === "polizei" ? polizeiZahl(s) : orgZahl(s, porg)
     if (zahl >= max) return fehler(porg === "polizei" ? "Die Dienststelle ist voll besetzt. Erst ausbauen." : "Alle Stellen sind besetzt. Erst ausbauen.")
     roh = P.preis
-    const neu = neuePerson(s, porg, null, jetzt)
+    // In Elbe Springs wohnt jede Kraft irgendwo: mit der Einstellung kommt ein Wohnhaus (Dienstwohnung)
+    let wohnung = null
+    if (s.welt === "elbe") {
+      wohnung = wohnhausSofort(R, s, jetzt, "dienstwohnung")
+      if (!wohnung) return fehler("In Elbe Springs ist kein Platz mehr für ein Wohnhaus.")
+    }
+    const neu = neuePerson(s, porg, wohnung ? wohnung.id : null, jetzt)
     if (P.lehrgaenge) {
       neu.lehrgaenge = {}
       for (const l of P.lehrgaenge) neu.lehrgaenge[l] = jetzt
@@ -2815,14 +2822,46 @@ function neustart(stand, jetzt, R) {
   s.level = stand.level || 0
   s.tage = stand.tage || {}
   s.zaehler = stand.zaehler || 0
-  s.rueckkehrer = (stand.personal || []).filter((p) => p.name).map((p) => ({ name: p.name, anrede: p.anrede || "" }))
+  s.rueckkehrer = (stand.personal || []).filter((p) => p.name).map((p) => ({ name: p.name, anrede: p.anrede || "", org: p.org, beruf: p.beruf, arbeitgeber: p.arbeitgeber }))
   const ausgaben = stand.ausgaben || []
   const erstattung = Math.max(0, ausgaben.reduce((n, a) => n + (Number(a.betrag) || 0), 0))
   // Alte Ausgaben bleiben stehen, damit ein Gerät mit älterem Spielstand nichts doppelt oder gar nicht bucht
   s.ausgaben = ausgaben.slice()
   if (erstattung) s.ausgaben.push({ zeit: jetzt, betrag: -erstattung, text: "neustart:elbe" })
   s.neustart = { zeit: jetzt, erstattung, einsaetze: Object.values(stand.einsatzarten || {}).reduce((n, a) => n + (a.anzahl || 0), 0), personal: (stand.personal || []).length }
+  rueckkehrerEinziehen(R, s, jetzt)
   return { stand: s, erstattung }
+}
+
+/** Elbe Springs: fertiges Wohnhaus ohne Baukosten (Umzug aus dem Dorf, Dienstwohnung bei einer Einstellung). */
+function wohnhausSofort(R, s, jetzt, grund) {
+  const bp = wohnhausPlatz(R, s)
+  if (!bp) return null
+  s.zaehler += 1
+  const h = { id: "h" + s.zaehler, bauplatz: bp.id, gekauft: jetzt, ausbau: [], alarmierung: "sirene", im_bau: false, grund }
+  s.haeuser.push(h)
+  return h
+}
+
+/**
+ * Wer aus dem Dorf mit Namen bekannt ist, zieht gleich mit um und bekommt ein Wohnhaus (Entscheidung vom 17.10.2026:
+ * "Die müssen ja irgendwo wohnen"). Auch für Stände, die schon neu gestartet sind und noch Rückkehrer haben.
+ */
+function rueckkehrerEinziehen(R, s, jetzt) {
+  if (s.welt !== "elbe" || !s.rueckkehrer || !s.rueckkehrer.length) return
+  while (s.rueckkehrer.length) {
+    const h = wohnhausSofort(R, s, jetzt, "umzug")
+    if (!h) break
+    const wer = s.rueckkehrer.shift()
+    const org = wer.org || "feuerwehr"
+    const bw = { org, beruf: wer.beruf || (org === "polizei" ? "schicht" : "frei") }
+    if (wer.arbeitgeber && R.ARBEITGEBER && R.ARBEITGEBER[wer.arbeitgeber]) bw.arbeitgeber = wer.arbeitgeber
+    else if (bw.beruf === "dorf") bw.beruf = "frei"
+    const p = neuePerson(s, org, h.id, jetzt, bw)
+    p.name = wer.name
+    p.anrede = wer.anrede || ""
+    s.personal.push(p)
+  }
 }
 
 /** Bauplatzkäufe der letzten Tage lassen sich beim Verabschieden noch erstatten (Fehlkauf). */

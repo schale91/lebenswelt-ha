@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.34.0
+
+- Elbe Springs: Die bekannten Einsatzkräfte aus dem Dorf (mit Namen) ziehen beim Neustart gleich mit um und bekommen sofort ein fertiges Wohnhaus, ohne Baukosten. Stände, die schon neu gestartet sind, holen das beim nächsten Fortschreiben nach.
+- Elbe Springs: Wer eingestellt wird (Polizei, Rettungsdienst), bekommt mit der Einstellung ein Wohnhaus (Dienstwohnung). Niemand bleibt ohne Wohnung.
+
 ## 0.33.0
 
 - Einsatzspiel in Elbe Springs: `POST /api/lebenswelt/einsatz/neustart` (einmalig) setzt Kräfte, Häuser, Geräte, Fahrzeuge, Ausbau und gekaufte Einsatzarten auf Anfang und schreibt die dafür ausgegebenen Münzen über das Kaufbuch gut. Level, Tagesbilanzen und Protokoll bleiben, der alte Stand liegt als `archiv_dorf`. Wer einen Namen hatte, zieht in die ersten neuen Wohnhäuser.
