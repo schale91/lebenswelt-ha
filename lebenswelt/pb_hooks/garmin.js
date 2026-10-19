@@ -1,6 +1,7 @@
 // Garmin-Tageswerte aus Home Assistant (Integration Garmin Connect) für die Anzeige in der App und als Tagesverlauf.
-// Bewusst ohne Wirkung auf Spiel und XP (docs/integrationen/KONZEPT.md, Abschnitt 5; DORFDIENSTE.md 12.6).
-// tageswerte() ist rein und in Node getestet (test/kalender.test.js).
+// Gute Werte bringen ein paar XP, schlechte kosten nie etwas (Entscheidung vom 19.10.2026). Auf die Einsatzwelt
+// wirkt Garmin nicht (docs/integrationen/KONZEPT.md, Abschnitt 5; DORFDIENSTE.md 12.6).
+// tageswerte() und xpAus() sind rein und in Node getestet (test/kalender.test.js).
 
 /** Feld in der Antwort → Endung der Entität nach dem Präfix (z. B. sensor.garmin_connect_). */
 const FELDER = {
@@ -44,6 +45,39 @@ const FELDER = {
   synchronisiert: "last_synced",
 }
 
+/**
+ * XP für gute Tageswerte: nur Plus, je Regel die höchste erreichte Stufe, höchstens max je Tag. Ausgewertet wird der
+ * Tag um 23:55 Uhr (Schlaf der Nacht davor, Schritte des Tages).
+ */
+const XP = {
+  max: 20,
+  regeln: [
+    { id: "schlafwert", text: "Schlafwert", feld: "schlafwert", stufen: [[90, 8], [80, 5], [70, 2]] },
+    { id: "schlafdauer", text: "Schlafbedarf gedeckt", wenn: (w) => w.schlaf_min > 0 && w.schlafbedarf_min > 0 && w.schlaf_min >= w.schlafbedarf_min, xp: 3 },
+    { id: "schritte", text: "Schrittziel erreicht", wenn: (w) => w.schritte > 0 && w.schrittziel > 0 && w.schritte >= w.schrittziel, xp: 5 },
+    { id: "hrv", text: "HRV ausgeglichen", wenn: (w) => String(w.hrv_status || "").toLowerCase() === "balanced", xp: 2 },
+    { id: "body_battery", text: "Body Battery morgens voll", feld: "body_battery_hoch", stufen: [[90, 2]] },
+  ],
+}
+
+/** XP aus den Tageswerten: {summe, gruende: [{id, text, xp}]}. */
+function xpAus(w) {
+  const gruende = []
+  for (const r of XP.regeln) {
+    let xp = 0
+    if (r.stufen) {
+      const v = Number(w[r.feld])
+      for (const [ab, n] of r.stufen) if (isFinite(v) && v >= ab) {
+        xp = n
+        break
+      }
+    } else if (r.wenn(w)) xp = r.xp
+    if (xp) gruende.push({ id: r.id, text: r.text, xp })
+  }
+  const summe = Math.min(XP.max, gruende.reduce((n, g) => n + g.xp, 0))
+  return { summe, gruende }
+}
+
 /** Präfix der Garmin-Sensoren aus der Option garmin_sensor (sensor.garmin_connect_last_activities). */
 function praefix(sensor) {
   const s = String(sensor || "sensor.garmin_connect_last_activities")
@@ -65,4 +99,4 @@ function tageswerte(zustaende, sensor) {
   return aus
 }
 
-module.exports = { tageswerte, praefix, FELDER }
+module.exports = { tageswerte, xpAus, praefix, FELDER, XP }

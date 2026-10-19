@@ -11,7 +11,16 @@ routerAdd("GET", "/api/lebenswelt/garmin/heute", (e) => {
   if (p.antwort) return p.antwort
   const werte = x.garminHeute()
   if (!werte) return e.json(503, { fehler: "Home Assistant nicht erreichbar." })
-  return e.json(200, { jetzt: Date.now(), werte })
+  // Vorschau: so viele XP gäbe es, wenn der Tag jetzt endete (gebucht wird um 23:55 Uhr)
+  return e.json(200, { jetzt: Date.now(), werte, xp_vorschau: require(`${__hooks}/garmin.js`).xpAus(werte) })
+})
+
+// XP der Garmin-Tage abholen (die App bucht sie, wie bei der Müllabfuhr). Antwort {xp, tage}
+routerAdd("POST", "/api/lebenswelt/garmin/abholen", (e) => {
+  const x = require(`${__hooks}/ha_daten.js`)
+  const p = x.personVoll(e)
+  if (p.antwort) return p.antwort
+  return e.json(200, Object.assign({ ok: true }, x.garminAbholen(e.app, p.ich.id)))
 })
 
 // Um 23:55 Ortszeit den Tag als Dokument garmin_tag (Schlüssel = Datum) ablegen, für Verläufe in der App
@@ -23,7 +32,7 @@ cronAdd("garmin_tag", "55 * * * *", () => {
     if (S.ortszeit(jetzt).stunde !== 23) return
     const person = x.hauptperson($app)
     const werte = person ? x.garminHeute() : null
-    if (werte) require(`${__hooks}/einsatz/dienst.js`).schreibe($app, person, "garmin_tag", S._intern.tagVon(jetzt), werte)
+    if (werte) x.garminTagSpeichern($app, person, S._intern.tagVon(jetzt), werte)
   } catch (err) {
     console.log("Garmin-Tag fehlgeschlagen", err)
   }

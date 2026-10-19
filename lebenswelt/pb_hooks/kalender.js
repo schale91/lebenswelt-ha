@@ -53,6 +53,35 @@ function feiertage(jahr) {
   return aus
 }
 
+const WOCHENTAGE = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+
+/**
+ * Regelarbeitszeit je Wochentag (0 = Sonntag) aus der Option: entweder eine Zeit für alle Werktage ("07:00-16:00")
+ * oder je Tag bzw. Bereich, getrennt mit Semikolon ("Mo 06:00-15:00; Di-Do 06:00-15:30; Fr 06:00-12:00").
+ * Gibt {wochentag: [von, bis]} zurück; Tage ohne Angabe fehlen (dann frei, außer bei der einfachen Form Mo bis Fr).
+ */
+function regelzeiten(regel) {
+  const text = String(regel || "07:00-16:00").trim()
+  const aus = {}
+  const einfach = text.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})$/)
+  if (einfach) {
+    for (let t = 1; t <= 5; t++) aus[t] = [einfach[1], einfach[2]]
+    return aus
+  }
+  for (const teil of text.split(";")) {
+    const m = teil.trim().match(/^([A-Za-z]{2})(?:\s*-\s*([A-Za-z]{2}))?\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/)
+    if (!m) continue
+    const a = WOCHENTAGE.findIndex((w) => w.toLowerCase() === m[1].toLowerCase())
+    const b = m[2] ? WOCHENTAGE.findIndex((w) => w.toLowerCase() === m[2].toLowerCase()) : a
+    if (a < 0 || b < 0) continue
+    for (let t = a; ; t = (t + 1) % 7) {
+      aus[t] = [m[3], m[4]]
+      if (t === b) break
+    }
+  }
+  return aus
+}
+
 /** "HH:MM" in Ortszeit. */
 function uhrzeit(ms) {
   const z = S.ortszeit(ms)
@@ -86,23 +115,32 @@ function istAbfall(titel) {
 
 /**
  * Tage ab `vonTag` (JJJJ-MM-TT, Ortszeit) einordnen. regel: "HH:MM-HH:MM" (Regelarbeitszeit für Werktage ohne Eintrag).
- * Je Tag: {tag, wochentag, art, sicher, von, bis, feiertag, termine:[{titel, von, bis, ganztag}]}.
+ * Je Tag: {tag, wochentag, art, sicher, von, bis, feiertag, termine:[{titel, von, bis, ganztag}], andere}.
  * art: urlaub, dienst, homeoffice, feiertag, wochenende oder arbeit (sicher: false, vermutet).
+ * weitere: [{wer, ereignisse}] aus anderen Kalendern (Familie). Sie stehen je Tag unter `andere` mit `wer` und
+ * bestimmen die Art des Tages nie: Das sind meist die Termine der anderen.
  */
-function tage(ereignisse, vonTag, anzahl, regel) {
-  const [rvon, rbis] = String(regel || "07:00-16:00").split("-")
+function tage(ereignisse, vonTag, anzahl, regel, weitere) {
+  const zeiten = regelzeiten(regel)
   const liste = (ereignisse || []).map(ereignis).filter((x) => x && x.titel && !istAbfall(x.titel))
+  const fremd = []
+  for (const k of weitere || []) for (const e of k.ereignisse || []) {
+    const x = ereignis(e)
+    if (x && x.titel && !istAbfall(x.titel)) fremd.push(Object.assign(x, { wer: String(k.wer || "") }))
+  }
   const aus = []
   for (let i = 0; i < anzahl; i++) {
     const tag = plusTage(vonTag, i)
     const wt = new Date(tag + "T12:00:00Z").getUTCDay()
     const ft = feiertage(Number(tag.slice(0, 4)))[tag] || null
+    const [rvon, rbis] = zeiten[wt] || [null, null]
     const heute = liste.filter((x) => x.tage.indexOf(tag) >= 0)
     const termine = heute.map((x) => ({ titel: x.titel, von: x.von, bis: x.bis, ganztag: x.ganztag })).sort((a, b) => (a.von || "") < (b.von || "") ? -1 : 1)
     const urlaub = heute.find((x) => MUSTER.urlaub.test(x.titel))
     const dienst = heute.filter((x) => MUSTER.dienst.test(x.titel) && !/gottesdienst/i.test(x.titel))
     const ho = heute.find((x) => MUSTER.homeoffice.test(x.titel))
-    let d = { tag, wochentag: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][wt], art: "arbeit", sicher: false, von: rvon, bis: rbis, feiertag: ft, termine }
+    const andere = fremd.filter((x) => x.tage.indexOf(tag) >= 0).map((x) => ({ wer: x.wer, titel: x.titel, von: x.von, bis: x.bis, ganztag: x.ganztag })).sort((a, b) => ((a.von || "") < (b.von || "") ? -1 : 1))
+    let d = { tag, wochentag: WOCHENTAGE[wt], art: "arbeit", sicher: false, von: rvon, bis: rbis, feiertag: ft, termine, andere }
     if (urlaub) d = Object.assign(d, { art: "urlaub", sicher: true, von: null, bis: null, grund: urlaub.titel })
     else if (dienst.length) {
       const zeiten = dienst.filter((x) => !x.ganztag)
@@ -110,9 +148,10 @@ function tage(ereignisse, vonTag, anzahl, regel) {
     } else if (ho) d = Object.assign(d, { art: "homeoffice", sicher: true })
     else if (ft) d = Object.assign(d, { art: "feiertag", sicher: true, von: null, bis: null })
     else if (wt === 0 || wt === 6) d = Object.assign(d, { art: "wochenende", sicher: true, von: null, bis: null })
+    else if (!zeiten[wt]) d = Object.assign(d, { art: "frei", sicher: false, von: null, bis: null })
     aus.push(d)
   }
   return aus
 }
 
-module.exports = { tage, feiertage, ostersonntag, ereignis, MUSTER }
+module.exports = { tage, regelzeiten, feiertage, ostersonntag, ereignis, MUSTER }

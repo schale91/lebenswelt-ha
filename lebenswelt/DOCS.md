@@ -22,7 +22,8 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `pegel_entitaet` | Wasserstand der Integration PEGELONLINE (cm) für die Elbe im Einsatzspiel. Leer: der erste Sensor `…_wasserstand` in cm. |
 | `abfall_kalender` | Kalender der Integration Waste Collection Schedule für die Müllabfuhr. Leer: wird automatisch gesucht. |
 | `kalender_entitaet` | Dein Kalender (z. B. `calendar.<name>`), daraus Arbeit, frei und Termine je Tag. Andere Kalender werden nicht gelesen. |
-| `regelarbeitszeit` | Arbeitszeit an Werktagen ohne Eintrag im Kalender, `HH:MM-HH:MM`. |
+| `kalender_weitere` | Weitere Kalender zum Mitlesen (z. B. Familie). Ihre Termine stehen unter `andere` und bestimmen nicht, ob du arbeitest. |
+| `regelarbeitszeit` | Arbeitszeit an Tagen ohne Eintrag im Kalender: `HH:MM-HH:MM` für Montag bis Freitag oder je Tag, z. B. `Mo 06:00-15:00; Di-Do 06:00-15:30; Fr 06:00-12:00`. |
 | `paperless_url` | Adresse von Paperless-ngx im Netz der Apps (Standard: die App Paperless-ngx). |
 | `paperless_token` | API-Token aus Paperless (Profil → API-Token). Leer: keine Verbindung zu Paperless. |
 | `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
@@ -105,7 +106,7 @@ Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
 
 - **Elbpegel:** alle 10 Minuten mit dem Wetter. Die Elbe im Spiel folgt der Tide; bei echter Sturmflut kommen Deichverteidigung, Evakuierung und ab Level 30 die Großlage. `stand.pegel` im Einsatzstand.
 - **Müllabfuhr:** Termine stündlich aus dem Abfallkalender. Am Vorabend deine Tonne in der App an die Straße stellen, am Abholtag fahren die Müllautos. Erinnerung per Push um 18 Uhr. Die Deponie kaufst du im Store.
-- **Garmin:** Tageswerte für die Anzeige, ohne Wirkung auf das Spiel.
+- **Garmin:** Tageswerte für die Anzeige. Gute Werte (Schlaf, Schrittziel, HRV, Body Battery) bringen bis zu 20 XP am Tag, schlechte kosten nichts. Keine Wirkung auf die Einsatzwelt.
 - **Kalender:** je Tag Arbeit, Homeoffice, Dienst, Urlaub, Feiertag oder Wochenende, damit Claude weiß, wann du arbeitest.
 - **Paperless-ngx:** Posteingang alle 15 Minuten in den Eingang. Claude sucht, liest und bearbeitet Dokumente über die Routen unten (über den Connector „Homeassistent MCP“). Einrichtung: in Paperless unter Profil einen API-Token erzeugen und hier als `paperless_token` eintragen, App neu starten. Paperless lehnt Aufrufe über den Ingress anderer Apps ab, deshalb geht die Verbindung direkt über das Netz der Apps.
 
@@ -134,7 +135,8 @@ Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
 | POST | `/api/lebenswelt/muell/tonne` | `{haus?: "zuhause" \| Wohnhaus, art, rein?}` Tonne an die Straße stellen oder reinholen |
 | POST | `/api/lebenswelt/muell/abholen` | `{termin?}` XP einer erledigten Abfuhr abholen (ohne `termin` alle) |
 | POST | `/api/lebenswelt/muell/abgleich` | Abfallkalender sofort neu lesen |
-| GET | `/api/lebenswelt/garmin/heute` | Garmin-Tageswerte |
+| GET | `/api/lebenswelt/garmin/heute` | Garmin-Tageswerte mit `xp_vorschau` |
+| POST | `/api/lebenswelt/garmin/abholen` | XP der gebuchten Garmin-Tage abholen (`{xp, tage}`) |
 | GET | `/api/lebenswelt/kalender?tage=14` | Tage mit Art (dienst, homeoffice, urlaub, feiertag, wochenende, arbeit), Zeiten und Terminen |
 | GET | `/api/lebenswelt/paperless` | eingerichtet, Adresse, letzter Abgleich |
 | GET | `/api/lebenswelt/paperless/suche?q=…&posteingang=1&seite=1` | Volltextsuche in Paperless |

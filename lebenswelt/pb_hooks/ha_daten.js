@@ -30,10 +30,18 @@ function kalenderAbgleich(app, besitzer, anzahl) {
   const von = S._intern.tagVon(jetzt)
   const start = new Date(Date.parse(von + "T00:00:00Z") - 2 * 3600 * 1000).toISOString()
   const ende = new Date(Date.parse(von + "T00:00:00Z") + (anzahl + 1) * 24 * 3600 * 1000).toISOString()
-  const ereignisse = h.ha("/calendars/" + id + "?start=" + encodeURIComponent(start) + "&end=" + encodeURIComponent(ende), 20)
+  const lies = (k) => h.ha("/calendars/" + k + "?start=" + encodeURIComponent(start) + "&end=" + encodeURIComponent(ende), 20)
+  const ereignisse = lies(id)
   if (!Array.isArray(ereignisse)) return { fehler: "Kalender " + id + " nicht lesbar." }
-  const tage = require(`${__hooks}/kalender.js`).tage(ereignisse, von, anzahl, o.regelarbeitszeit)
-  const daten = { kalender: id, stand: jetzt, tage }
+  // Weitere Kalender (Familie): nur zum Mitlesen, unter „andere“ mit Namen aus der Entität (calendar.julia → Julia)
+  const weitere = []
+  for (const k of o.kalender_weitere || []) {
+    const e = lies(String(k))
+    const name = String(k).replace(/^calendar\./, "").replace(/_/g, " ")
+    if (Array.isArray(e)) weitere.push({ wer: name.charAt(0).toUpperCase() + name.slice(1), ereignisse: e })
+  }
+  const tage = require(`${__hooks}/kalender.js`).tage(ereignisse, von, anzahl, o.regelarbeitszeit, weitere)
+  const daten = { kalender: id, weitere: weitere.map((w) => w.wer), stand: jetzt, tage }
   if (besitzer) require(`${__hooks}/einsatz/dienst.js`).schreibe(app, besitzer, "kalender", "tage", daten)
   return daten
 }
@@ -43,6 +51,35 @@ function garminHeute() {
   const h = require(`${__hooks}/hilfen.js`)
   const alle = h.ha("/states", 20)
   return alle ? require(`${__hooks}/garmin.js`).tageswerte(alle, h.optionen().garmin_sensor) : null
+}
+
+/**
+ * Tag als Dokument garmin_tag ablegen, mit den XP für gute Werte (einmal je Tag; wer schon abgeholt hat, behält das).
+ */
+function garminTagSpeichern(app, person, tag, werte) {
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const r = d.finde(app, person, "garmin_tag", tag)
+  const alt = r ? d.lies(r) : {}
+  const xp = require(`${__hooks}/garmin.js`).xpAus(werte)
+  d.schreibe(app, person, "garmin_tag", tag, Object.assign({}, werte, { xp: xp.summe, xp_gruende: xp.gruende, abgeholt: Boolean(alt.abgeholt) }))
+}
+
+/** XP aller gespeicherten Garmin-Tage der letzten 14 Tage abholen, die noch offen sind. Gibt {xp, tage} zurück. */
+function garminAbholen(app, person) {
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const ab = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+  let xp = 0
+  const tage = []
+  for (const r of app.findRecordsByFilter("dokumente", "besitzer = {:b} && typ = 'garmin_tag' && schluessel >= {:ab}", "schluessel", 0, 0, { b: person, ab })) {
+    const daten = d.lies(r)
+    if (daten.abgeholt || !daten.xp) continue
+    daten.abgeholt = true
+    r.set("daten", daten)
+    app.save(r)
+    xp += daten.xp
+    tage.push(r.getString("schluessel"))
+  }
+  return { xp, tage }
 }
 
 /** Ruft eine Funktion des Paperless-Moduls für die volle Lebenswelt auf und übersetzt Fehler in eine Antwort. */
@@ -58,4 +95,4 @@ function paperless(e, f) {
   }
 }
 
-module.exports = { personVoll, hauptperson, kalenderAbgleich, garminHeute, paperless }
+module.exports = { personVoll, hauptperson, kalenderAbgleich, garminHeute, garminTagSpeichern, garminAbholen, paperless }

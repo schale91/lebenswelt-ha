@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.39.0
+
+- Garmin bringt XP für gute Werte, schlechte kosten nichts (Entscheidung vom 19.10.2026): Schlafwert ab 70/80/90 (2/5/8 XP), Schlafbedarf gedeckt (3), Schrittziel erreicht (5), HRV ausgeglichen (2), Body Battery ab 90 (2), höchstens 20 XP am Tag. Gebucht wird der Tag um 23:55 Uhr im Dokument `garmin_tag` (`xp`, `xp_gruende`); abholen mit `POST /api/lebenswelt/garmin/abholen` (letzte 14 Tage). `GET /api/lebenswelt/garmin/heute` liefert dazu `xp_vorschau`. Auf die Einsatzwelt wirkt Garmin weiter nicht.
+- Kalender: neue Option `kalender_weitere` (z. B. der Kalender von Julia). Diese Termine stehen je Tag unter `andere` mit `wer` und bestimmen die Art des Tages nie.
+- `regelarbeitszeit` je Wochentag: `Mo 06:00-15:00; Di-Do 06:00-15:30; Fr 06:00-12:00` (die einfache Form `07:00-16:00` gilt weiter für Montag bis Freitag). Ein Werktag ohne Regelzeit ist `frei`.
+
 ## 0.38.0
 
 Daten aus Home Assistant in der Lebenswelt (Konzept: `docs/integrationen/KONZEPT.md`).
