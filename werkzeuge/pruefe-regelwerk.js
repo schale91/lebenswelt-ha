@@ -232,7 +232,8 @@ for (const [id, e] of Object.entries(arten)) {
   if (e.freischaltung) {
     if (!arten[e.freischaltung.nach]) f(`${ort}: Freischaltung nach unbekanntem "${e.freischaltung.nach}"`)
     else if (arten[e.freischaltung.nach].folge_nur) f(`${ort}: Freischaltung nach Folgeeinsatz nicht möglich`)
-    if (!(e.freischaltung.sterne >= 1 && e.freischaltung.sterne <= R.STERNE.max)) f(`${ort}: Sterne für Freischaltung ungültig`)
+    // Seit 0.37.0 schaltet ein Tag mit lauter 5-Sterne-Einsätzen frei, eine eigene Sternegrenze gibt es nicht mehr
+    if (e.freischaltung.sterne !== undefined) f(`${ort}: freischaltung.sterne gibt es nicht mehr`)
   }
   for (const fo of e.folge || []) if (!arten[fo]) f(`${ort}: unbekannter Folgeeinsatz "${fo}"`)
   for (const r of e.regeln || []) if (!R.REGELN[r]) f(`${ort}: unbekannte Regel "${r}"`)

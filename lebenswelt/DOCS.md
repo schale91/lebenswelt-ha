@@ -19,6 +19,12 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `garmin_sensor` | Sensor mit den letzten Garmin-Aktivitäten. |
 | `wetter_entitaet` | Wetter-Entität für das Einsatzspiel (Standard `weather.forecast_home`). |
 | `warn_entitaet` | Sensor der Integration „DWD Weather Warnings“ (aktuelle Warnstufe) für echte Wetterwarnungen im Einsatzspiel. Leer: wird automatisch gesucht. |
+| `pegel_entitaet` | Wasserstand der Integration PEGELONLINE (cm) für die Elbe im Einsatzspiel. Leer: der erste Sensor `…_wasserstand` in cm. |
+| `abfall_kalender` | Kalender der Integration Waste Collection Schedule für die Müllabfuhr. Leer: wird automatisch gesucht. |
+| `kalender_entitaet` | Dein Kalender (z. B. `calendar.<name>`), daraus Arbeit, frei und Termine je Tag. Andere Kalender werden nicht gelesen. |
+| `regelarbeitszeit` | Arbeitszeit an Werktagen ohne Eintrag im Kalender, `HH:MM-HH:MM`. |
+| `paperless_url` | Adresse von Paperless-ngx im Netz der Apps (Standard: die App Paperless-ngx). |
+| `paperless_token` | API-Token aus Paperless (Profil → API-Token). Leer: keine Verbindung zu Paperless. |
 | `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
 | `app_token` | GitHub-Token nur zum Lesen dieses einen Repositorys. Ohne Token gibt es keine Updates per Knopf. |
 | `fcm_dienstkonto` | Schlüssel eines Firebase-Dienstkontos (der ganze JSON-Inhalt) für Push-Nachrichten an die Android-App. Leer = keine Push-Nachrichten. |
@@ -93,6 +99,16 @@ Einrichtung:
 
 Routen: `GET /api/lebenswelt/push` (eingerichtet, Zahl der Geräte), `POST /api/lebenswelt/push/test`.
 
+## Daten aus Home Assistant
+
+Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
+
+- **Elbpegel:** alle 10 Minuten mit dem Wetter. Die Elbe im Spiel folgt der Tide; bei echter Sturmflut kommen Deichverteidigung, Evakuierung und ab Level 30 die Großlage. `stand.pegel` im Einsatzstand.
+- **Müllabfuhr:** Termine stündlich aus dem Abfallkalender. Am Vorabend deine Tonne in der App an die Straße stellen, am Abholtag fahren die Müllautos. Erinnerung per Push um 18 Uhr. Die Deponie kaufst du im Store.
+- **Garmin:** Tageswerte für die Anzeige, ohne Wirkung auf das Spiel.
+- **Kalender:** je Tag Arbeit, Homeoffice, Dienst, Urlaub, Feiertag oder Wochenende, damit Claude weiß, wann du arbeitest.
+- **Paperless-ngx:** Posteingang alle 15 Minuten in den Eingang. Claude sucht, liest und bearbeitet Dokumente über die Routen unten (über den Connector „Homeassistent MCP“). Einrichtung: in Paperless unter Profil einen API-Token erzeugen und hier als `paperless_token` eintragen, App neu starten. Paperless lehnt Aufrufe über den Ingress anderer Apps ab, deshalb geht die Verbindung direkt über das Netz der Apps.
+
 ## Schnittstelle
 
 | Methode | Pfad | Zweck |
@@ -114,5 +130,18 @@ Routen: `GET /api/lebenswelt/push` (eingerichtet, Zahl der Geräte), `POST /api/
 | POST | `/api/lebenswelt/einsatz/kaufen` | `{art, id, ziel?, anzahl?, stufe?, org?, bewohner?}`; bucht Münzen im Spielstand ab. `art` auch `mitgliedschaft` (Feuerwehr für Polizei im Dorf, Sportverein); `bewohner: {org, beruf, arbeitgeber}` beim Bauplatz |
 | POST | `/api/lebenswelt/einsatz/einraeumen` | `{fahrzeug, geraet, anzahl, richtung: "ein"\|"aus"}` |
 | POST | `/api/lebenswelt/einsatz/personal` | `{ziel, name?, anrede?}` |
+| GET | `/api/lebenswelt/muell` | Müllabfuhr: Termine mit Tonnen und Müllautos, Serie, Deponie, Farben der Abfallarten |
+| POST | `/api/lebenswelt/muell/tonne` | `{haus?: "zuhause" \| Wohnhaus, art, rein?}` Tonne an die Straße stellen oder reinholen |
+| POST | `/api/lebenswelt/muell/abholen` | `{termin?}` XP einer erledigten Abfuhr abholen (ohne `termin` alle) |
+| POST | `/api/lebenswelt/muell/abgleich` | Abfallkalender sofort neu lesen |
+| GET | `/api/lebenswelt/garmin/heute` | Garmin-Tageswerte |
+| GET | `/api/lebenswelt/kalender?tage=14` | Tage mit Art (dienst, homeoffice, urlaub, feiertag, wochenende, arbeit), Zeiten und Terminen |
+| GET | `/api/lebenswelt/paperless` | eingerichtet, Adresse, letzter Abgleich |
+| GET | `/api/lebenswelt/paperless/suche?q=…&posteingang=1&seite=1` | Volltextsuche in Paperless |
+| GET | `/api/lebenswelt/paperless/dokument/{id}` | Dokument mit vollem Text und Notizen |
+| PATCH | `/api/lebenswelt/paperless/dokument/{id}` | `{titel, korrespondent, dokumenttyp, tags_dazu, tags_weg, datum, aus_posteingang, neu_anlegen}` |
+| POST | `/api/lebenswelt/paperless/dokument/{id}/notiz` | `{text}` |
+| POST | `/api/lebenswelt/paperless/dokument/{id}/aufgabe` | `{titel, faellig, sphaere, kontext}` Aufgabe mit Verweis auf das Dokument |
+| POST | `/api/lebenswelt/paperless/abgleich` | Posteingang sofort übernehmen |
 
 Das Einsatzspiel rechnet jede Minute im Hintergrund weiter. Es nutzt keine KI und verbraucht kein Guthaben. Die Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur lesbar.

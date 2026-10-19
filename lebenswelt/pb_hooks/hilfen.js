@@ -150,6 +150,21 @@ function verschmelze(alt, neu) {
   return ziel
 }
 
+/**
+ * Liest aus der REST-Schnittstelle von Home Assistant (über den Supervisor, nur mit homeassistant_api), z. B.
+ * "/states/sensor.x" oder "/calendars/calendar.x?start=…&end=…". Gibt das JSON zurück oder null.
+ */
+function ha(pfad, timeout) {
+  const token = $os.getenv("SUPERVISOR_TOKEN")
+  if (!token) return null
+  try {
+    const a = $http.send({ url: "http://supervisor/core/api" + pfad, headers: { Authorization: "Bearer " + token }, timeout: timeout || 15 })
+    return a.statusCode === 200 ? a.json : null
+  } catch (_) {
+    return null
+  }
+}
+
 const TYP_MUSTER = /^[a-z_]{1,40}$/
 const KEINE_PERSON = { fehler: "Keine Person bekannt. Über Home Assistant öffnen oder in der App-Konfiguration 'person' setzen." }
 
@@ -160,4 +175,4 @@ function spielDokument(typ) {
 }
 const NUR_LESEN = { fehler: "Dokumente des Einsatzspiels sind nur lesbar. Kaufen und Ändern geht über /api/lebenswelt/einsatz/." }
 
-module.exports = { optionen, erlaubt, benutzer, profilVon, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }
+module.exports = { ha, optionen, erlaubt, benutzer, profilVon, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }

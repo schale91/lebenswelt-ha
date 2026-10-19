@@ -3,6 +3,8 @@
 
 const R = require(`${__hooks}/einsatz/regelwerk.js`)
 const S = require(`${__hooks}/einsatz/simulation.js`)
+const P = require(`${__hooks}/einsatz/pegel.js`)
+const M = require(`${__hooks}/einsatz/muell.js`)
 
 const WELT = "einsatzwelt"
 const AUSGABEN_MAX = 500
@@ -57,6 +59,29 @@ function wetterVerlauf(app, besitzer) {
 function warnungenVon(app, besitzer) {
   const r = finde(app, besitzer, WELT, "warnungen")
   return r ? lies(r).liste || [] : []
+}
+
+/** Verlauf des Elbpegels (Dokument „pegel“, geschrieben vom Wetterabgleich). */
+function pegelVerlauf(app, besitzer) {
+  const r = finde(app, besitzer, WELT, "pegel")
+  return r ? lies(r) : null
+}
+
+/** Abfuhrtermine aus dem Abfallkalender (Dokument „abfall“, stündlich vom Abfallabgleich), null wenn unbekannt. */
+function abfallTermine(app, besitzer) {
+  const r = finde(app, besitzer, WELT, "abfall")
+  return r ? lies(r).termine || null : null
+}
+
+/** Zeiträume mit einer Unwetterwarnung ab UNWETTER_BEREITSCHAFT.stufe_min: [ab, bis] (für die Gerätehausbesetzung). */
+function bereitschaftAus(R, warnungen) {
+  const B = R.UNWETTER_BEREITSCHAFT
+  if (!B) return []
+  return warnungen
+    .filter((w) => (Number(w.stufe) || 0) >= B.stufe_min)
+    .map((w) => [w.ab, w.bis])
+    .sort((a, b) => a[0] - b[0])
+    .slice(-20)
 }
 
 /**
@@ -120,8 +145,14 @@ function aktuell(app, besitzer, jetzt) {
   const bekannt = new Set(stand.laufend.map((e) => e.id))
   // Echte Wetterwarnungen setzen das Spielwetter und passende Einsätze an
   stand = S.warnungenAusloesen(R, stand, warnungen, jetzt)
+  stand.bereitschaft = bereitschaftAus(R, warnungen)
+  // Echter Elbpegel: Lage, Hochwasser-Einsätze, Niedrigwasser beim Ansaugen (docs/integrationen/KONZEPT.md, 2)
+  stand = P.pegelAusloesen(R, stand, P.lage(R, pegelVerlauf(app, besitzer), jetzt), jetzt, S._intern.zufall)
+  // Müllabfuhr nach dem Abfallkalender: Tonnen, Müllautos, Deponie (Abschnitt 4)
+  stand = M.fortschreiben(R, stand, abfallTermine(app, besitzer), jetzt)
   stand = S.fortschreiben(stand, jetzt, (t) => S.wetterMitWarnungen(R, warnungen, verlauf, t), R)
   meldeNeue(app, besitzer, stand.laufend.filter((e) => !bekannt.has(e.id)), jetzt)
+  erinnereTonne(app, besitzer, R, stand, jetzt)
   for (const e of stand.abgeschlossen) schreibe(app, besitzer, "einsatz", e.id, e)
   stand.abgeschlossen = []
   if (stand.ausgaben.length > AUSGABEN_MAX) stand.ausgaben = stand.ausgaben.slice(-AUSGABEN_MAX)
@@ -145,6 +176,19 @@ function meldeNeue(app, besitzer, neu, jetzt) {
     }
   } catch (err) {
     console.log("Einsatzspiel: Push fehlgeschlagen", err)
+  }
+}
+
+/** Push am Vorabend, wenn deine Tonne noch nicht an der Straße steht (einmal je Termin). */
+function erinnereTonne(app, besitzer, R, stand, jetzt) {
+  const T = M.erinnerungFaellig(R, stand, jetzt)
+  if (!T) return
+  stand.muell.termine[T.id].erinnert = true
+  try {
+    const p = require(`${__hooks}/push.js`)
+    if (p.eingerichtet()) p.sende(app, besitzer, { titel: "Morgen: " + R.ABFALL.arten[T.art].name, text: "Tonne an die Straße stellen und in der Lebenswelt antippen.", kanal: "allgemein", id: "muell_" + T.id, ttl_s: Math.max(60, Math.round((T.abfuhr_ab - jetzt) / 1000)) })
+  } catch (err) {
+    console.log("Müllabfuhr: Push fehlgeschlagen", err)
   }
 }
 
@@ -194,7 +238,9 @@ function wetterAbgleich(app) {
   const w = wetterAus(j.state, j.attributes && j.attributes.temperature)
   const jetzt = Date.now()
   const dwd = dwdWarnungen(h, token)
+  const pegel = pegelMessung(h)
   for (const b of besitzerMitWelt(app)) {
+    if (pegel) schreibe(app, b, WELT, "pegel", P.verlaufNeu(R, pegelVerlauf(app, b), pegel.t, pegel.cm))
     if (dwd) {
       // Warnungen sammeln (eine Warnung kann sich ändern: Stufe und Ende aktualisieren), nach 14 Tagen vergessen
       const liste = warnungenVon(app, b).filter((x) => x.bis > jetzt - WETTER_TAGE * 24 * 3600 * 1000)
@@ -218,7 +264,51 @@ function wetterAbgleich(app) {
       schreibe(app, b, WELT, "wetter", { verlauf: verlauf })
     }
   }
-  return { ok: true, wetter: w, warnungen: dwd ? dwd.length : null }
+  return { ok: true, wetter: w, warnungen: dwd ? dwd.length : null, pegel: pegel ? pegel.cm : null }
+}
+
+/**
+ * Elbpegel aus Home Assistant (Option pegel_entitaet, sonst der erste Sensor „…_wasserstand“ in cm). Gibt {t, cm}
+ * zurück oder null. t ist die Zeit der Messung in Home Assistant, damit doppelte Lesungen nicht doppelt zählen.
+ */
+let pegelSensor = null
+function pegelMessung(h) {
+  let id = String(h.optionen().pegel_entitaet || "") || pegelSensor
+  if (!id) {
+    const alle = h.ha("/states") || []
+    const z = alle.find((x) => /^sensor\..*_wasserstand$/.test(x.entity_id) && x.attributes && x.attributes.unit_of_measurement === "cm")
+    if (!z) return null
+    id = pegelSensor = z.entity_id
+  }
+  const z = h.ha("/states/" + id)
+  const cm = z ? Number(z.state) : NaN
+  // last_reported (seit HA 2024.3) zählt auch Meldungen mit gleichem Wert, sonst die letzte Änderung
+  const t = z ? Date.parse(z.last_reported || z.last_updated || z.last_changed) : NaN
+  return Number.isFinite(cm) && Number.isFinite(t) ? { t, cm } : null
+}
+
+/**
+ * Abfuhrtermine der nächsten 14 Tage aus dem Abfallkalender (Option abfall_kalender, sonst der erste Kalender der
+ * Integration Waste Collection Schedule) für alle Personen mit Einsatzwelt. Stündlich.
+ */
+let abfallKalender = null
+function abfallAbgleich(app) {
+  const h = require(`${__hooks}/hilfen.js`)
+  let id = String(h.optionen().abfall_kalender || "") || abfallKalender
+  if (!id) {
+    const alle = h.ha("/states") || []
+    const z = alle.find((x) => x.entity_id.indexOf("calendar.waste_collection_schedule") === 0)
+    if (!z) return { ok: false, grund: "kein Abfallkalender gefunden" }
+    id = abfallKalender = z.entity_id
+  }
+  const jetzt = Date.now()
+  const von = new Date(jetzt - 24 * 3600 * 1000).toISOString()
+  const bis = new Date(jetzt + 14 * 24 * 3600 * 1000).toISOString()
+  const ereignisse = h.ha("/calendars/" + id + "?start=" + encodeURIComponent(von) + "&end=" + encodeURIComponent(bis), 20)
+  if (!Array.isArray(ereignisse)) return { ok: false, grund: "Kalender " + id + " nicht lesbar" }
+  const termine = M.termineAus(R, ereignisse)
+  for (const b of besitzerMitWelt(app)) schreibe(app, b, WELT, "abfall", { kalender: id, stand: jetzt, termine })
+  return { ok: true, kalender: id, termine: termine.length }
 }
 
 /**
@@ -254,4 +344,4 @@ function dwdWarnungen(h, token) {
 }
 
 
-module.exports = { regelwerkFuer, aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }
+module.exports = { abfallAbgleich, M, regelwerkFuer, aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }

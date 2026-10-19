@@ -1,5 +1,23 @@
 # Änderungen
 
+## 0.38.0
+
+Daten aus Home Assistant in der Lebenswelt (Konzept: `docs/integrationen/KONZEPT.md`).
+
+- **Elbpegel** (Integration PEGELONLINE, Option `pegel_entitaet`, sonst automatisch der erste Sensor `…_wasserstand` in cm): alle 10 Minuten mit dem Wetter gelesen. Der Abgleich erkennt Hoch- und Niedrigwasser je Tide und rechnet daraus das mittlere Tidehoch- und -niedrigwasser (Median der letzten 30 Tage, bis dahin Startwerte, `PEGEL` im Regelwerk). Stufen von Niedrigwasser bis sehr schwere Sturmflut (Sturmflut-Einteilung nach BSH als Spielwert), eine Lage hält 12 Stunden. `stand.pegel` mit Wert, Stufe, Lage, Tendenz.
+  - Deichverteidigung, Evakuierung bei Hochwasser und die Großlage Elbhochwasser kommen mit echten Pegeldaten nur noch bei passender Lage (`pegel_min`) und werden bei Beginn einer Sturmflut angesetzt; ohne Pegeldaten bleibt es bei den Monaten.
+  - Niedrigwasser: Ansaugen an der Elbe dauert 90 s länger.
+  - Neuer Ausbau **Pegelmonitor** (Gerätehaus ab Stufe 1): ab erhöhtem Hochwasser gehen Deich und Wasser im Keller 20 % schneller.
+- **Unwetter:** neue DWD-Regeln für Gewitter (ab Stufe 2) und Hitze. Neuer Ausbau **Gerätehausbesetzung bei Unwetter** (Gerätehaus ab Stufe 2): Bei einer Warnung ab Stufe 3 warten die Feuerwehrleute, die nicht arbeiten, am Gerätehaus (`stand.bereitschaft`).
+- **Müllabfuhr** nach dem Abfallkalender (Option `abfall_kalender`, sonst automatisch der Kalender von Waste Collection Schedule, stündlich): Am Vorabend stellen die Einwohner ihre Tonnen raus, deine stellst du in der App raus (`POST /api/lebenswelt/muell/tonne`, richtige Farbe 10 XP, Serienbonus ab 5 und 10, Nachbarschaftshilfe 3 XP). Am Abholtag fährt je Abfallart ein Müllauto von Haus zu Haus (`abfuhr.wege`, `abfuhr.halte`) und leert nur die passenden Tonnen. XP abholen mit `POST /api/lebenswelt/muell/abholen`. Push um 18 Uhr am Vorabend, wenn deine Tonne noch nicht draußen steht. `GET /api/lebenswelt/muell`, `POST /api/lebenswelt/muell/abgleich`.
+  - Neues Gebäude **Deponie** in vier Stufen (Wertstoffhof, Kompostplatz, Umladestation, Deponie), Orte `deponie` und `ortseingang`, Arbeitgeber „Entsorgungszentrum“. Die Müllautos fahren zur Deponie, wenn sie ihre Abfallart annimmt, sonst aus der Stadt; die Haufen stehen in `stand.muell.deponie`.
+  - Neue Einsätze: Brand im Müllfahrzeug (nur während einer Abfuhr, dort, wo das Auto hält), Brand auf dem Wertstoffhof, Brand auf der Deponie. In Nächten mit Tonnen an der Straße zusätzlich öfter Mülltonnenbrand. Das Müllauto ist ein Hindernis für Einsatzfahrten in der Nähe.
+  - Simulation: von außen angemeldete Einsätze an einer festen Stelle (`stand.angemeldet`, Ort `punkt:x:z`).
+- **Garmin:** `GET /api/lebenswelt/garmin/heute` (Schritte, Intensitätsminuten, Schlaf, Body Battery, HRV, Ruhepuls, Trainingsbereitschaft und mehr), um 23:55 Uhr als Dokument `garmin_tag`. Ohne Wirkung auf Spiel und XP.
+- **Kalender:** Option `kalender_entitaet` (nur dein Kalender) und `regelarbeitszeit`. `GET /api/lebenswelt/kalender?tage=14` ordnet jeden Tag ein (Dienst, Homeoffice, Urlaub, Feiertag in Niedersachsen, Wochenende, sonst Arbeit vermutet) mit Terminen; stündlich als Dokument `kalender`/`tage`.
+- **Paperless-ngx:** Optionen `paperless_url` und `paperless_token`. Der Posteingang kommt alle 15 Minuten in den Eingang der Lebenswelt (`quelle: paperless`, ohne vollen Text) und wird als verarbeitet markiert, wenn er in Paperless den Posteingang verlässt. Routen für Claude und die App: `/api/lebenswelt/paperless` (Stand), `/paperless/suche`, `/paperless/dokument/{id}` (lesen, `PATCH` ändern), `/notiz`, `/aufgabe`, `/paperless/abgleich`.
+- `werkzeuge/pruefe-regelwerk.js` verlangte noch die seit 0.37.0 entfallene Sternegrenze bei der Freischaltung und meldete deshalb 57 Fehler; die Prüfung ist angepasst.
+
 ## 0.37.0
 
 - Neue Einsatzarten werden nur noch nach einem Tag freigeschaltet, an dem jeder Einsatz 5 Sterne hatte, auch jeder wiederholte Katzen- oder Ruhestörungseinsatz; ein verfallener Einsatz zählt mit 0 Sternen. Wie bisher muss die vorausgesetzte Art an dem Tag erfolgreich gewesen sein, und abgerechnet wird um Mitternacht, also frühestens am Folgetag. Die Tagesbilanz zählt dafür `fuenf` (Einsätze mit 5 Sternen). Das Feld `sterne` in `freischaltung` entfällt.

@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.37.0"
+version: "0.38.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha
@@ -14,7 +14,7 @@ ingress_panel: false
 panel_icon: mdi:island
 # SQLite wird nur im gestoppten Zustand gesichert, damit das Backup in sich stimmig ist.
 backup: cold
-# Für den Garmin-Abgleich: liest Zustände aus Home Assistant (nur lesend genutzt).
+# Liest Zustände und Kalender aus Home Assistant (Garmin, Wetter, Pegel, Abfall, Kalender), nur lesend.
 homeassistant_api: true
 # Selbst-Update der App: schreibt neue Versionen nach www/lebenswelt-*/ (nur Ordner mit server.json).
 map:
@@ -28,6 +28,12 @@ options:
   garmin_sensor: sensor.garmin_connect_last_activities
   wetter_entitaet: weather.forecast_home
   warn_entitaet: ""
+  pegel_entitaet: ""
+  abfall_kalender: ""
+  kalender_entitaet: ""
+  regelarbeitszeit: "07:00-16:00"
+  paperless_url: "http://ca5234a0-paperless-ngx:80"
+  paperless_token: ""
   app_quelle: schale91/Claude@app-paket
   app_token: ""
   fcm_dienstkonto: ""
@@ -43,6 +49,12 @@ schema:
   garmin_sensor: str?
   wetter_entitaet: str?
   warn_entitaet: str?
+  pegel_entitaet: str?
+  abfall_kalender: str?
+  kalender_entitaet: str?
+  regelarbeitszeit: match(^\d{2}:\d{2}-\d{2}:\d{2}$)?
+  paperless_url: url?
+  paperless_token: password?
   app_quelle: str?
   app_token: password?
   fcm_dienstkonto: password?

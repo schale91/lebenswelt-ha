@@ -190,3 +190,67 @@ routerAdd("POST", "/api/lebenswelt/einsatz/neustart", (e) => {
   const st = ab.daten && ab.daten.state
   return e.json(200, { ok: true, erstattung: n.erstattung, muenzen: st ? st.muenzen : null, bekannt: st ? st.einsatzAusgabenBekannt || jetzt : jetzt, zeit: jetzt, stand: n.stand })
 })
+
+// ---------- Müllabfuhr nach dem echten Abfallkalender (docs/integrationen/KONZEPT.md, Abschnitt 4) ----------
+
+// Stand der Müllabfuhr: Termine mit Tonnen und Müllautos, Serie, Deponie (steht auch in /einsatz/stand unter stand.muell)
+routerAdd("GET", "/api/lebenswelt/muell", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  const jetzt = Date.now()
+  const a = d.aktuell(e.app, ich.id, jetzt)
+  return e.json(200, { jetzt, arten: d.R.ABFALL.arten, muell: a.stand.muell || null })
+})
+
+// Tonne an die Straße stellen oder reinholen: {haus: "zuhause" | Wohnhaus, art: "bio" | …, rein?: true}
+routerAdd("POST", "/api/lebenswelt/muell/tonne", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  const jetzt = Date.now()
+  const a = d.aktuell(e.app, ich.id, jetzt)
+  const r = d.M.tonne(d.regelwerkFuer(e.app, ich.id), a.stand, e.requestInfo().body || {}, jetzt)
+  if (r.fehler) return e.json(400, { fehler: r.fehler })
+  d.speichere(e.app, ich.id, r.stand)
+  return e.json(200, { ok: true, richtig: r.richtig, text: r.text, muell: r.stand.muell })
+})
+
+// XP einer erledigten Abfuhr abholen: {termin?} (ohne termin alle). Die App bucht die XP selbst.
+routerAdd("POST", "/api/lebenswelt/muell/abholen", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  const d = require(`${__hooks}/einsatz/dienst.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return e.json(401, h.KEINE_PERSON)
+  const body = e.requestInfo().body || {}
+  const a = d.aktuell(e.app, ich.id, Date.now())
+  const r = d.M.abholen(a.stand, body.termin ? String(body.termin) : null)
+  if (r.xp) d.speichere(e.app, ich.id, r.stand)
+  return e.json(200, { ok: true, xp: r.xp, muell: r.stand.muell })
+})
+
+// Abfallkalender sofort neu lesen (sonst stündlich)
+routerAdd("POST", "/api/lebenswelt/muell/abgleich", (e) => {
+  const h = require(`${__hooks}/hilfen.js`)
+  if (!h.benutzer(e)) return e.json(401, h.KEINE_PERSON)
+  return e.json(200, require(`${__hooks}/einsatz/dienst.js`).abfallAbgleich(e.app))
+})
+
+cronAdd("abfall", "7 * * * *", () => {
+  try {
+    require(`${__hooks}/einsatz/dienst.js`).abfallAbgleich($app)
+  } catch (err) {
+    console.log("Müllabfuhr: Abgleich fehlgeschlagen", err)
+  }
+})
+
+onBootstrap((e) => {
+  e.next()
+  try {
+    require(`${__hooks}/einsatz/dienst.js`).abfallAbgleich($app)
+  } catch (_) {
+    // beim Start nicht kritisch
+  }
+})
