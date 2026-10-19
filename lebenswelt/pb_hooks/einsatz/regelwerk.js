@@ -515,7 +515,7 @@ const BERUFE = {
   frei: { name: "wie bisher, immer verfügbar", nur_bestand: true },
   // Elbe Springs: Wer noch keinen Job hat, bleibt zu Hause (für die Feuerwehr immer erreichbar, bringt der Stadt nichts)
   ohne: { name: "noch ohne Job" },
-  dorf: { name: "arbeitet im Dorf", extra_s: 60, arbeitgeber: true }, // spielwert: Arbeit unterbrechen
+  dorf: { name: "arbeitet in der Stadt", extra_s: 60, arbeitgeber: true }, // spielwert: Arbeit unterbrechen
   auswaerts: { name: "pendelt zur Arbeit", abwesend: true },
   schicht: { name: "Schichtdienst an der Dienststelle", org: "polizei", schichtplan: ["frueh", "spaet", "nacht", "frei", "frei"] },
   rettungswache: { name: "Schichtdienst an der Rettungswache", org: "rettungsdienst", schichtplan: ["frueh", "frueh", "spaet", "spaet", "frei"] },

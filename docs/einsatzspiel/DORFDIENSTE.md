@@ -855,6 +855,14 @@ Alle Etappen D1 bis D9 sind damit umgesetzt. Offene Ideen stehen in Abschnitt 22
 
 ---
 
+## 26. Einwohner nur freigeschaltet (19.10.2026, Add-on 0.36.0)
+
+- **Start:** Beim Neustart in Elbe Springs (und einmalig für bestehende Stände, Merker `einwohner_start`) wohnen drei Feuerwehrleute in der Stadt, alle mit Beruf `ohne`. Bestehende Kräfte bleiben, verlieren aber ihren alten Job.
+- **Neue Organisation `buerger`:** Einwohner ohne Dienst. Sie können bis zu zwei Mitgliedschaften haben (etwa Feuerwehr im Ehrenamt).
+- **Beruf `ohne`:** zu Hause, für die Feuerwehr erreichbar, arbeitet nirgends. Jobs vergibt die App über `POST /einsatz/personal` mit `job` (`setzeJob`): `ohne` und `auswaerts` immer, `dorf` nur mit freier Stelle. Polizei, Rettungsdienst, Werkstatt und Bauhof haben ihren Dienst als festen Job.
+- **Arbeitgeber:** neue Sonderjobs (Gerätewart, Busfahrer, Briefträger, Lieferfahrer) und Katalog-Arbeitgeber, die nur zählen, wenn das Gebäude in der Stadt steht (Bäckerei, Diner, Tankstelle, Arztpraxis, Rathaus, Hafen, Bauernhof und andere). Orte `arbeit_<typ>`.
+- **Einladen:** `EINWOHNER = { grund: 3, je_level: 1, einzug_roh_je: 400 }`. Höchstens 3 + Level Einwohner; ein Wohnhaus kostet Bauplatz plus 400 × Einwohnerzahl als Rohwert. Name, Anrede und Aussehen kommen mit dem Auftrag. Figuren aus Geschichten ziehen mit der Kaufart `einladung` kostenlos und sofort ein (eine je Figur).
+
 ## 24. Quellen
 
 Rettungsdienst
