@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.37.0
+
+- Neue Einsatzarten werden nur noch nach einem Tag freigeschaltet, an dem jeder Einsatz 5 Sterne hatte, auch jeder wiederholte Katzen- oder Ruhestörungseinsatz; ein verfallener Einsatz zählt mit 0 Sternen. Wie bisher muss die vorausgesetzte Art an dem Tag erfolgreich gewesen sein, und abgerechnet wird um Mitternacht, also frühestens am Folgetag. Die Tagesbilanz zählt dafür `fuenf` (Einsätze mit 5 Sternen). Das Feld `sterne` in `freischaltung` entfällt.
+- Umstellung bestehender Spielstände (`freischaltregel: 2`): Einsatzarten, die nach der alten Regel (Tagesdurchschnitt) freigeschaltet, aber noch nicht gekauft wurden, müssen neu verdient werden. Gekaufte Arten bleiben.
+
 ## 0.36.1
 
 - Verletzungen nach Einsätzen gibt es erst ab dem Level, ab dem es das Krankenhaus gibt (`KRANKENHAUS.ab_level`, Level 24). Wer vorher noch im Krankenhaus lag, ist sofort wieder da.

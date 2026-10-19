@@ -1228,7 +1228,7 @@ const EINSATZARTEN = {
   },
   b_muelltonne: {
     org: "feuerwehr", name: "Mülltonnenbrand", stichwort: "B klein", preis: 120,
-    freischaltung: { nach: "tier_katze", sterne: 3 },
+    freischaltung: { nach: "tier_katze" },
     orte: ["muelltonnen"], intervall_min: 120, ablauf_min: 8, arbeit_min: 4, ziel_eintreffen_min: 6, wachstum: 0.08,
     mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] }, // auch Schnellangriff aus dem Tank
     optimal: { personen: 2, geraete: [[{ schaumloescher: 1 }, { d_strahlrohr: 1, d_schlauch: 2, standrohr: 1 }, { cm_strahlrohr: 1, c_schlauch_15: 2, standrohr: 1 }]] },
@@ -1238,7 +1238,7 @@ const EINSATZARTEN = {
   },
   b_hecke: {
     org: "feuerwehr", name: "Heckenbrand", stichwort: "B klein", preis: 300,
-    freischaltung: { nach: "b_muelltonne", sterne: 3 },
+    freischaltung: { nach: "b_muelltonne" },
     orte: ["hecke_nachbar", "hecke_werkstatt"], intervall_min: 180, ablauf_min: 12, arbeit_min: 10, ziel_eintreffen_min: 8, wachstum: 0.1,
     mindestens: { personen: 2, geraete: [[{ ts_alt: 1 }, { pfpn_1000: 1 }, { pfpn_1500: 1 }, { fahrzeug_wasser: 1 }], [{ c_schlauch_15: 2 }, { c_schlauch_20: 2 }], [{ cm_strahlrohr: 1 }, { c_hohlstrahlrohr: 1 }], [{ standrohr: 1 }, { fahrzeug_wasser: 1 }]] },
     optimal: { personen: 6, einheit: "staffel", geraete: [[{ verteiler: 1, b_schlauch: 1 }], [{ hrt: 1 }]] },
@@ -1250,7 +1250,7 @@ const EINSATZARTEN = {
   th_oelspur: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Ölspur auf der Fahrbahn", stichwort: "TH klein", preis: 250,
-    freischaltung: { nach: "tier_katze", sterne: 4 },
+    freischaltung: { nach: "tier_katze" },
     orte: ["hauptstrasse_ost", "hauptstrasse_west", "kreuzung"], intervall_min: 300, ablauf_min: 20, arbeit_min: 15, ziel_eintreffen_min: 10,
     mindestens: { personen: 2, geraete: [[{ oelbinder: 2 }], [{ besen_schaufel: 1 }]] },
     optimal: { personen: 4, geraete: [[{ oelbinder: 4 }], [{ leitkegel: 1 }], [{ warnleuchte: 1 }]] },
@@ -1263,7 +1263,7 @@ const EINSATZARTEN = {
   th_baum_strasse: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Baum auf Straße", stichwort: "TH Sturm", preis: 600,
-    freischaltung: { nach: "th_oelspur", sterne: 3 },
+    freischaltung: { nach: "th_oelspur" },
     orte: ["hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 600, ablauf_min: 30, arbeit_min: 20, ziel_eintreffen_min: 10,
     bedingung: { wetter: ["sturm"], sonst_faktor: 0.1 },
     mindestens: { personen: 2, qualifikation: { motorsaege: 1 }, geraete: [[{ motorsaege: 1 }]] },
@@ -1276,7 +1276,7 @@ const EINSATZARTEN = {
   },
   th_wasser_keller: {
     org: "feuerwehr", name: "Wasser im Keller", stichwort: "TH Wasser", preis: 500,
-    freischaltung: { nach: "b_hecke", sterne: 3 },
+    freischaltung: { nach: "b_hecke" },
     // Wohnhäuser der Karte (keller), tiefer gelegene häufiger (tief_gewicht, nur mit Geländehöhen der Karte)
     orte: ["nachbarhaus", "bibliothek"], ort_gruppen: ["keller"], tief_gewicht: 2, intervall_min: 720, ablauf_min: 40, arbeit_min: 25, ziel_eintreffen_min: 12,
     bedingung: { wetter: ["nass", "sturm"], sonst_faktor: 0.15 },
@@ -1288,7 +1288,7 @@ const EINSATZARTEN = {
   },
   th_graben: {
     org: "feuerwehr", name: "Graben übergelaufen", stichwort: "TH Wasser", preis: 600,
-    freischaltung: { nach: "th_wasser_keller", sterne: 3 },
+    freischaltung: { nach: "th_wasser_keller" },
     // Durchlässe, an denen der Graben unter einer Straße hindurchführt (durchlass); tiefer gelegene laufen eher über
     orte: ["graben"], ort_gruppen: ["durchlass"], tief_gewicht: 2, intervall_min: 1440, ablauf_min: 45, arbeit_min: 30, ziel_eintreffen_min: 15,
     bedingung: { wetter: ["nass", "sturm"], sonst_faktor: 0.05 },
@@ -1301,7 +1301,7 @@ const EINSATZARTEN = {
   },
   b_flaeche: {
     org: "feuerwehr", name: "Flächenbrand am Deich", stichwort: "B Wald/Fläche", preis: 900,
-    freischaltung: { nach: "b_hecke", sterne: 4 },
+    freischaltung: { nach: "b_hecke" },
     orte: ["wiese_deich"], intervall_min: 480, ablauf_min: 15, arbeit_min: 20, ziel_eintreffen_min: 10, wachstum: 0.15,
     bedingung: { wetter: ["hitze", "trocken"], monate: [4, 5, 6, 7, 8, 9], sonst_faktor: 0 },
     mindestens: { personen: 4, geraete: [[{ feuerpatsche: 4 }, { loeschrucksack: 2 }, { fahrzeug_wasser: 1, c_schlauch_15: 2, cm_strahlrohr: 1 }]] },
@@ -1313,7 +1313,7 @@ const EINSATZARTEN = {
   },
   th_eis: {
     org: "feuerwehr", name: "Person im Eis eingebrochen", stichwort: "TH Wasser Person", preis: 2500,
-    freischaltung: { nach: "th_wasser_keller", sterne: 4 },
+    freischaltung: { nach: "th_wasser_keller" },
     orte: ["elbe_ufer"], intervall_min: 1440, ablauf_min: 10, arbeit_min: 12, ziel_eintreffen_min: 7,
     bedingung: { wetter: ["glaette", "schnee"], monate: [12, 1, 2], sonst_faktor: 0 },
     mindestens: { personen: 3, qualifikation: { eisrettung: 1 }, geraete: [[{ eisretter: 1 }, { rettungsring: 1, wathose: 1 }]] },
@@ -1327,7 +1327,7 @@ const EINSATZARTEN = {
   b_pkw: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "PKW-Brand", stichwort: "B PKW", preis: 1200,
-    freischaltung: { nach: "b_hecke", sterne: 4 },
+    freischaltung: { nach: "b_hecke" },
     orte: ["hauptstrasse_ost", "festplatz", "marktplatz"], intervall_min: 600, ablauf_min: 12, arbeit_min: 12, ziel_eintreffen_min: 8, wachstum: 0.12,
     mindestens: { personen: 4, qualifikation: { agt: 2 }, geraete: [[{ pressluftatmer: 2 }], [{ fahrzeug_wasser: 1 }, { pfpn_1000: 1, standrohr: 1 }], [{ cm_strahlrohr: 1 }, { c_hohlstrahlrohr: 1 }], [{ c_schlauch_15: 2 }]] },
     optimal: { personen: 6, einheit: "staffel", geraete: [[{ schaummittel: 1 }], [{ leitkegel: 1 }], [{ hrt: 1 }], [{ atemschutzueberwachung: 1 }]] },
@@ -1339,7 +1339,7 @@ const EINSATZARTEN = {
   },
   bma: {
     org: "feuerwehr", name: "Brandmeldeanlage ausgelöst", stichwort: "BMA", preis: 1500,
-    freischaltung: { nach: "b_pkw", sterne: 3 },
+    freischaltung: { nach: "b_pkw" },
     orte: ["schule", "bibliothek"], intervall_min: 900, ablauf_min: 15, arbeit_min: 10, ziel_eintreffen_min: 8,
     mindestens: { personen: 4, qualifikation: { agt: 2, tf: 1 }, geraete: [[{ pressluftatmer: 2 }]] },
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ waermebildkamera: 1 }], [{ hrt: 2 }], [{ schiebleiter: 1 }, { dlak_fahrzeug: 1 }]] },
@@ -1351,7 +1351,7 @@ const EINSATZARTEN = {
   },
   th_tuer: {
     org: "feuerwehr", name: "Türöffnung, Person hilflos in Wohnung", stichwort: "TH Türöffnung", preis: 1100,
-    freischaltung: { nach: "p_hilflos", sterne: 3 },
+    freischaltung: { nach: "p_hilflos" },
     orte: ["nachbarhaus"], intervall_min: 720, ablauf_min: 15, arbeit_min: 8, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ tueroeffnung: 1 }, { steckleiter_teil: 2 }, { klappleiter: 1 }]] },
     optimal: { personen: 3, qualifikation: { erste_hilfe: 1 }, geraete: [[{ notfallrucksack: 1 }]] },
@@ -1362,7 +1362,7 @@ const EINSATZARTEN = {
   },
   fr_reanimation: {
     org: "feuerwehr", name: "First Responder: Person bewusstlos", stichwort: "FR", preis: 2000,
-    freischaltung: { nach: "th_tuer", sterne: 4 },
+    freischaltung: { nach: "th_tuer" },
     orte: ["marktplatz", "festplatz", "bibliothek"], intervall_min: 1440, ablauf_min: 6, arbeit_min: 10, ziel_eintreffen_min: 5,
     mindestens: { personen: 2, qualifikation: { erste_hilfe: 2 }, geraete: [[{ aed: 1 }], [{ notfallrucksack: 1 }]] },
     optimal: { personen: 3, geraete: [[{ hrt: 1 }]] },
@@ -1373,7 +1373,7 @@ const EINSATZARTEN = {
   th_vu: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Verkehrsunfall, Person eingeklemmt", stichwort: "TH VU P", preis: 4000,
-    freischaltung: { nach: "b_pkw", sterne: 4 },
+    freischaltung: { nach: "b_pkw" },
     orte: ["kreuzung", "hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 1440, ablauf_min: 15, arbeit_min: 25, ziel_eintreffen_min: 8,
     bedingung: { wetter: ["glaette", "schnee", "nass"], faktor: 2.5 },
     mindestens: { personen: 6, qualifikation: { th: 2, tf: 1 }, geraete: [[{ rettungssatz: 1 }], [{ pulverloescher: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }], [{ unterbaumaterial: 1 }]] },
@@ -1386,7 +1386,7 @@ const EINSATZARTEN = {
   },
   th_pferd: {
     org: "feuerwehr", name: "Pferd im Graben", stichwort: "TH Tier groß", preis: 3000,
-    freischaltung: { nach: "th_vu", sterne: 3 },
+    freischaltung: { nach: "th_vu" },
     orte: ["wiese_deich"], intervall_min: 2880, ablauf_min: 45, arbeit_min: 40, ziel_eintreffen_min: 15,
     mindestens: { personen: 6, qualifikation: { th: 1 }, geraete: [[{ hebegurte: 1 }]] },
     optimal: { personen: 9, geraete: [[{ beleuchtung: 1 }], [{ stromerzeuger: 1 }]] },
@@ -1396,7 +1396,7 @@ const EINSATZARTEN = {
   },
   abc_gas: {
     org: "feuerwehr", name: "Gasgeruch im Gebäude", stichwort: "ABC Gas", preis: 3500,
-    freischaltung: { nach: "bma", sterne: 4 },
+    freischaltung: { nach: "bma" },
     orte: ["nachbarhaus", "schule"], intervall_min: 2880, ablauf_min: 12, arbeit_min: 20, ziel_eintreffen_min: 8,
     mindestens: { personen: 6, qualifikation: { agt: 2, abc: 1 }, geraete: [[{ mehrgasmessgeraet: 1 }], [{ pressluftatmer: 2 }]] },
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ luefter: 1 }], [{ hrt: 2 }]] },
@@ -1409,7 +1409,7 @@ const EINSATZARTEN = {
   // Feuerwehr, große Lagen
   b_wohnung: {
     org: "feuerwehr", name: "Zimmerbrand, Menschenleben in Gefahr", stichwort: "B MiG", preis: 8000,
-    freischaltung: { nach: "bma", sterne: 4 },
+    freischaltung: { nach: "bma" },
     orte: ["nachbarhaus"], intervall_min: 4320, ablauf_min: 10, arbeit_min: 30, ziel_eintreffen_min: 8, wachstum: 0.2,
     mindestens: { personen: 9, einheit: "gruppe", qualifikation: { agt: 6, tf: 1, maschinist: 1 }, geraete: [[{ pressluftatmer: 6 }], [{ c_schlauch_15: 6 }], [{ cm_strahlrohr: 2 }, { c_hohlstrahlrohr: 2 }, { cm_strahlrohr: 1, c_hohlstrahlrohr: 1 }], [{ verteiler: 1 }], [{ fahrzeug_wasser: 1 }, { standrohr: 1, b_schlauch: 2 }]] },
     optimal: { personen: 22, einheit: "zug", qualifikation: { gf: 1 }, geraete: [[{ waermebildkamera: 1 }], [{ dlak_fahrzeug: 1 }, { schiebleiter: 1 }], [{ luefter: 1 }], [{ rauchvorhang: 1 }], [{ sprungpolster: 1 }], [{ hrt: 4 }], [{ rettungstuch: 1 }]] },
@@ -1421,7 +1421,7 @@ const EINSATZARTEN = {
   },
   b_scheune: {
     org: "feuerwehr", name: "Scheunenbrand", stichwort: "B landwirtschaftlich", preis: 12000,
-    freischaltung: { nach: "b_wohnung", sterne: 3 },
+    freischaltung: { nach: "b_wohnung" },
     orte: ["scheune"], intervall_min: 10080, ablauf_min: 15, arbeit_min: 90, ziel_eintreffen_min: 10, wachstum: 0.15,
     mindestens: { personen: 18, qualifikation: { agt: 4, gf: 1, maschinist: 2 }, geraete: [[{ b_schlauch: 15 }], [{ bm_strahlrohr: 1 }, { cm_strahlrohr: 3 }], [{ fahrzeug_wasser: 2 }], [{ pressluftatmer: 4 }]] },
     optimal: { personen: 30, qualifikation: { zf: 1 }, geraete: [[{ elw_fahrzeug: 1 }], [{ dlak_fahrzeug: 1 }], [{ tlf_fahrzeug: 1 }], [{ beleuchtung: 2 }], [{ a_saugschlauch: 4, saugkorb: 1 }]] },
@@ -1432,7 +1432,7 @@ const EINSATZARTEN = {
   },
   th_person_wasser: {
     org: "feuerwehr", name: "Person in der Elbe", stichwort: "TH Wasser Person", preis: 9000,
-    freischaltung: { nach: "th_eis", sterne: 4 },
+    freischaltung: { nach: "th_eis" },
     orte: ["elbe_ufer"], intervall_min: 10080, ablauf_min: 12, arbeit_min: 30, ziel_eintreffen_min: 8,
     bedingung: { monate: [5, 6, 7, 8, 9], sonst_faktor: 0.2 },
     mindestens: { personen: 3, qualifikation: { boot: 1 }, geraete: [[{ boot_fahrzeug: 1 }], [{ rettungsweste: 3 }]] },
@@ -1444,7 +1444,7 @@ const EINSATZARTEN = {
   },
   th_deich: {
     org: "feuerwehr", name: "Deichverteidigung bei Elbhochwasser", stichwort: "TH Hochwasser", preis: 20000,
-    freischaltung: { nach: "b_scheune", sterne: 3 },
+    freischaltung: { nach: "b_scheune" },
     // Qualmwasser tritt am landseitigen Deichfuß aus, am ehesten in den tiefsten Stellen (qualmwasser, tief_gewicht)
     orte: ["deich"], ort_gruppen: ["qualmwasser"], tief_gewicht: 3, intervall_min: 43200, ablauf_min: 120, arbeit_min: 240, ziel_eintreffen_min: 60,
     bedingung: { monate: [1, 2, 3, 4, 6], sonst_faktor: 0.1 },
@@ -1502,7 +1502,7 @@ const EINSATZARTEN = {
   },
   p_falschparker: {
     org: "polizei", name: "Falschparker in der Feuerwehrzufahrt", stichwort: "Verkehr", preis: 150, harmlos: true,
-    freischaltung: { nach: "p_ruhestoerung", sterne: 3 },
+    freischaltung: { nach: "p_ruhestoerung" },
     orte: ["schule", "marktplatz"], intervall_min: 480, ablauf_min: 45, arbeit_min: 10, ziel_eintreffen_min: 20,
     mindestens: { personen: 1 },
     optimal: { personen: 2 },
@@ -1514,7 +1514,7 @@ const EINSATZARTEN = {
   },
   p_hilflos: {
     org: "polizei", name: "Hilflose Person", stichwort: "Hilfeleistung", preis: 250,
-    freischaltung: { nach: "p_ruhestoerung", sterne: 3 },
+    freischaltung: { nach: "p_ruhestoerung" },
     orte: ["marktplatz", "festplatz", "deich"], intervall_min: 720, ablauf_min: 25, arbeit_min: 15, ziel_eintreffen_min: 12,
     bedingung: { wetter: ["glaette", "schnee"], faktor: 1.5 },
     mindestens: { personen: 2 },
@@ -1526,7 +1526,7 @@ const EINSATZARTEN = {
   p_vu_sachschaden: {
     ort_gruppen: ["strasse"],
     org: "polizei", name: "Verkehrsunfall mit Sachschaden", stichwort: "VU", preis: 400,
-    freischaltung: { nach: "p_falschparker", sterne: 3 },
+    freischaltung: { nach: "p_falschparker" },
     orte: ["kreuzung", "hauptstrasse_ost", "marktplatz"], intervall_min: 720, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 15,
     bedingung: { wetter: ["glaette", "schnee", "nass"], faktor: 3 },
     mindestens: { personen: 2 },
@@ -1538,7 +1538,7 @@ const EINSATZARTEN = {
   },
   p_ladendiebstahl: {
     org: "polizei", name: "Ladendiebstahl am Markt", stichwort: "Diebstahl", preis: 500,
-    freischaltung: { nach: "p_hilflos", sterne: 3 },
+    freischaltung: { nach: "p_hilflos" },
     orte: ["marktplatz"], intervall_min: 1440, ablauf_min: 30, arbeit_min: 25, ziel_eintreffen_min: 15,
     bedingung: { stunden: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], sonst_faktor: 0 },
     mindestens: { personen: 2 },
@@ -1550,7 +1550,7 @@ const EINSATZARTEN = {
   p_wild: {
     ort_gruppen: ["strasse"],
     org: "polizei", name: "Wildunfall", stichwort: "VU Wild", preis: 300,
-    freischaltung: { nach: "p_vu_sachschaden", sterne: 3 },
+    freischaltung: { nach: "p_vu_sachschaden" },
     orte: ["hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 1440, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 15,
     bedingung: { stunden: [5, 6, 7, 18, 19, 20, 21], faktor: 2 },
     mindestens: { personen: 1 },
@@ -1561,7 +1561,7 @@ const EINSATZARTEN = {
   },
   p_einbruch: {
     org: "polizei", name: "Wohnungseinbruch", stichwort: "Einbruch", preis: 1500,
-    freischaltung: { nach: "p_ladendiebstahl", sterne: 4 },
+    freischaltung: { nach: "p_ladendiebstahl" },
     orte: ["nachbarhaus"], intervall_min: 4320, ablauf_min: 60, arbeit_min: 45, ziel_eintreffen_min: 20,
     mindestens: { personen: 2 },
     optimal: { personen: 3, qualifikation: { spurensicherung: 1 }, geraete: [[{ spurensicherung: 1 }]] },
@@ -1571,7 +1571,7 @@ const EINSATZARTEN = {
   },
   p_schlaegerei: {
     org: "polizei", name: "Schlägerei beim Schützenfest", stichwort: "Körperverletzung", preis: 2500,
-    freischaltung: { nach: "p_einbruch", sterne: 3 },
+    freischaltung: { nach: "p_einbruch" },
     orte: ["festplatz"], intervall_min: 10080, ablauf_min: 10, arbeit_min: 40, ziel_eintreffen_min: 8,
     bedingung: { monate: [5, 6, 7, 8], wochentage: [5, 6], stunden: [21, 22, 23, 0, 1], sonst_faktor: 0 },
     mindestens: { personen: 4, qualifikation: { einsatztraining: 4 } },
@@ -1585,7 +1585,7 @@ const EINSATZARTEN = {
   p_trunkenheit: {
     ort_gruppen: ["strasse"],
     org: "polizei", name: "Trunkenheitsfahrt", stichwort: "Verkehr", preis: 1800,
-    freischaltung: { nach: "p_vu_sachschaden", sterne: 4 },
+    freischaltung: { nach: "p_vu_sachschaden" },
     orte: ["hauptstrasse_west", "kreuzung"], intervall_min: 4320, ablauf_min: 15, arbeit_min: 45, ziel_eintreffen_min: 10,
     bedingung: { stunden: [22, 23, 0, 1, 2, 3], sonst_faktor: 0.1 },
     mindestens: { personen: 2, geraete: [[{ atemalkohol: 1 }]] },
@@ -1596,7 +1596,7 @@ const EINSATZARTEN = {
   },
   p_vermisst: {
     org: "polizei", name: "Vermisstes Kind", stichwort: "Vermisstensuche", preis: 6000,
-    freischaltung: { nach: "p_schlaegerei", sterne: 3 },
+    freischaltung: { nach: "p_schlaegerei" },
     orte: ["deich", "elbe_ufer", "festplatz"], intervall_min: 20160, ablauf_min: 30, arbeit_min: 60, ziel_eintreffen_min: 10,
     mindestens: { personen: 4 },
     optimal: { personen: 10, qualifikation: { diensthund: 1, drohne: 1 }, geraete: [[{ drohne: 1 }], [{ hrt: 2 }], [{ beleuchtung: 1 }]] },
@@ -1619,7 +1619,7 @@ const EINSATZARTEN = {
   },
   ab_graben: {
     org: "werkstatt", name: "PKW im Graben", stichwort: "Bergung", preis: 600, harmlos: true,
-    freischaltung: { nach: "ab_panne", sterne: 3 },
+    freischaltung: { nach: "ab_panne" },
     orte: ["wiese_deich", "hauptstrasse_west"], intervall_min: 2880, ablauf_min: 120, arbeit_min: 40, ziel_eintreffen_min: 25,
     bedingung: { wetter: ["glaette", "schnee", "nass"], faktor: 2 },
     mindestens: { personen: 1, geraete: [[{ seilwinde: 1 }]] },
@@ -1630,7 +1630,7 @@ const EINSATZARTEN = {
   ab_lkw: {
     ort_gruppen: ["strasse"],
     org: "werkstatt", name: "LKW festgefahren bei Glätte", stichwort: "Bergung schwer", preis: 1500, sperrt: true,
-    freischaltung: { nach: "ab_graben", sterne: 3 },
+    freischaltung: { nach: "ab_graben" },
     orte: ["hauptstrasse_ost", "kreuzung"], intervall_min: 1440, ablauf_min: 120, arbeit_min: 50, ziel_eintreffen_min: 30,
     bedingung: { wetter: ["glaette", "schnee"], faktor: 1, sonst_faktor: 0 },
     mindestens: { personen: 2, qualifikation: { bergung: 1 }, geraete: [[{ drehkran: 1 }], [{ seilwinde: 1 }]] },
@@ -1701,7 +1701,7 @@ const EINSATZARTEN = {
   },
   rd_sturz: {
     org: "rettungsdienst", name: "Sturz im Haushalt", stichwort: "RD 1", preis: 500, patient: "gelb",
-    freischaltung: { nach: "rd_krankentransport", sterne: 3 }, quelle: "bedarfvo_rettd",
+    freischaltung: { nach: "rd_krankentransport" }, quelle: "bedarfvo_rettd",
     orte: ["marktplatz", "bibliothek", "hauptstrasse_ost"], intervall_min: 1440, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
     optimal: { personen: 2, geraete: [[{ tragestuhl: 1 }], [{ vakuumschienen: 1 }]] },
@@ -1710,7 +1710,7 @@ const EINSATZARTEN = {
   },
   rd_atemnot: {
     org: "rettungsdienst", name: "Atemnot", stichwort: "RD 1", preis: 800, patient: "gelb",
-    freischaltung: { nach: "rd_sturz", sterne: 3 },
+    freischaltung: { nach: "rd_sturz" },
     orte: ["marktplatz", "bibliothek", "schule"], intervall_min: 1440, ablauf_min: 30, arbeit_min: 20, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ sauerstoff: 1 }]] },
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }]] },
@@ -1719,7 +1719,7 @@ const EINSATZARTEN = {
   },
   rd_brustschmerz: {
     org: "rettungsdienst", name: "Brustschmerz", stichwort: "RD 2", preis: 1500, patient: "rot", notarzt: true,
-    freischaltung: { nach: "rd_atemnot", sterne: 4 },
+    freischaltung: { nach: "rd_atemnot" },
     orte: ["marktplatz", "festplatz", "bibliothek"], intervall_min: 2160, ablauf_min: 25, arbeit_min: 25, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ defi_monitor: 1 }]] },
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ sauerstoff: 1 }], [{ schaufeltrage: 1 }, { tragestuhl: 1 }]] },
@@ -1728,7 +1728,7 @@ const EINSATZARTEN = {
   },
   rd_reanimation: {
     org: "rettungsdienst", name: "Reanimation", stichwort: "RD 3", preis: 2500, patient: "rot", notarzt: true, reanimation: true,
-    freischaltung: { nach: "rd_brustschmerz", sterne: 4 }, quelle: "reanimation",
+    freischaltung: { nach: "rd_brustschmerz" }, quelle: "reanimation",
     orte: ["marktplatz", "festplatz", "schule", "bibliothek"], intervall_min: 4320, ablauf_min: 20, arbeit_min: 30, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ defi_monitor: 1 }]] },
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ beatmung: 1 }], [{ thoraxkompression: 1 }]] },
@@ -1737,7 +1737,7 @@ const EINSATZARTEN = {
   },
   rd_fieberkrampf: {
     org: "rettungsdienst", name: "Fieberkrampf beim Kind", stichwort: "RD 2 Kind", preis: 1500, patient: "rot", notarzt: true,
-    freischaltung: { nach: "rd_sturz", sterne: 4 },
+    freischaltung: { nach: "rd_sturz" },
     orte: ["schule", "festplatz", "marktplatz"], intervall_min: 4320, ablauf_min: 25, arbeit_min: 20, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }], [{ kinder_notfallset: 1 }]] },
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ sauerstoff: 1 }]] },
@@ -1746,7 +1746,7 @@ const EINSATZARTEN = {
   },
   rd_wespenstich: {
     org: "rettungsdienst", name: "Allergische Reaktion nach Wespenstich", stichwort: "RD 1", preis: 600, patient: "gelb",
-    freischaltung: { nach: "rd_krankentransport", sterne: 3 },
+    freischaltung: { nach: "rd_krankentransport" },
     orte: ["festplatz", "marktplatz", "sportplatz"], intervall_min: 1440, ablauf_min: 25, arbeit_min: 15, ziel_eintreffen_min: 8,
     bedingung: { monate: [6, 7, 8, 9], faktor: 1, sonst_faktor: 0 },
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
@@ -1756,7 +1756,7 @@ const EINSATZARTEN = {
   },
   rd_hitze: {
     org: "rettungsdienst", name: "Kreislaufprobleme bei Hitze", stichwort: "RD 1", preis: 600, patient: "gelb",
-    freischaltung: { nach: "rd_krankentransport", sterne: 3 },
+    freischaltung: { nach: "rd_krankentransport" },
     orte: ["festplatz", "sportplatz", "marktplatz"], intervall_min: 1440, ablauf_min: 30, arbeit_min: 15, ziel_eintreffen_min: 8,
     bedingung: { wetter: ["hitze"], faktor: 2, sonst_faktor: 0.3 },
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
@@ -1766,7 +1766,7 @@ const EINSATZARTEN = {
   },
   rd_sportverletzung: {
     org: "rettungsdienst", name: "Sportverletzung am Sportplatz", stichwort: "RD 1", preis: 700, patient: "gelb",
-    freischaltung: { nach: "rd_krankentransport", sterne: 3 }, braucht_gebaeude: { sportplatz: 3 },
+    freischaltung: { nach: "rd_krankentransport" }, braucht_gebaeude: { sportplatz: 3 },
     orte: ["sportplatz"], intervall_min: 2880, ablauf_min: 40, arbeit_min: 20, ziel_eintreffen_min: 8,
     mindestens: { personen: 2, geraete: [[{ rtw_fahrzeug: 1 }]] },
     optimal: { personen: 2, geraete: [[{ vakuumschienen: 1 }], [{ schaufeltrage: 1 }, { vakuummatratze: 1 }]] },
@@ -1775,7 +1775,7 @@ const EINSATZARTEN = {
   },
   rd_infektion: {
     org: "rettungsdienst", name: "Infektionstransport", stichwort: "KTP Infekt", preis: 900, patient: "gruen", infektion: true,
-    freischaltung: { nach: "rd_krankentransport", sterne: 4 },
+    freischaltung: { nach: "rd_krankentransport" },
     orte: ["bibliothek", "schule", "hauptstrasse_ost"], intervall_min: 2880, ablauf_min: 120, arbeit_min: 20, ziel_eintreffen_min: 30,
     mindestens: { personen: 2, geraete: [[{ ktw_fahrzeug: 1 }, { rtw_fahrzeug: 1 }], [{ infektionsschutz: 2 }]] },
     optimal: { personen: 2, qualifikation: { desinfektor: 1 } },
@@ -1917,7 +1917,7 @@ const EINSATZARTEN = {
   },
   th_stromausfall: {
     org: "feuerwehr", name: "Stromausfall im Ortsteil", stichwort: "TH Strom", preis: 1800, ab_level: 27,
-    freischaltung: { nach: "th_baum_strasse", sterne: 3 },
+    freischaltung: { nach: "th_baum_strasse" },
     orte: ["marktplatz", "schule", "bibliothek"], intervall_min: 4320, ablauf_min: 30, arbeit_min: 30, ziel_eintreffen_min: 10,
     bedingung: { wetter: ["sturm", "schnee", "glaette"], faktor: 2, sonst_faktor: 0.3 },
     mindestens: { personen: 2, geraete: [[{ stromerzeuger: 1 }, { beleuchtung: 1 }]] },
@@ -1939,7 +1939,7 @@ const EINSATZARTEN = {
   },
   dlrg_boot: {
     org: "dlrg", name: "Boot treibt manövrierunfähig", stichwort: "Wasser", preis: 1200,
-    freischaltung: { nach: "dlrg_badeunfall", sterne: 3 },
+    freischaltung: { nach: "dlrg_badeunfall" },
     orte: ["elbe_ufer"], intervall_min: 4320, ablauf_min: 40, arbeit_min: 40, ziel_eintreffen_min: 15,
     bedingung: { monate: [4, 5, 6, 7, 8, 9, 10], faktor: 1, sonst_faktor: 0.2 },
     mindestens: { personen: 3, qualifikation: { bootsfuehrer: 1 }, geraete: [[{ schlauchboot: 1 }, { motorrettungsboot: 1 }]] },
@@ -1949,7 +1949,7 @@ const EINSATZARTEN = {
   },
   dlrg_hochwasser: {
     org: "dlrg", name: "Evakuierung bei Hochwasser", stichwort: "Wasser Hochwasser", preis: 2500,
-    freischaltung: { nach: "dlrg_boot", sterne: 4 },
+    freischaltung: { nach: "dlrg_boot" },
     orte: ["deich"], intervall_min: 20160, ablauf_min: 60, arbeit_min: 90, ziel_eintreffen_min: 30,
     bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.1 },
     mindestens: { personen: 4, qualifikation: { bootsfuehrer: 1, stroemungsretter: 1 }, geraete: [[{ motorrettungsboot: 1 }], [{ stroemungsretter_set: 1 }]] },
@@ -1984,7 +1984,7 @@ const EINSATZARTEN = {
   },
   drk_sanwache: {
     org: "drk", name: "Sanitätswachdienst beim Dorffest", stichwort: "SanWD", preis: 500, harmlos: true,
-    freischaltung: { nach: "drk_hvo", sterne: 3 },
+    freischaltung: { nach: "drk_hvo" },
     orte: ["festplatz"], intervall_min: 90, ablauf_min: 120, arbeit_min: 240, ziel_eintreffen_min: 60, wache: true,
     bedingung: { wochentage: [6], stunden: [13], monate: [5, 6, 7, 8, 9], faktor: 1, sonst_faktor: 0 },
     mindestens: { personen: 2, qualifikation: { sanitaetshelfer: 2 }, geraete: [[{ notfallrucksack: 1 }]] },
@@ -1994,7 +1994,7 @@ const EINSATZARTEN = {
   },
   drk_sanwache_sport: {
     org: "drk", name: "Sanitätswachdienst beim Sportfest", stichwort: "SanWD", preis: 700, harmlos: true,
-    freischaltung: { nach: "drk_sanwache", sterne: 3 }, braucht_gebaeude: { sportplatz: 6 },
+    freischaltung: { nach: "drk_sanwache" }, braucht_gebaeude: { sportplatz: 6 },
     orte: ["sportplatz"], intervall_min: 90, ablauf_min: 120, arbeit_min: 180, ziel_eintreffen_min: 60, wache: true,
     bedingung: { wochentage: [6], stunden: [10], monate: [4, 5, 6, 7, 8, 9, 10], faktor: 1, sonst_faktor: 0 },
     mindestens: { personen: 2, qualifikation: { sanitaetshelfer: 2 }, geraete: [[{ notfallrucksack: 1 }]] },
@@ -2027,7 +2027,7 @@ const EINSATZARTEN = {
   th_vu_mehrere: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Verkehrsunfall mit mehreren Verletzten", stichwort: "TH VU 2", preis: 2500, ab_level: 16,
-    freischaltung: { nach: "th_vu", sterne: 4 },
+    freischaltung: { nach: "th_vu" },
     orte: ["kreuzung", "hauptstrasse_ost"], intervall_min: 4320, ablauf_min: 15, arbeit_min: 50, ziel_eintreffen_min: 10,
     mindestens: { personen: 6, qualifikation: { th: 2 }, geraete: [[{ rettungssatz: 1 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
     optimal: { personen: 9, einheit: "gruppe", qualifikation: { erste_hilfe: 2 }, geraete: [[{ notfallrucksack: 1 }], [{ beleuchtung: 1 }], [{ hrt: 2 }]] },
@@ -2039,7 +2039,7 @@ const EINSATZARTEN = {
   th_motorrad: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Motorradunfall nach Wildwechsel", stichwort: "TH VU", preis: 1200, ab_level: 16,
-    freischaltung: { nach: "th_vu", sterne: 3 },
+    freischaltung: { nach: "th_vu" },
     orte: ["hauptstrasse_west", "wiese_deich"], intervall_min: 2880, ablauf_min: 15, arbeit_min: 25, ziel_eintreffen_min: 10,
     bedingung: { monate: [4, 5, 6, 7, 8, 9, 10], faktor: 1, sonst_faktor: 0.2 },
     mindestens: { personen: 2, geraete: [[{ oelbinder: 2 }], [{ leitkegel: 1 }, { warnleuchte: 1 }]] },
@@ -2051,7 +2051,7 @@ const EINSATZARTEN = {
   },
   th_trunkenheit: {
     org: "feuerwehr", name: "Trunkenheitsfahrt endet im Graben", stichwort: "TH VU", preis: 1000, ab_level: 16,
-    freischaltung: { nach: "th_vu", sterne: 3 },
+    freischaltung: { nach: "th_vu" },
     orte: ["wiese_deich", "hauptstrasse_west"], intervall_min: 2880, ablauf_min: 20, arbeit_min: 20, ziel_eintreffen_min: 10,
     bedingung: { stunden: [22, 23, 0, 1, 2, 3, 4], faktor: 1, sonst_faktor: 0.3 },
     mindestens: { personen: 2, geraete: [[{ leitkegel: 1 }, { warnleuchte: 1 }]] },
@@ -2063,7 +2063,7 @@ const EINSATZARTEN = {
   },
   th_stalldach: {
     org: "feuerwehr", name: "Person auf dem Stalldach verletzt", stichwort: "TH Höhe", preis: 1500, ab_level: 16,
-    freischaltung: { nach: "b_scheune", sterne: 3 },
+    freischaltung: { nach: "b_scheune" },
     orte: ["scheune"], intervall_min: 4320, ablauf_min: 20, arbeit_min: 40, ziel_eintreffen_min: 10,
     mindestens: { personen: 4, geraete: [[{ schiebleiter: 1 }, { multifunktionsleiter: 1 }, { dlak_fahrzeug: 1 }]] },
     optimal: { personen: 6, qualifikation: { erste_hilfe: 1 }, geraete: [[{ dlak_fahrzeug: 1 }], [{ notfallrucksack: 1 }]] },
@@ -2074,7 +2074,7 @@ const EINSATZARTEN = {
   },
   fr_reanimation_sport: {
     org: "feuerwehr", name: "Reanimation am Sportplatz", stichwort: "FR", preis: 1500, ab_level: 16,
-    freischaltung: { nach: "fr_reanimation", sterne: 4 },
+    freischaltung: { nach: "fr_reanimation" },
     orte: ["sportplatz"], intervall_min: 4320, ablauf_min: 6, arbeit_min: 10, ziel_eintreffen_min: 5,
     mindestens: { personen: 2, qualifikation: { erste_hilfe: 2 }, geraete: [[{ aed: 1 }], [{ notfallrucksack: 1 }]] },
     optimal: { personen: 3, geraete: [[{ hrt: 1 }]] },
@@ -2086,7 +2086,7 @@ const EINSATZARTEN = {
   // gemeinsam.ziel_min: so viele Minuten nach dem Eintreffen der Feuerwehr soll die Polizei da sein (Zusammenarbeit)
   th_kind_auto: {
     org: "feuerwehr", name: "Kind im Auto eingeschlossen", stichwort: "TH Kind Pkw", preis: 1500, ab_level: 8,
-    freischaltung: { nach: "th_tuer", sterne: 3 },
+    freischaltung: { nach: "th_tuer" },
     orte: ["marktplatz", "festplatz", "schule"], intervall_min: 2880, ablauf_min: 10, arbeit_min: 5, ziel_eintreffen_min: 6,
     bedingung: { monate: [5, 6, 7, 8, 9], faktor: 1, sonst_faktor: 0.2 },
     mindestens: { personen: 1, geraete: [[{ tueroeffnung: 1 }]] },
@@ -2098,7 +2098,7 @@ const EINSATZARTEN = {
   th_rinder: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Rinder auf der Straße", stichwort: "TH Tier", preis: 1200, ab_level: 8, harmlos: true,
-    freischaltung: { nach: "th_pferd", sterne: 3 },
+    freischaltung: { nach: "th_pferd" },
     orte: ["hauptstrasse_ost", "kreuzung", "wiese_deich"], intervall_min: 4320, ablauf_min: 25, arbeit_min: 20, ziel_eintreffen_min: 12,
     mindestens: { personen: 3 },
     optimal: { personen: 6, geraete: [[{ leitkegel: 1 }], [{ warnleuchte: 1 }]] },
@@ -2109,7 +2109,7 @@ const EINSATZARTEN = {
   },
   b_brandserie: {
     org: "feuerwehr", name: "Mülltonnenbrand in Serie", stichwort: "B klein Serie", preis: 900, ab_level: 8,
-    freischaltung: { nach: "b_muelltonne", sterne: 4 },
+    freischaltung: { nach: "b_muelltonne" },
     orte: ["muelltonnen", "festplatz", "schule"], intervall_min: 1440, ablauf_min: 8, arbeit_min: 5, ziel_eintreffen_min: 6, wachstum: 0.08,
     bedingung: { stunden: [21, 22, 23, 0, 1, 2, 3], faktor: 2, sonst_faktor: 0.3 },
     mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] }, // auch Schnellangriff aus dem Tank
@@ -2122,7 +2122,7 @@ const EINSATZARTEN = {
   th_unfallflucht: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Ölspur nach Unfallflucht", stichwort: "TH klein", preis: 1100, ab_level: 8,
-    freischaltung: { nach: "th_oelspur", sterne: 3 },
+    freischaltung: { nach: "th_oelspur" },
     orte: ["hauptstrasse_ost", "hauptstrasse_west", "kreuzung"], intervall_min: 2880, ablauf_min: 20, arbeit_min: 15, ziel_eintreffen_min: 10,
     mindestens: { personen: 2, geraete: [[{ oelbinder: 2 }], [{ besen_schaufel: 1 }]] },
     optimal: { personen: 4, geraete: [[{ oelbinder: 4 }], [{ leitkegel: 1 }], [{ warnleuchte: 1 }]] },
@@ -2133,7 +2133,7 @@ const EINSATZARTEN = {
   },
   abc_raeumung: {
     org: "feuerwehr", name: "Gasgeruch, Häuser räumen", stichwort: "ABC Gas Räumung", preis: 5000, ab_level: 8,
-    freischaltung: { nach: "abc_gas", sterne: 4 },
+    freischaltung: { nach: "abc_gas" },
     orte: ["nachbarhaus", "schule"], intervall_min: 5760, ablauf_min: 12, arbeit_min: 30, ziel_eintreffen_min: 8,
     mindestens: { personen: 6, qualifikation: { agt: 2, abc: 1 }, geraete: [[{ mehrgasmessgeraet: 1 }], [{ pressluftatmer: 2 }]] },
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ luefter: 1 }], [{ hrt: 2 }]] },
@@ -2146,7 +2146,7 @@ const EINSATZARTEN = {
   abc_lkw: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "LKW verliert Flüssigkeit (Gefahrgut)", stichwort: "ABC Gefahrgut", preis: 7000, ab_level: 8,
-    freischaltung: { nach: "abc_gas", sterne: 4 },
+    freischaltung: { nach: "abc_gas" },
     orte: ["hauptstrasse_ost", "hauptstrasse_west"], intervall_min: 7200, ablauf_min: 15, arbeit_min: 40, ziel_eintreffen_min: 10,
     mindestens: { personen: 6, qualifikation: { abc: 1, agt: 2 }, geraete: [[{ mehrgasmessgeraet: 1 }], [{ oelbinder: 4 }]] },
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ pressluftatmer: 2 }], [{ leitkegel: 1 }], [{ hrt: 2 }]] },
@@ -2158,7 +2158,7 @@ const EINSATZARTEN = {
   },
   b_leerstand: {
     org: "feuerwehr", name: "Brand in leerstehendem Haus", stichwort: "B Gebäude", preis: 6000, ab_level: 8,
-    freischaltung: { nach: "b_wohnung", sterne: 3 },
+    freischaltung: { nach: "b_wohnung" },
     orte: ["scheune", "nachbarhaus"], intervall_min: 7200, ablauf_min: 12, arbeit_min: 35, ziel_eintreffen_min: 8, wachstum: 0.15,
     mindestens: { personen: 6, geraete: [[{ ts_alt: 1 }, { pfpn_1000: 1 }, { pfpn_1500: 1 }, { fahrzeug_wasser: 1 }], [{ c_schlauch_15: 4 }, { c_schlauch_20: 3 }], [{ cm_strahlrohr: 2 }, { c_hohlstrahlrohr: 2 }]] },
     optimal: { personen: 9, einheit: "gruppe", geraete: [[{ verteiler: 1 }], [{ b_schlauch: 2 }], [{ waermebildkamera: 1 }]] },
@@ -2170,7 +2170,7 @@ const EINSATZARTEN = {
   },
   silvester: {
     org: "feuerwehr", name: "Silvesternacht: Kleinbrände", stichwort: "B klein", preis: 800, ab_level: 8,
-    freischaltung: { nach: "b_hecke", sterne: 3 },
+    freischaltung: { nach: "b_hecke" },
     orte: ["muelltonnen", "hecke_nachbar", "festplatz"], intervall_min: 60, ablauf_min: 10, arbeit_min: 6, ziel_eintreffen_min: 8, wachstum: 0.1,
     bedingung: { daten: ["12-31", "01-01"], stunden: [22, 23, 0, 1, 2], faktor: 1, sonst_faktor: 0 },
     mindestens: { personen: 1, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { loeschrucksack: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] }, // auch Schnellangriff aus dem Tank

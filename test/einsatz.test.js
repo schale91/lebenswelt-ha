@@ -97,6 +97,7 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
   assert.ok(!nachts.einsatzarten.b_muelltonne, "freigeschaltet heißt noch nicht gekauft")
   const d = nachts.tage[e.tag]
   assert.ok(d.abgerechnet && d.durchschnitt >= 4.5 && d.xp > 0, JSON.stringify(d))
+  assert.equal(d.fuenf, d.anzahl, "jeder Einsatz des Tages hatte 5 Sterne")
 })
 
 test("Der Baum am Markt ist zu Fuß vom Feuerwehrhaus nicht in 5 Minuten zu schaffen: zu spät, aber nicht verfallen", () => {
@@ -361,11 +362,11 @@ test("Tagesbilanz: Durchschnitt aller Einsätze des Tages, verfallene zählen mi
   const s = S.neuerStand(R, T0, 31)
   for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
   const tag = S._intern.tagVon(T0)
-  s.tage = { [tag]: { anzahl: 3, sterne: 4 + 3 + 0, erfolgreich: 2, arten: ["tier_katze"], abgerechnet: false } }
+  s.tage = { [tag]: { anzahl: 3, sterne: 4 + 3 + 0, erfolgreich: 2, fuenf: 0, arten: ["tier_katze"], abgerechnet: false } }
   const nachts = S.fortschreiben(s, S._intern.tagesende(tag) + MIN, trocken, R)
   const d = nachts.tage[tag]
   assert.equal(d.durchschnitt, 2.3)
-  assert.ok(!nachts.freigeschaltet.includes("b_muelltonne"), "2,3 Sterne reichen nicht für 3")
+  assert.ok(!nachts.freigeschaltet.includes("b_muelltonne"), "nicht jeder Einsatz hatte 5 Sterne")
   assert.ok(d.xp > 0 && d.xp <= 150)
 })
 
@@ -461,4 +462,47 @@ test("Löschwasser: gekaufte Hydranten stehen an den Hydrantenplätzen", () => {
   const RO = Object.assign({}, R, { HYDRANT_PLAETZE: [] })
   const r = S.kaufe(S.neuerStand(RO, T0, 53), { art: "ausbau", id: "hydrant_b" }, T0, RO)
   assert.match(r.fehler, /Platz/)
+})
+
+/** Stand mit einem Tag voller erfolgreicher Katzeneinsätze; `fuenf` davon mit 5 Sternen */
+function tagMit(anzahl, fuenf, extra) {
+  const s = S.neuerStand(R, T0, 31)
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
+  const tag = S._intern.tagVon(T0)
+  s.tage = { [tag]: Object.assign({ anzahl, sterne: fuenf * 5 + (anzahl - fuenf) * 4, erfolgreich: anzahl, fuenf, arten: ["tier_katze"], abgerechnet: false }, extra) }
+  return { nachts: S.fortschreiben(s, S._intern.tagesende(tag) + MIN, trocken, R), tag }
+}
+
+test("Freischaltung: nur nach einem Tag, an dem jeder Einsatz 5 Sterne hatte", () => {
+  const alle = tagMit(6, 6)
+  assert.ok(alle.nachts.freigeschaltet.includes("b_muelltonne"), "sechs von sechs mit 5 Sternen")
+  assert.ok(alle.nachts.tage[alle.tag].freigeschaltet.includes("b_muelltonne"), "steht in der Tagesbilanz")
+  const fastAlle = tagMit(6, 5)
+  assert.ok(fastAlle.nachts.tage[fastAlle.tag].durchschnitt >= 4.5)
+  assert.ok(!fastAlle.nachts.freigeschaltet.includes("b_muelltonne"), "ein Einsatz mit 4 Sternen verhindert die Freischaltung")
+})
+
+test("Freischaltung: ein verfallener Einsatz verhindert sie, Tage ohne Zähler zählen nicht", () => {
+  const verfallen = tagMit(4, 3, { sterne: 15, erfolgreich: 3 })
+  assert.ok(!verfallen.nachts.freigeschaltet.includes("b_muelltonne"))
+  const altbestand = tagMit(3, 3, { fuenf: undefined })
+  assert.ok(!altbestand.nachts.freigeschaltet.includes("b_muelltonne"), "ohne Zähler aus der Zeit vor der Regel")
+})
+
+test("Umstellung: nach alter Regel freigeschaltete, nicht gekaufte Arten müssen neu verdient werden", () => {
+  const s = S.neuerStand(R, T0, 31)
+  delete s.freischaltregel
+  const tag = S._intern.tagVon(T0 - 86400000)
+  s.freigeschaltet.push("b_muelltonne", "b_hecke")
+  s.tage = { [tag]: { anzahl: 26, sterne: 101, erfolgreich: 26, arten: ["tier_katze"], abgerechnet: true, freigeschaltet: ["b_muelltonne"] } }
+  s.einsatzarten.b_hecke = { anzahl: 0, erfolgreich: 0, naechster: T0 + 1e12 }
+  const n = S.fortschreiben(s, T0 + MIN, trocken, R)
+  assert.ok(!n.freigeschaltet.includes("b_muelltonne"), "nicht gekauft: wieder gesperrt")
+  assert.ok(n.freigeschaltet.includes("b_hecke"), "schon gekauft: bleibt")
+  assert.ok(n.freigeschaltet.includes("tier_katze"), "Startarten bleiben")
+  assert.deepEqual(n.tage[tag].freigeschaltet, [])
+  assert.equal(n.freischaltregel, 2)
+  // Nur einmal: was danach nach der neuen Regel freigeschaltet wird, bleibt
+  n.freigeschaltet.push("b_muelltonne")
+  assert.ok(S.fortschreiben(n, T0 + 2 * MIN, trocken, R).freigeschaltet.includes("b_muelltonne"))
 })
