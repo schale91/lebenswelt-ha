@@ -596,9 +596,17 @@ function imKrankenhaus(p, t) {
  * Regelwerk, höher bei Brand und technischer Hilfe. Niemand stirbt: Die Person liegt im Krankenhaus und ist danach
  * wieder da. Gibt die Verletzten zurück.
  */
+const verletzungenAn = (R, s) => Boolean(R.KRANKENHAUS) && (s.level || 0) >= R.KRANKENHAUS.ab_level
+
+/** Vor dem Krankenhaus-Level liegt niemand im Krankenhaus: alte Aufenthalte enden sofort */
+function krankenhausVorLevel(R, s) {
+  if (verletzungenAn(R, s)) return
+  for (const p of s.personal) if (p.krankenhaus) p.krankenhaus = null
+}
 function verletzungen(R, s, e, ende) {
   const K = R.KRANKENHAUS
-  if (!K || !e.plan) return []
+  // Verletzungen gibt es erst ab dem Level, ab dem es das Krankenhaus gibt (Entscheidung vom 19.10.2026)
+  if (!K || !e.plan || !verletzungenAn(R, s)) return []
   const faktor = Object.entries(K.chance_faktor || {}).reduce((f, [k, v]) => (String(e.art).indexOf(k) === 0 ? Math.max(f, v) : f), 1)
   const kh = R.GEBIETE && Object.entries(R.GEBIETE.besonders || {}).find(([, g]) => g.art === "krankenhaus")
   const dorf = (s.level || 0) >= K.ab_level && (!kh || (s.gebiete || []).indexOf(kh[0]) >= 0)
@@ -2360,6 +2368,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   bauFelder(s)
   rueckkehrerEinziehen(R, s, s.bis)
   einwohnerStart(R, s, s.bis)
+  krankenhausVorLevel(R, s)
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)

@@ -22,6 +22,7 @@ const einsatz = (s, id, art) => ({ id, art, plan: { personen: s.personal.map((p)
 
 test("Mit Chance 1 liegt jeder Beteiligte im Kreiskrankenhaus und fällt aus, danach ist er wieder da", () => {
   const s = stand()
+  s.level = R.KRANKENHAUS.ab_level
   const K = { ...R.KRANKENHAUS, chance: 1 }
   const R2 = { ...R, KRANKENHAUS: K }
   const verletzt = S._intern.verletzungen(R2, s, einsatz(s, "e1", "b_hecke"), T0 + STD)
@@ -47,16 +48,29 @@ test("Mit eigenem Krankenhaus im Dorf (ab Level) geht es schneller; ohne Glück 
   assert.equal(s.personal[0].krankenhaus.ort, R.KRANKENHAUS.name_dorf)
   assert.equal(s.personal[0].krankenhaus.bis, T0 + R.KRANKENHAUS.dauer_h.dorf * STD)
   const s2 = stand()
+  s2.level = R.KRANKENHAUS.ab_level
   const R3 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 0 } }
   assert.deepEqual(S._intern.verletzungen(R3, s2, einsatz(s2, "e3", "b_hecke"), T0), [])
 })
 
 test("Die Chance ist klein: über viele Einsätze nur wenige Verletzte", () => {
   const s = stand()
+  s.level = R.KRANKENHAUS.ab_level
   let n = 0
   for (let i = 0; i < 400; i++) {
     for (const p of s.personal) p.krankenhaus = null
     n += S._intern.verletzungen(R, s, einsatz(s, "x" + i, "tier_katze"), T0).length
   }
   assert.ok(n > 0 && n < 40, "Verletzte: " + n)
+})
+
+test("Vor dem Krankenhaus-Level verletzt sich niemand, und wer noch im Krankenhaus liegt, ist sofort wieder da", () => {
+  const s = stand()
+  s.level = R.KRANKENHAUS.ab_level - 1
+  const R2 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 1 } }
+  assert.deepEqual(S._intern.verletzungen(R2, s, einsatz(s, "e9", "b_hecke"), T0), [])
+  s.personal[0].krankenhaus = { bis: T0 + 48 * STD, grund: "Rücken verhoben", ort: R.KRANKENHAUS.name_stadt, seit: T0 }
+  const w = S.fortschreiben(s, T0 + 60000, () => "trocken", R)
+  assert.ok(!w.personal[0].krankenhaus)
+  assert.equal(S._intern.einsatzbereitFuer(R, w.personal[0], "feuerwehr", T0 + 120000, w), true)
 })

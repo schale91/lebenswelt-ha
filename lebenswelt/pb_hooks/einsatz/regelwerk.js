@@ -2378,7 +2378,7 @@ const VERFALL = {
  * oder aus der Stadt. Patient: Minuten bis zur Versorgung je Dringlichkeit [stabil bis, verzögert bis].
  */
 /**
- * Krankenhaus: Bei jedem Einsatz kann sich eine Einsatzkraft leicht verletzen (Chance je Person). Niemand stirbt;
+ * Krankenhaus: Ab ab_level kann sich bei jedem Einsatz eine Einsatzkraft leicht verletzen (Chance je Person), vorher nie. Niemand stirbt;
  * sie liegt eine Weile im Krankenhaus und fällt so lange aus. Bis das Dorf ein eigenes Krankenhaus hat (ab_level,
  * später im Erweiterungsgebiet), geht es ins Kreiskrankenhaus in der Stadt, und das dauert länger.
  */
