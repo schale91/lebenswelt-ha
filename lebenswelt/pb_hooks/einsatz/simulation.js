@@ -486,6 +486,8 @@ function dwdAus(zustaende) {
 function neuerStand(R, jetzt, saat) {
   const s = {
     version: 2,
+    // Freischaltung neuer Einsatzarten nur nach einem Tag, an dem jeder Einsatz 5 Sterne hatte
+    freischaltregel: 2,
     level: 0,
     bis: jetzt,
     zufall: saat === undefined ? jetzt % 100000 : saat,
@@ -2233,6 +2235,7 @@ function abschliessen(R, s, e) {
   const d = s.tage[tag] || (s.tage[tag] = { anzahl: 0, sterne: 0, erfolgreich: 0, arten: [], abgerechnet: false })
   d.anzahl += 1
   d.sterne += e.bewertung.sterne
+  if (e.bewertung.sterne >= 5) d.fuenf = (d.fuenf || 0) + 1
   if (e.status === "abgeschlossen") {
     d.erfolgreich += 1
     if (d.arten.indexOf(e.art) < 0) d.arten.push(e.art)
@@ -2246,8 +2249,26 @@ function abschliessen(R, s, e) {
 
 /**
  * Abrechnung eines Tages um Mitternacht: Durchschnitt der Sterne aller Einsätze, XP daraus, und Freischaltung
- * neuer Einsatzarten, wenn der Durchschnitt reicht und die vorausgesetzte Art an diesem Tag erfolgreich war.
+ * neuer Einsatzarten. Freigeschaltet wird nur nach einem Tag, an dem jeder Einsatz 5 Sterne hatte (auch jeder
+ * wiederholte und jeder verfallene zählt) und die vorausgesetzte Art erfolgreich war, also frühestens am Folgetag.
  */
+/** Hatte jeder Einsatz des Tages 5 Sterne? Tage aus der Zeit vor der Regel (ohne Zähler) zählen nicht. */
+function tagMitNurFuenf(d) {
+  return d.anzahl > 0 && d.fuenf === d.anzahl
+}
+
+/**
+ * Umstellung auf die Regel "ein Tag nur mit 5-Sterne-Einsätzen": Was nach der alten Regel (Tagesdurchschnitt)
+ * freigeschaltet, aber noch nicht gekauft wurde, muss neu verdient werden.
+ */
+function freischaltregel(R, s) {
+  if (s.freischaltregel >= 2) return
+  const alt = (id) => R.EINSATZARTEN[id] && R.EINSATZARTEN[id].freischaltung && !R.EINSATZARTEN[id].start_level && !s.einsatzarten[id]
+  s.freigeschaltet = s.freigeschaltet.filter((id) => !alt(id))
+  for (const d of Object.values(s.tage || {})) if (d.freigeschaltet) d.freigeschaltet = d.freigeschaltet.filter((id) => !alt(id))
+  s.freischaltregel = 2
+}
+
 function tagesabschluss(R, s, tag) {
   const d = s.tage[tag]
   if (!d || d.abgerechnet) return
@@ -2256,7 +2277,7 @@ function tagesabschluss(R, s, tag) {
   d.freigeschaltet = []
   for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
     if (!a.freischaltung || s.freigeschaltet.indexOf(id) >= 0) continue
-    if (d.arten.indexOf(a.freischaltung.nach) >= 0 && d.durchschnitt >= a.freischaltung.sterne) {
+    if (d.arten.indexOf(a.freischaltung.nach) >= 0 && tagMitNurFuenf(d)) {
       s.freigeschaltet.push(id)
       d.freigeschaltet.push(id)
     }
@@ -2366,6 +2387,7 @@ function naechstesEreignis(R, s, bis, vorher) {
 function fortschreiben(stand, bis, umwelt, R) {
   const s = kopie(stand)
   bauFelder(s)
+  freischaltregel(R, s)
   rueckkehrerEinziehen(R, s, s.bis)
   einwohnerStart(R, s, s.bis)
   krankenhausVorLevel(R, s)
