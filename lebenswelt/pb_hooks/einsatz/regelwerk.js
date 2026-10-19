@@ -297,6 +297,20 @@ const ORTE = {
   baum_bibliothek: { name: "Kastanie an der Bibliothek", x: -12, z: 20 },
   baum_markt: { name: "Eiche am Marktplatz", x: 26, z: 56 },
   hecke_nachbar: { name: "Hecke beim Nachbarn", x: -26, z: 2 },
+  // Arbeitsplätze in Elbe Springs (Lage schickt die Stadt mit ihrer Karte; im alten Dorf am Marktplatz)
+  arbeit_laden: { name: "Marsch Mart", x: 19, z: 62 },
+  arbeit_krapfen: { name: "Krapfen-Bude", x: 19, z: 62 },
+  arbeit_baeckerei: { name: "Bäckerei", x: 19, z: 62 },
+  arbeit_diner: { name: "Diner", x: 19, z: 62 },
+  arbeit_tankstelle: { name: "Tankstelle", x: 19, z: 62 },
+  arbeit_waschsalon: { name: "Waschsalon", x: 19, z: 62 },
+  arbeit_arztpraxis: { name: "Arztpraxis", x: 19, z: 62 },
+  arbeit_kirche: { name: "Kirche", x: 19, z: 62 },
+  arbeit_rathaus: { name: "Rathaus", x: 19, z: 62 },
+  arbeit_bowling: { name: "Bowlingbahn", x: 19, z: 62 },
+  arbeit_freibad: { name: "Freibad", x: 19, z: 62 },
+  arbeit_hafen: { name: "Hafen", x: 19, z: 62 },
+  arbeit_bauernhof: { name: "Bauernhof", x: 19, z: 62 },
   hecke_werkstatt: { name: "Hecke an der Werkstatt", x: 40, z: 6 },
   muelltonnen: { name: "Mülltonnen am Markt", x: 12, z: 58 },
   nachbarhaus: { name: "Haus der Nachbarn", x: -30, z: -2 },
@@ -499,7 +513,9 @@ const EXTERN = {
 const ARBEITSZEIT = { tage: [1, 2, 3, 4, 5], von: 7, bis: 17 } // spielwert, Ortszeit
 const BERUFE = {
   frei: { name: "wie bisher, immer verfügbar", nur_bestand: true },
-  dorf: { name: "arbeitet im Dorf", extra_s: 60, arbeitgeber: true }, // spielwert: Arbeit unterbrechen
+  // Elbe Springs: Wer noch keinen Job hat, bleibt zu Hause (für die Feuerwehr immer erreichbar, bringt der Stadt nichts)
+  ohne: { name: "noch ohne Job" },
+  dorf: { name: "arbeitet in der Stadt", extra_s: 60, arbeitgeber: true }, // spielwert: Arbeit unterbrechen
   auswaerts: { name: "pendelt zur Arbeit", abwesend: true },
   schicht: { name: "Schichtdienst an der Dienststelle", org: "polizei", schichtplan: ["frueh", "spaet", "nacht", "frei", "frei"] },
   rettungswache: { name: "Schichtdienst an der Rettungswache", org: "rettungsdienst", schichtplan: ["frueh", "frueh", "spaet", "spaet", "frei"] },
@@ -507,30 +523,59 @@ const BERUFE = {
 /** Schichten in Ortszeit (Stunden); die Nachtschicht geht bis 6 Uhr am Folgetag. */
 const SCHICHTEN = { frueh: [6, 14], spaet: [14, 22], nacht: [22, 30] }
 
-/** Arbeitsplätze im Dorf. Später kommen Werkstatt, Bauhof, Rettungswache und andere dazu. */
+/**
+ * Arbeitsplätze im Dorf und in Elbe Springs. Jeder Job ist eine Stelle; die Stadt verdient an einem Gebäude nur, wenn
+ * dort jemand arbeitet. "katalog": Gebäude aus dem Baukatalog der Stadt, die App bietet die Stellen erst an, wenn es steht.
+ * "sonder": Arbeit ohne eigenes Gebäude (Bus, Post, Lieferwagen), die die Stadt sichtbar macht.
+ */
 const ARBEITGEBER = {
-  markt: { name: "Markt", ort: "marktplatz", stellen: 2 },
+  markt: { name: "Marsch Mart", ort: "arbeit_laden", stellen: 2 },
   schule: { name: "Grundschule", ort: "schule", stellen: 2 },
   hof: { name: "Hof am Ortsrand", ort: "scheune", stellen: 1 },
   bibliothek: { name: "Bibliothek", ort: "bibliothek", stellen: 1 },
   platzwart: { name: "Platzwart am Sportplatz", ort: "sportplatz", stellen: 1, gebaeude: "sportplatz", ab_stufe: 5 },
   werkstatt: { name: "Kfz-Werkstatt", ort: "werkstatt_dorf", stellen: 2, gebaeude: "werkstatt", ab_stufe: 2 },
   bauhof: { name: "Bauhof", ort: "bauhof", stellen: 2, gebaeude: "bauhof", ab_stufe: 1 },
+  geraetewart: { name: "Gerätewart an der Feuerwache", ort: "feuerwehrhaus", stellen: 1, sonder: true },
+  busfahrer: { name: "Busfahrer Linie 1", ort: "marktplatz", stellen: 1, sonder: true },
+  brieftraeger: { name: "Briefträger", ort: "marktplatz", stellen: 1, sonder: true },
+  lieferfahrer: { name: "Lieferfahrer Marsch Mart", ort: "arbeit_laden", stellen: 1, sonder: true },
+  krapfen: { name: "Krapfen-Bude", ort: "arbeit_krapfen", stellen: 1, katalog: true },
+  baeckerei: { name: "Bäckerei Brakenhoff", ort: "arbeit_baeckerei", stellen: 2, katalog: true },
+  diner: { name: "Deichkrug Diner", ort: "arbeit_diner", stellen: 2, katalog: true },
+  tankstelle: { name: "Tankstelle am Deich", ort: "arbeit_tankstelle", stellen: 1, katalog: true },
+  waschsalon: { name: "Waschsalon Schaumkrone", ort: "arbeit_waschsalon", stellen: 1, katalog: true },
+  arztpraxis: { name: "Praxis Dr. Hansen", ort: "arbeit_arztpraxis", stellen: 2, katalog: true },
+  kirche: { name: "Kirche St. Marien am Deich", ort: "arbeit_kirche", stellen: 1, katalog: true },
+  rathaus: { name: "Rathaus", ort: "arbeit_rathaus", stellen: 2, katalog: true },
+  bowling: { name: "Bowlingbahn Strike am Deich", ort: "arbeit_bowling", stellen: 1, katalog: true },
+  freibad: { name: "Freibad Elbe Springs", ort: "arbeit_freibad", stellen: 2, katalog: true },
+  hafen: { name: "Hafen mit Fähranleger", ort: "arbeit_hafen", stellen: 2, katalog: true },
+  bauernhof: { name: "Bauernhof Meyerdierks", ort: "arbeit_bauernhof", stellen: 2, katalog: true },
 }
+
+/**
+ * Einwohner von Elbe Springs (Entscheidung vom 19.10.2026): Es wohnt nur, wer eingeladen wurde. Zum Start du und drei
+ * Feuerwehrleute. Wer keine Organisation hat, ist "buerger": rückt nicht aus, kann aber der Freiwilligen Feuerwehr
+ * beitreten. Jeder bekommt von dir einen Job, ohne Job bleibt man zu Hause. Einladen braucht Wohnraum (Wohnhaus oder
+ * Einliegerwohnung) und kostet eine Einzugsgebühr, die mit jedem Einwohner steigt; höchstens grund + Level Einwohner.
+ * Figuren aus den Geschichten ziehen kostenlos in eine Dienstwohnung ein.
+ */
+const EINWOHNER = { grund: 3, je_level: 1, einzug_roh_je: 400, start_feuerwehr: 3, org: "buerger" } // spielwert
 
 /**
  * Mitgliedschaften zusätzlich zur Hauptorganisation. Polizistinnen und Polizisten, die im Dorf wohnen, können in die
  * Freiwillige Feuerwehr eintreten; außerhalb ihrer Schicht rücken sie dann mit aus. Der Sportverein hebt die Fitness.
  */
 const MITGLIEDSCHAFTEN = {
-  feuerwehr: { name: "Freiwillige Feuerwehr", eintritt: 150, grundausbildung: "tm1", grundausbildung_h: 16, fuer_org: ["polizei", "rettungsdienst"], braucht_haus: true },
+  feuerwehr: { name: "Freiwillige Feuerwehr", eintritt: 150, grundausbildung: "tm1", grundausbildung_h: 16, fuer_org: ["polizei", "rettungsdienst", "buerger"], braucht_haus: true },
   sportverein: { name: "Sportverein", eintritt: 200, ab_level: 5 },
   // Ehrenamt im DRK-Ortsverein, wie die Feuerwehr von zu Hause alarmiert (zweite Organisation neben der Hauptorganisation)
-  drk: { name: "DRK-Ortsverein", eintritt: 120, ab_level: 20, grundausbildung: "sanitaetshelfer", grundausbildung_h: 16, fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
+  drk: { name: "DRK-Ortsverein", eintritt: 120, ab_level: 20, grundausbildung: "sanitaetshelfer", grundausbildung_h: 16, fuer_org: ["feuerwehr", "polizei", "rettungsdienst", "buerger"], braucht_haus: true },
   // Wasserrettung: Wer eintritt, legt das Rettungsschwimmabzeichen Bronze ab und braucht dafür etwas Fitness
-  dlrg: { name: "DLRG-Ortsgruppe", eintritt: 120, ab_level: 24, grundausbildung: "rs_bronze", grundausbildung_h: 16, fitness_min: 40, quelle: "rettungsschwimmen", fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
+  dlrg: { name: "DLRG-Ortsgruppe", eintritt: 120, ab_level: 24, grundausbildung: "rs_bronze", grundausbildung_h: 16, fitness_min: 40, quelle: "rettungsschwimmen", fuer_org: ["feuerwehr", "polizei", "rettungsdienst", "buerger"], braucht_haus: true },
   // Technisches Hilfswerk: Ehrenamt im Ortsverband, kommt nur auf Anforderung der Einsatzleitung
-  thw: { name: "THW-Ortsverband", eintritt: 100, ab_level: 27, grundausbildung: "thw_grund", grundausbildung_h: 24, quelle: "thwg", fuer_org: ["feuerwehr", "polizei", "rettungsdienst"], braucht_haus: true },
+  thw: { name: "THW-Ortsverband", eintritt: 100, ab_level: 27, grundausbildung: "thw_grund", grundausbildung_h: 24, quelle: "thwg", fuer_org: ["feuerwehr", "polizei", "rettungsdienst", "buerger"], braucht_haus: true },
 }
 
 /**
@@ -2551,6 +2596,7 @@ module.exports = {
   BERUFE,
   SCHICHTEN,
   ARBEITGEBER,
+  EINWOHNER,
   MITGLIEDSCHAFTEN,
   FITNESS,
   PSA_FEUERWEHR,

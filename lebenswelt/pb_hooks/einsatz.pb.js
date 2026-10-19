@@ -109,8 +109,19 @@ routerAdd("POST", "/api/lebenswelt/einsatz/personal", (e) => {
     d.speichere(e.app, ich.id, v.stand)
     return e.json(200, { ok: true, erstattung: v.erstattung, text: v.text, stand: v.stand })
   }
+  // Job vergeben (Einwohneramt): prüft freie Stellen, Polizei und Rettungsdienst behalten ihren Dienst
+  if (body.job) {
+    const j = d.S.setzeJob(a.stand, p.id, body.job, d.regelwerkFuer(e.app, ich.id))
+    if (j.fehler) return e.json(400, { fehler: j.fehler })
+    d.speichere(e.app, ich.id, j.stand)
+    return e.json(200, { ok: true, person: j.stand.personal.find((x) => x.id === p.id), stand: j.stand })
+  }
   if (body.name !== undefined) p.name = String(body.name).slice(0, 40)
   if (body.anrede !== undefined) p.anrede = String(body.anrede).slice(0, 30)
+  if (body.aussehen !== undefined && /^[a-z0-9_]{0,24}$/.test(String(body.aussehen))) {
+    if (body.aussehen) p.aussehen = String(body.aussehen)
+    else delete p.aussehen
+  }
   d.speichere(e.app, ich.id, a.stand)
   return e.json(200, { ok: true, person: p })
 })

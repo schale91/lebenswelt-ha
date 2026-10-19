@@ -2359,6 +2359,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   const s = kopie(stand)
   bauFelder(s)
   rueckkehrerEinziehen(R, s, s.bis)
+  einwohnerStart(R, s, s.bis)
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)
@@ -2449,10 +2450,10 @@ function neuePerson(s, org, haus, jetzt, bewohner) {
   const p = {
     id: "p" + s.zaehler,
     org,
-    name: "",
-    anrede: "",
+    name: bw.name || "",
+    anrede: bw.anrede || "",
     haus,
-    beruf: bw.beruf || (org === "polizei" ? "schicht" : org === "rettungsdienst" && haus ? "rettungswache" : "frei"),
+    beruf: bw.beruf || (org === "polizei" ? "schicht" : org === "rettungsdienst" && haus ? "rettungswache" : org === "buerger" ? "ohne" : "frei"),
     lehrgaenge: {},
     lehrgang_laeuft: null,
     psa: {},
@@ -2462,7 +2463,89 @@ function neuePerson(s, org, haus, jetzt, bewohner) {
   }
   if (GRUNDAUSBILDUNG[org]) p.lehrgaenge[GRUNDAUSBILDUNG[org]] = jetzt
   if (bw.arbeitgeber) p.arbeitgeber = bw.arbeitgeber
+  if (bw.aussehen) p.aussehen = bw.aussehen
+  if (bw.figur) p.figur = bw.figur
   return p
+}
+
+// ---------- Einwohner (Elbe Springs) ----------
+
+/** Alle Einwohner: wer wohnt, und wer in ein Haus im Bau einzieht. */
+function einwohnerZahl(s) {
+  return s.personal.length + (s.baustellen || []).filter((b) => b.bewohner).length
+}
+
+/** Wie viele Einwohner das Level erlaubt (Elbe Springs); Figuren aus Geschichten zählen mit, dürfen aber immer kommen. */
+function einwohnerMax(R, s) {
+  const E = R.EINWOHNER
+  return E ? E.grund + E.je_level * (s.level || 0) : Infinity
+}
+
+/** Einzugsgebühr (roh, vor PREISFAKTOR): steigt mit jedem Einwohner. */
+function einzugRoh(R, s) {
+  return s.welt === "elbe" && R.EINWOHNER ? R.EINWOHNER.einzug_roh_je * einwohnerZahl(s) : 0
+}
+
+/** Name, Anrede und Aussehen, wie sie beim Einzug gewählt wurden (frei wählbar, gekürzt und geprüft). */
+function personDaten(roh) {
+  const aus = {}
+  if (!roh) return aus
+  if (typeof roh.name === "string" && roh.name.trim()) aus.name = roh.name.trim().slice(0, 40)
+  if (roh.anrede === "Frau" || roh.anrede === "Herr") aus.anrede = roh.anrede
+  if (typeof roh.aussehen === "string" && /^[a-z0-9_]{1,24}$/.test(roh.aussehen)) aus.aussehen = roh.aussehen
+  return aus
+}
+
+/**
+ * Job einer Person ändern (Einwohneramt). job: {beruf: "ohne" | "auswaerts" | "dorf", arbeitgeber}. Polizei und
+ * Rettungsdienst arbeiten im Schichtdienst ihrer Wache, Werkstatt und Bauhof bei ihrem Betrieb; deren Job steht fest.
+ * Gibt {stand} oder {fehler} zurück.
+ */
+function setzeJob(stand, id, job, R) {
+  const s = kopie(stand)
+  const p = s.personal.find((x) => x.id === id)
+  if (!p) return { fehler: "Unbekannte Person." }
+  if (["polizei", "rettungsdienst", "werkstatt", "bauhof"].indexOf(p.org) >= 0) return { fehler: "Der Job gehört zum Dienst und steht fest." }
+  const beruf = job && job.beruf
+  if (beruf === "ohne" || beruf === "auswaerts") {
+    p.beruf = beruf
+    delete p.arbeitgeber
+    return { stand: s }
+  }
+  if (beruf !== "dorf") return { fehler: "Bitte einen Job wählen." }
+  const ag = R.ARBEITGEBER[job.arbeitgeber]
+  if (!ag) return { fehler: "Unbekannter Arbeitsplatz." }
+  if (p.arbeitgeber !== job.arbeitgeber && !freieStellen(R, s, job.arbeitgeber)) return { fehler: "Bei " + ag.name + " ist keine Stelle frei." }
+  p.beruf = "dorf"
+  p.arbeitgeber = job.arbeitgeber
+  return { stand: s }
+}
+
+/** Namen der drei Feuerwehrleute zum Start (umbenennbar). */
+const START_KRAEFTE = [
+  { name: "Lena Hansen", anrede: "Frau" },
+  { name: "Jonas Ahlers", anrede: "Herr" },
+  { name: "Malte Brandt", anrede: "Herr" },
+]
+
+/**
+ * Einmal in Elbe Springs: Zum Start wohnen dort drei Feuerwehrleute (fehlende ziehen sofort ein). Wer schon da ist,
+ * bleibt, bekommt seinen Job aber neu von dir: Die Feuerwehr ist Ehrenamt, der Beruf kommt dazu.
+ */
+function einwohnerStart(R, s, jetzt) {
+  if (s.welt !== "elbe" || !R.EINWOHNER || s.einwohner_start) return
+  s.einwohner_start = jetzt
+  for (const p of s.personal) {
+    if (p.org !== "feuerwehr") continue
+    p.beruf = "ohne"
+    delete p.arbeitgeber
+  }
+  const da = orgZahl(s, "feuerwehr")
+  for (let i = da; i < R.EINWOHNER.start_feuerwehr; i++) {
+    const h = wohnhausSofort(R, s, jetzt, "start")
+    if (!h) break
+    s.personal.push(neuePerson(s, "feuerwehr", h.id, jetzt, Object.assign({ beruf: "ohne" }, START_KRAEFTE[i % START_KRAEFTE.length])))
+  }
 }
 
 /** Freie Stellen bei einem Arbeitgeber im Dorf (Bewohner in Häusern, die noch gebaut werden, zählen mit). */
@@ -2485,26 +2568,35 @@ function polizeiZahl(s) {
  * Gibt {bewohner} oder {fehler} zurück.
  */
 function pruefeBewohner(R, s, roh) {
-  if (!roh) return { bewohner: { org: "feuerwehr", beruf: "frei" } }
+  if (s.welt === "elbe" && R.EINWOHNER && einwohnerZahl(s) >= einwohnerMax(R, s))
+    return { fehler: "Mehr Einwohner gibt es ab Level " + (einwohnerZahl(s) - R.EINWOHNER.grund + 1) + "." }
+  const r = pruefeRolle(R, s, roh)
+  if (r.bewohner) Object.assign(r.bewohner, personDaten(roh))
+  return r
+}
+
+function pruefeRolle(R, s, roh) {
+  if (!roh) return { bewohner: { org: "feuerwehr", beruf: s.welt === "elbe" ? "ohne" : "frei" } }
   if (roh.org === "rettungsdienst") {
     if (!orgFrei(R, s, "rettungsdienst")) return { fehler: "Erst ab Level " + R.ORGANISATIONEN.rettungsdienst.ab_level + "." }
     const st = R.GEBAEUDE.rettungswache[s.gebaeude.rettungswache || 0]
     if (orgZahl(s, "rettungsdienst") >= (st.personal_max || 0)) return { fehler: st.personal_max ? "An der Rettungswache sind alle Stellen besetzt. Erst ausbauen." : "Erst die Rettungswache bauen." }
     return { bewohner: { org: "rettungsdienst", beruf: "rettungswache" } }
   }
-  const org = roh.org === "polizei" ? "polizei" : "feuerwehr"
+  const org = roh.org === "polizei" ? "polizei" : roh.org === "buerger" && R.EINWOHNER ? "buerger" : "feuerwehr"
   if (org === "polizei") {
     const max = R.GEBAEUDE.dienststelle[s.gebaeude.dienststelle].personal_max
     if (polizeiZahl(s) >= max) return { fehler: "Die Dienststelle ist voll besetzt. Erst ausbauen." }
     return { bewohner: { org, beruf: "schicht" } }
   }
   const beruf = roh.beruf
-  if (beruf === "auswaerts") return { bewohner: { org, beruf } }
+  if (beruf === "auswaerts" || (beruf === "ohne" && R.BERUFE.ohne)) return { bewohner: { org, beruf } }
   if (beruf === "dorf") {
     if (!R.ARBEITGEBER[roh.arbeitgeber]) return { fehler: "Unbekannter Arbeitgeber." }
     if (!freieStellen(R, s, roh.arbeitgeber)) return { fehler: "Bei " + R.ARBEITGEBER[roh.arbeitgeber].name + " ist keine Stelle frei." }
     return { bewohner: { org, beruf, arbeitgeber: roh.arbeitgeber } }
   }
+  if (s.welt === "elbe") return { bewohner: { org, beruf: "ohne" } }
   return { fehler: "Bitte einen Beruf wählen: im Dorf oder auswärts." }
 }
 
@@ -2549,7 +2641,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!bp) return fehler("Es ist kein Platz mehr frei.")
     const bw = pruefeBewohner(R, s, auftrag.bewohner)
     if (bw.fehler) return fehler(bw.fehler)
-    roh = bp.preis
+    roh = bp.preis + einzugRoh(R, s)
     buchung = "wohnhaus:" + bp.id
     s.zaehler += 1
     const h = { id: "h" + s.zaehler, bauplatz: bp.id, gekauft: jetzt, ausbau: [], alarmierung: "sirene", im_bau: true }
@@ -2582,7 +2674,7 @@ function kaufe(stand, auftrag, jetzt, R) {
       bw = pruefeBewohner(R, s, auftrag.bewohner)
       if (bw.fehler) return fehler(bw.fehler)
     }
-    roh = a.preis
+    roh = a.preis + (a.bewohner ? einzugRoh(R, s) : 0)
     if (a.bauzeit_h) {
       if (imBau(s, "haus_ausbau", h.id)) return fehler("Am Haus wird schon gebaut.")
       const bp = bauplatz(R, h.bauplatz)
@@ -2693,13 +2785,26 @@ function kaufe(stand, auftrag, jetzt, R) {
       if (istMitglied(p, id)) return fehler("Schon Mitglied.")
       if (m.fuer_org && m.fuer_org.indexOf(p.org) < 0) return fehler("Diese Mitgliedschaft passt nicht zur Person.")
       if (m.braucht_haus && !p.haus) return fehler("Nur wer im Dorf wohnt, kann eintreten.")
-      if ((p.mitglied || []).length >= 1) return fehler("Mehr als zwei Organisationen sind nicht möglich.")
+      if ((p.mitglied || []).length >= (p.org === "buerger" ? 2 : 1)) return fehler("Mehr als zwei Organisationen sind nicht möglich.")
       if (p.lehrgang_laeuft) return fehler("Die Person ist gerade in einem Lehrgang.")
       if (m.fitness_min && fitnessVon(R, p) < m.fitness_min) return fehler("Dafür braucht es Fitness " + m.fitness_min + ". Training im Sportverein hilft.")
       p.mitglied = (p.mitglied || []).concat([id])
       if (m.grundausbildung) p.lehrgang_laeuft = { id: m.grundausbildung, bis: jetzt + Math.round(m.grundausbildung_h * STD) }
     }
     roh = m.eintritt
+  } else if (art === "einladung") {
+    // Figur aus einer Geschichte zieht kostenlos in eine Dienstwohnung ein (einmal je Figur)
+    if (s.welt !== "elbe") return fehler("Einladungen gibt es nur in Elbe Springs.")
+    if (!/^[a-z]{2,20}$/.test(String(id))) return fehler("Unbekannte Figur.")
+    if (s.personal.some((p) => p.figur === id)) return fehler("Wohnt schon in Elbe Springs.")
+    const daten = personDaten(auftrag.bewohner)
+    const polizei = auftrag.bewohner && auftrag.bewohner.org === "polizei"
+    if (polizei && polizeiZahl(s) >= R.GEBAEUDE.dienststelle[s.gebaeude.dienststelle || 0].personal_max) return fehler("Die Dienststelle ist voll besetzt. Erst ausbauen.")
+    const h = wohnhausSofort(R, s, jetzt, "einladung")
+    if (!h) return fehler("In Elbe Springs ist kein Platz mehr für ein Wohnhaus.")
+    const org = polizei ? "polizei" : R.EINWOHNER ? R.EINWOHNER.org : "feuerwehr"
+    s.personal.push(neuePerson(s, org, h.id, jetzt, Object.assign({ beruf: polizei ? "schicht" : "ohne", figur: id }, daten)))
+    buchung = "einladung:" + id
   } else if (art === "personal") {
     const P = R.PERSONAL[id]
     if (!P) return fehler("Unbekannt.")
@@ -2830,6 +2935,7 @@ function neustart(stand, jetzt, R) {
   if (erstattung) s.ausgaben.push({ zeit: jetzt, betrag: -erstattung, text: "neustart:elbe" })
   s.neustart = { zeit: jetzt, erstattung, einsaetze: Object.values(stand.einsatzarten || {}).reduce((n, a) => n + (a.anzahl || 0), 0), personal: (stand.personal || []).length }
   rueckkehrerEinziehen(R, s, jetzt)
+  einwohnerStart(R, s, jetzt)
   return { stand: s, erstattung }
 }
 
@@ -2900,6 +3006,10 @@ function verabschiede(stand, id, jetzt) {
 
 module.exports = {
   neustart,
+  setzeJob,
+  einwohnerZahl,
+  einwohnerMax,
+  einzugRoh,
   wohnhausPlatz,
   gebietSperre,
   gebietPreis,
