@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.36.0
+
+- Elbe Springs, Einwohner (Entscheidung vom 19.10.2026): Es wohnt nur, wer eingeladen wurde. Zum Start drei Feuerwehrleute mit Namen (umbenennbar); bestehende Kräfte bleiben, fehlende ziehen sofort ein. Die Feuerwehr ist Ehrenamt: Feuerwehrleute bekommen ihren Job neu (Beruf `ohne`, bis du ihn vergibst).
+- Neue Rolle `buerger` (Einwohnerin, Einwohner ohne Dienst): rückt nicht aus, kann der Freiwilligen Feuerwehr, dem DRK, der DLRG oder dem THW beitreten (bis zu zwei).
+- Einladen per Wohnhaus oder Einliegerwohnung mit Name, Anrede (Frau, Herr) und Aussehen. Einzugsgebühr steigt mit jedem Einwohner (20 Münzen je Einwohner), höchstens 3 + Level Einwohner.
+- Neue Kaufart `einladung`: Figuren aus den Geschichten ziehen kostenlos in eine Dienstwohnung ein, jede nur einmal (die Kontaktbeamtin zur Polizei).
+- Jobs vergeben und wechseln: `POST /api/lebenswelt/einsatz/personal` mit `job: {beruf, arbeitgeber}` (freie Stellen geprüft) und `aussehen`. Neue Arbeitgeber: Gerätewart, Busfahrer, Briefträger, Lieferfahrer und die zwölf Gebäude aus dem Baukatalog der Stadt; Marsch Mart liegt am eigenen Ort.
+
 ## 0.35.0
 
 - Elbe Springs: Die Simulation rechnet mit der Karte der Stadt (Dokument `karte`/`elbe`, von der App aus dem Stadtplan geschrieben): Straßennetz, Orte, Haustüren der Wohnhäuser, Hydranten und Zufallsorte, 10 m je Kachel, ohne Gebiete und Gelände. Damit hängen Alarmwege und Anfahrt von der Lage der Häuser und Wachen in der Stadt ab.

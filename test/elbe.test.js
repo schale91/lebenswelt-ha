@@ -41,10 +41,11 @@ test("Neustart: alles Gekaufte auf Anfang, Gutschrift über das Kaufbuch, Level 
   assert.equal(s.level, 9)
   assert.deepEqual(s.fahrzeuge, [])
   assert.equal(s.gebaeude.geraetehaus, 0)
-  // Die müssen ja irgendwo wohnen: beide bekommen sofort ein fertiges Wohnhaus, ohne Baukosten
-  assert.deepEqual(s.personal.map((p) => [p.name, p.beruf]), [["Dieter", "frei"], ["Marco", "auswaerts"]])
-  assert.equal(s.haeuser.length, 2)
-  assert.ok(s.haeuser.every((h) => !h.im_bau && h.grund === "umzug"))
+  // Die müssen ja irgendwo wohnen: beide bekommen sofort ein fertiges Wohnhaus, ohne Baukosten. Zum Start gehören drei
+  // Feuerwehrleute, die dritte Kraft zieht dazu. Den Job vergibst du neu (Feuerwehr ist Ehrenamt).
+  assert.deepEqual(s.personal.map((p) => [p.name, p.beruf]), [["Dieter", "ohne"], ["Marco", "ohne"], ["Malte Brandt", "ohne"]])
+  assert.equal(s.haeuser.length, 3)
+  assert.deepEqual(s.haeuser.map((h) => [h.im_bau, h.grund]), [[false, "umzug"], [false, "umzug"], [false, "start"]])
   assert.ok(s.personal.every((p) => s.haeuser.some((h) => h.id === p.haus)))
   assert.deepEqual(s.rueckkehrer, [])
   // Die Gutschrift landet einmal im Spielstand, alte Käufe zählen nicht doppelt
@@ -56,28 +57,22 @@ test("Neustart: alles Gekaufte auf Anfang, Gutschrift über das Kaufbuch, Level 
   assert.ok(S.neustart(s, T0 + 2 * STD, R).fehler)
 })
 
-test("Ohne Kräfte pausieren die Einsätze, mit dem ersten Wohnhaus zieht jemand ein und es geht los", () => {
+test("Start mit drei Feuerwehrleuten, Einsätze laufen; weitere Einwohner per Wohnhaus mit Einzugsgebühr", () => {
   let s = S.neustart(dorf(false), T0, R).stand
-  assert.deepEqual(s.personal, [])
-  const leer = S.fortschreiben(s, T0 + 48 * STD, trocken, R)
-  assert.equal(leer.laufend.length, 0)
-  assert.equal(leer.abgeschlossen.length, 0)
+  assert.equal(s.personal.length, 3)
+  assert.ok(s.personal.every((p) => p.org === "feuerwehr" && p.beruf === "ohne" && p.name))
   // Im Dorf gibt es keine Bauplätze mehr zu kaufen, in Elbe Springs Wohnhäuser
-  assert.ok(S.kaufe(leer, { art: "bauplatz", id: "bp01" }, T0, R).fehler)
-  const k = S.kaufe(leer, { art: "wohnhaus", bewohner: { org: "feuerwehr", beruf: "auswaerts" } }, T0 + 48 * STD, R)
+  assert.ok(S.kaufe(s, { art: "bauplatz", id: "bp01" }, T0, R).fehler)
+  const k = S.kaufe(s, { art: "wohnhaus", bewohner: { org: "feuerwehr", beruf: "auswaerts" } }, T0 + STD, R)
   assert.ok(!k.fehler, k.fehler)
-  assert.equal(k.buchung, "wohnhaus:bp20")
-  assert.equal(k.preis, S.preis(R, 300))
-  assert.equal(k.stand.haeuser[0].bauplatz, "bp20")
-  s = S.fortschreiben(k.stand, T0 + 48 * STD + (R.BAU.haus_h + 1) * STD, trocken, R)
-  assert.equal(s.personal.length, 1)
-  // Der zweite nimmt den nächstgünstigen Platz
-  const k2 = S.kaufe(s, { art: "wohnhaus", bewohner: { org: "feuerwehr", beruf: "auswaerts" } }, s.bis, R)
-  assert.equal(k2.stand.haeuser[1].bauplatz, "bp16")
-  const s2 = S.fortschreiben(k2.stand, s.bis + (R.BAU.haus_h + 1) * STD, trocken, R)
-  assert.equal(s2.personal.length, 2)
-  // Jetzt kommen wieder Einsätze der Feuerwehr
-  const spaeter = S.fortschreiben(s2, s2.bis + 72 * STD, trocken, R)
+  // Preis: günstigster freier Platz (die drei Startwohnungen belegen bp20, bp16 und den nächsten) plus Einzug für drei
+  const platz = R.BAUPLAETZE.find((b) => b.id === k.buchung.split(":")[1])
+  assert.equal(k.preis, S.preis(R, platz.preis + 3 * R.EINWOHNER.einzug_roh_je))
+  s = S.fortschreiben(k.stand, T0 + STD + (R.BAU.haus_h + 1) * STD, trocken, R)
+  assert.equal(s.personal.length, 4)
+  assert.equal(s.personal[3].beruf, "auswaerts")
+  // Mit Feuerwehrleuten kommen Einsätze der Feuerwehr
+  const spaeter = S.fortschreiben(s, s.bis + 72 * STD, trocken, R)
   assert.ok(spaeter.laufend.length + spaeter.abgeschlossen.length > 0)
 })
 
@@ -87,17 +82,18 @@ test("Wohnhaus nur in Elbe Springs, Verabschieden erstattet ein frisches Wohnhau
   const k = S.kaufe(s, { art: "wohnhaus" }, T0, R)
   k.stand.ausgaben.push({ zeit: T0, betrag: k.preis, text: k.buchung })
   for (const b of k.stand.baustellen.slice()) S._intern.fertigstellen(R, k.stand, b, T0)
-  const v = S.verabschiede(k.stand, k.stand.personal[0].id, T0 + STD)
+  const v = S.verabschiede(k.stand, k.stand.personal.at(-1).id, T0 + STD)
   assert.equal(v.erstattung, k.preis)
-  assert.deepEqual(v.stand.haeuser, [])
+  assert.equal(v.stand.haeuser.length, 3)
 })
 
 test("Schon neu gestartete Stände: Rückkehrer ziehen beim nächsten Fortschreiben ein; Einstellungen bekommen eine Wohnung", () => {
   const s = S.neustart(dorf(false), T0, R).stand
   s.rueckkehrer = [{ name: "Dieter", anrede: "" }]
   const w = S.fortschreiben(s, T0 + MIN, trocken, R)
-  assert.equal(w.personal[0].name, "Dieter")
-  assert.ok(w.haeuser.some((h) => h.id === w.personal[0].haus))
+  const dieter = w.personal.find((p) => p.name === "Dieter")
+  assert.ok(dieter)
+  assert.ok(w.haeuser.some((h) => h.id === dieter.haus))
   const id = Object.keys(R.PERSONAL).find((k) => (R.PERSONAL[k].org || "polizei") === "polizei")
   w.level = 99
   const k = S.kaufe(w, { art: "personal", id }, T0 + 2 * MIN, R)
