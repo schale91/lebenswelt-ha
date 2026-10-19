@@ -246,11 +246,3 @@ cronAdd("abfall", "7 * * * *", () => {
   }
 })
 
-onBootstrap((e) => {
-  e.next()
-  try {
-    require(`${__hooks}/einsatz/dienst.js`).abfallAbgleich($app)
-  } catch (_) {
-    // beim Start nicht kritisch
-  }
-})

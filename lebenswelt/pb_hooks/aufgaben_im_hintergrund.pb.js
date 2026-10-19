@@ -32,13 +32,24 @@ cronAdd("lka_wiedervorlage", "30 5 * * *", () => {
   }
 })
 
-// Garmin auch gleich nach dem Start einmal abgleichen
-onBootstrap((e) => {
-  e.next()
-  try {
-    require(`${__hooks}/hintergrund.js`).garminAbgleich()
-  } catch (_) {
-    // beim Start nicht kritisch
+// Nach dem Start einmal Garmin, App-Paket und Abfallkalender abgleichen, in der ersten Minute statt beim Start selbst:
+// Solange onBootstrap läuft, nimmt der Server keine Anfragen an, und direkt nach einem Neustart antworten Home
+// Assistant und GitHub manchmal erst nach ihrer Zeitüberschreitung (die App war dann bis zu zwei Minuten nicht erreichbar).
+cronAdd("nach_dem_start", "* * * * *", () => {
+  const speicher = $app.store()
+  if (speicher.get("nach_dem_start")) return
+  speicher.set("nach_dem_start", Date.now())
+  const schritte = [
+    () => require(`${__hooks}/hintergrund.js`).garminAbgleich(),
+    () => require(`${__hooks}/einsatz/dienst.js`).abfallAbgleich($app),
+    () => require(`${__hooks}/app_paket.js`).pruefe(),
+  ]
+  for (const f of schritte) {
+    try {
+      f()
+    } catch (err) {
+      console.log("Abgleich nach dem Start fehlgeschlagen", err)
+    }
   }
 })
 
@@ -51,14 +62,6 @@ cronAdd("app_paket", "*/10 * * * *", () => {
   }
 })
 
-onBootstrap((e) => {
-  e.next()
-  try {
-    require(`${__hooks}/app_paket.js`).pruefe()
-  } catch (_) {
-    // beim Start nicht kritisch
-  }
-})
 
 // Sonntagsprüfung XP: 16 Uhr UTC, also 17 Uhr Winterzeit bzw. 18 Uhr Sommerzeit (vor dem Anonymisieren)
 cronAdd("xp_pruefung", "0 16 * * 0", () => {
