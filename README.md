@@ -25,3 +25,7 @@ node werkzeuge/pruefe-regelwerk.js --baum
 node --test test/*.test.js
 python3 test/ais_test.py
 ```
+
+## Daten aus Home Assistant
+
+Elbpegel, Unwetterwarnungen, Müllabfuhr, Garmin, Kalender und Paperless-ngx in der Lebenswelt: Konzept in [`docs/integrationen/KONZEPT.md`](docs/integrationen/KONZEPT.md), Pegel in [`lebenswelt/pb_hooks/einsatz/pegel.js`](lebenswelt/pb_hooks/einsatz/pegel.js), Müllabfuhr in [`lebenswelt/pb_hooks/einsatz/muell.js`](lebenswelt/pb_hooks/einsatz/muell.js).

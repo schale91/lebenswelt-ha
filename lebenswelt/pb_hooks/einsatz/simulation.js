@@ -343,12 +343,20 @@ function waehleOrt(R, s, art, auswahl, r) {
 /** Lesbarer Name eines Orts (Zufallsorte nach ihrer Gruppe). */
 function ortName(R, ort) {
   if (R.ORTE[ort]) return R.ORTE[ort].name || ort
+  if (String(ort).indexOf("punkt:") === 0) return "auf der Straße"
   if (String(ort).indexOf("zufall:") === 0) return (R.ZUFALLSORT_NAMEN && R.ZUFALLSORT_NAMEN[ort.split(":")[1]]) || "im Dorf"
   return ""
 }
 
 function punktVon(R, stand, ort) {
   if (R.ORTE[ort]) return R.ORTE[ort]
+  // Angemeldete Ereignisse an einer festen Stelle (Brand im Müllfahrzeug dort, wo es gerade hält): "punkt:x:z"
+  if (String(ort).indexOf("punkt:") === 0) {
+    const teile = ort.split(":")
+    const x = Number(teile[1])
+    const z = Number(teile[2])
+    return isFinite(x) && isFinite(z) ? { x, z } : null
+  }
   if (String(ort).indexOf("zufall:") === 0) {
     const teile = ort.split(":")
     const liste = (R.ZUFALLSORTE && R.ZUFALLSORTE[teile[1]]) || []
@@ -894,7 +902,10 @@ function wasserversorgung(R, s, ort, b, loeschLMin) {
       if (!g.punkte || g.punkte.length < 2) continue
       const p = naechsterPunkt(ort, g.punkte)
       const meter = Math.hypot(p.x - ort.x, p.z - ort.z) * m
-      if (meter <= schlauch) wege.push({ quelle: "gewaesser", x: p.x, z: p.z, meter: Math.round(meter), aufbau: Z.wasser_ansaugen_s + meter / Z.leitung_m_s, text: "Wasser aus " + g.name + " in " + Math.round(meter) + " m" })
+      // Echter Elbpegel: Bei Niedrigwasser liegt das Wasser tiefer, die Saugleitung wird länger
+      const niedrig = R.PEGEL && s.pegel && s.pegel.stufe === "niedrig" && (g.id === "elbe" || /elbe/i.test(g.name))
+      const extra = niedrig ? R.PEGEL.ansaugen_niedrig_s : 0
+      if (meter <= schlauch) wege.push({ quelle: "gewaesser", x: p.x, z: p.z, meter: Math.round(meter), aufbau: Z.wasser_ansaugen_s + extra + meter / Z.leitung_m_s, text: "Wasser aus " + g.name + " in " + Math.round(meter) + " m" + (niedrig ? " (Niedrigwasser, lange Saugleitung)" : "") })
     }
   }
   wege.sort((x, y) => x.aufbau - y.aufbau)
@@ -998,7 +1009,7 @@ function bauFelder(s) {
     s.version = 2
   }
   if (s.level === undefined) s.level = 0
-  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft", "wachstation", "thw_unterkunft"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
+  for (const g of ["sportplatz", "werkstatt", "bauhof", "rettungswache", "drk_unterkunft", "wachstation", "thw_unterkunft", "deponie"]) if (s.gebaeude && s.gebaeude[g] === undefined) s.gebaeude[g] = 0
   for (const o of ["werkstatt", "bauhof", "rettungsdienst", "drk", "dlrg", "thw"]) if (s.lager && !s.lager[o]) s.lager[o] = {}
 }
 
@@ -1122,7 +1133,7 @@ function wetterGestreut(s, w, t) {
   return (w === "glaette" || w === "schnee") && s.gestreut_bis && t < s.gestreut_bis ? "nass" : w
 }
 
-/** Offene Einsätze, die eine Straße blockieren (Panne, Bergung, Reinigung), nahe einem der Punkte. */
+/** Offene Einsätze, die eine Straße blockieren (Panne, Bergung, Reinigung), und Müllautos nahe einem der Punkte. */
 function sperrungenAmWeg(R, s, punkte, t, ohne) {
   const r = R.BAU.verkehr.radius
   const aus = []
@@ -1131,6 +1142,29 @@ function sperrungenAmWeg(R, s, punkte, t, ohne) {
     if (!a || !a.sperrt || x.id === ohne || x.meldung > t || t >= (x.ende || x.verfall)) continue
     const p = punktVon(R, s, x.ort)
     if (p && punkte.some((q) => q && luftlinie(q, p) <= r)) aus.push({ name: a.name, ort: p })
+  }
+  for (const p of muellautosBei(s, t)) if (punkte.some((q) => q && luftlinie(q, p) <= r)) aus.push({ name: "Müllauto", ort: p })
+  return aus
+}
+
+/** Wo steht oder fährt das Müllauto einer Abfuhr zum Zeitpunkt t? null vor dem Start und nach der Ankunft. */
+function muellautoPunkt(plan, t) {
+  if (!plan || t < plan.start || t >= plan.ende) return null
+  for (const h of plan.halte || []) if (h.an <= t && t < h.ab) return { x: h.x, z: h.z }
+  for (const w of plan.wege || []) {
+    if (!(w.ab <= t && t < w.an)) continue
+    const punkte = w.punkte.map((q) => ({ x: q[0], z: q[1] }))
+    return punktAufLinie(punkte, (linienLaenge(punkte) * (t - w.ab)) / Math.max(1, w.an - w.ab))
+  }
+  return null
+}
+
+/** Alle Müllautos, die gerade in der Stadt unterwegs sind (aus stand.muell, geplant von muell.js). */
+function muellautosBei(s, t) {
+  const aus = []
+  for (const T of Object.values((s.muell && s.muell.termine) || {})) {
+    const p = T.abfuhr ? muellautoPunkt(T.abfuhr, t) : null
+    if (p) aus.push(p)
   }
   return aus
 }
@@ -1191,6 +1225,7 @@ function hindernisseAmWeg(R, s, route, t) {
     const a = R.EINSATZARTEN[x.art]
     if (a && a.sperrt && x.meldung <= t && t < (x.ende || x.verfall)) nimm(punktVon(R, s, x.ort), a.name)
   }
+  for (const p of muellautosBei(s, t)) nimm(p, "Müllauto")
   return aus
 }
 
@@ -1329,13 +1364,15 @@ function heimweg(R, s, p, alarm, wetter) {
   const ag = beruf.arbeitgeber && R.ARBEITGEBER[p.arbeitgeber]
   // In der Arbeitszeit kommt, wer im Dorf arbeitet, vom Arbeitsplatz und muss erst die Arbeit unterbrechen
   const vonArbeit = Boolean(ag && R.ORTE[ag.ort] && inArbeitszeit(R, alarm))
-  let start = vonArbeit ? R.ORTE[ag.ort] : haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
+  // Gerätehausbesetzung bei Unwetter: Wer nicht arbeitet, wartet schon am Gerätehaus
+  const bereit = !vonArbeit && unwetterBereitschaft(R, s, alarm)
+  let start = bereit ? R.ORTE.feuerwehrhaus : vonArbeit ? R.ORTE[ag.ort] : haus ? bauplatz(R, haus.bauplatz) : R.ORTE.feuerwehrhaus
   // Noch auf dem Heimweg vom letzten Einsatz: dreht um und kommt von dort, mit dem Rad oder Auto, auf dem sie oder er sitzt
-  const rueck = !vonArbeit && haus ? aufDemHeimweg(R, s, p, alarm) : null
+  const rueck = !vonArbeit && !bereit && haus ? aufDemHeimweg(R, s, p, alarm) : null
   if (rueck) start = rueck.punkt
   const alarmierung = (haus && haus.alarmierung) || "sirene"
   // Mit Sirenenalarm hängt es daran, wie gut die nächste Sirene dort zu hören ist, wo die Person gerade ist
-  const grund = alarmierung === "sirene" && R.SIRENEN ? sirenenReaktion(R, s, start, alarm) : R.ALARMIERUNG[alarmierung].reaktion_s
+  const grund = bereit ? R.UNWETTER_BEREITSCHAFT.reaktion_s : alarmierung === "sirene" && R.SIRENEN ? sirenenReaktion(R, s, start, alarm) : R.ALARMIERUNG[alarmierung].reaktion_s
   const reaktion = Math.max(5, grund + ausbauEffekt(R, s, "reaktion_s"))
   const wf = R.WETTER[wetter] ? R.WETTER[wetter].tempo : 1
   const ziel = R.ORTE.feuerwehrhaus
@@ -1418,6 +1455,12 @@ function aufDemHeimweg(R, s, p, t) {
   const dauer = ((L * R.METER_JE_EINHEIT) / (a.tempo_ms * ((R.ZEITEN && R.ZEITEN.heimweg_tempo) || 0.7))) * 1000
   if (t >= z.ab + dauer) return null
   return { mittel: R.HAUS_AUSBAU[z.mittel] ? z.mittel : "zu_fuss", punkt: punktAufLinie(punkte, (L * (t - z.ab)) / dauer), anteil: (t - z.ab) / dauer }
+}
+
+/** Gilt gerade eine Unwetterwarnung (stand.bereitschaft, vom Wetterabgleich) und hat die Wehr den Bereitschaftsraum? */
+function unwetterBereitschaft(R, s, t) {
+  if (!R.UNWETTER_BEREITSCHAFT || !(ausbauEffekt(R, s, "unwetter_bereitschaft") > 0)) return false
+  return (s.bereitschaft || []).some((b) => b[0] <= t && t < b[1])
 }
 
 function feuerwehrBereit(R, s, p, alarm, wetter) {
@@ -1535,6 +1578,9 @@ function plane(R, s, e, alarm, umwelt) {
       const anteil = sirenenAbdeckung(R, s, Boolean(art.stromausfall))
       merke("sirene", 1 - R.SIRENEN.warnung.faktor_max * anteil, "Sirenen warnen " + Math.round(anteil * 100) + " % des Dorfes" + (art.stromausfall ? " (bei Stromausfall nur mit Akku)" : ""))
     }
+    // Pegelmonitor: Ab erhöhtem Hochwasser hat die Wehr Sandsäcke schon gefüllt
+    const vorsorge = ausbauEffekt(R, s, "hochwasser_arbeit")
+    if (art.hochwasser && vorsorge && pegelReicht(R, s, "erhoeht")) merke("pegelmonitor", 1 + vorsorge, "Sandsäcke vorab gefüllt (Pegelmonitor)")
     const fehltOpt = fehlendeGruppen(opt.geraete, k.bestand)
     const fehltOptQ = fehlendeQualifikation(opt.qualifikation, k.leute, alarm)
     if (fehltOpt.length + fehltOptQ.length)
@@ -1881,6 +1927,13 @@ function bewerte(R, s, e) {
 }
 
 // ---------- Ereignisse ----------
+
+/** Ist die Lage am Elbpegel mindestens so hoch wie die Stufe? (stand.pegel kommt aus pegel.js) */
+function pegelReicht(R, s, stufe) {
+  if (!R.PEGEL || !s.pegel) return false
+  const rang = (id) => R.PEGEL.stufen.findIndex((x) => x.id === id)
+  return rang(s.pegel.lage) >= rang(stufe)
+}
 
 function bedingungFaktor(art, t, wetter) {
   const b = art.bedingung
@@ -2370,6 +2423,8 @@ function naechstesEreignis(R, s, bis, vorher) {
     else nimm(e.ende, "ende", 0, e.id)
   }
   for (const [id, a] of Object.entries(s.einsatzarten)) nimm(a.naechster, "meldung", 2, id)
+  // Angemeldet von außen (Müllabfuhr): Einsatz zu einer festen Zeit an einer festen Stelle
+  for (const a of s.angemeldet || []) nimm(a.t, "angemeldet", 2, a.id)
   for (const b of s.baustellen || []) nimm(b.ende, "bau", 3, b.id)
   for (const [tag, d] of Object.entries(s.tage || {})) if (!d.abgerechnet) nimm(tagesende(tag), "tag", 4, tag)
   if (s.training_naechster) nimm(s.training_naechster, "training", 6, "")
@@ -2409,7 +2464,9 @@ function fortschreiben(stand, bis, umwelt, R) {
       const st = s.einsatzarten[ev.id]
       st.nr += 1
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
-      let f = levelReicht(s, art.ab_level) && !pausiert(s, art) ? bedingungFaktor(art, ev.t, wetter(ev.t)) : 0
+      // Mit echten Pegeldaten kommen Hochwasser-Einsätze nur in einer passenden Lage, dann ohne Monatsbedingung
+      const pegelF = art.pegel_min && R.PEGEL && s.pegel ? (pegelReicht(R, s, art.pegel_min) ? 1 : 0) : null
+      let f = levelReicht(s, art.ab_level) && !pausiert(s, art) && !art.muellabfuhr ? (pegelF !== null ? pegelF : bedingungFaktor(art, ev.t, wetter(ev.t))) : 0
       // Großlagen kommen öfter, wenn die Zusammenarbeit gut ist
       if (art.grosslage && R.GROSSLAGE) {
         const z = s.zusammenarbeit || []
@@ -2422,6 +2479,11 @@ function fortschreiben(stand, bis, umwelt, R) {
       const wartetSchon = s.laufend.some((x) => x.wartet && x.art === ev.id) || (!art.baustelle && alleOrteBesetzt(R, s, art, ev.id))
       if (f > 0 && (!art.baustelle || (bst && ortErlaubt(R, s, art, "baustelle:" + bst.id))) && r() < Math.min(1, f) && !wartetSchon) erzeuge(R, s, ev.id, ev.t, wetter, null, bst ? "baustelle:" + bst.id : undefined)
       st.naechster = ev.t + Math.round(art.intervall_min * MIN * (0.7 + 0.6 * r()) / Math.max(1, f))
+    } else if (ev.typ === "angemeldet") {
+      const a = s.angemeldet.find((x) => x.id === ev.id)
+      s.angemeldet = s.angemeldet.filter((x) => x !== a)
+      const art = R.EINSATZARTEN[a.art]
+      if (art && s.einsatzarten[a.art] && levelReicht(s, art.ab_level) && !pausiert(s, art)) erzeuge(R, s, a.art, ev.t, wetter, null, "punkt:" + Math.round(a.x * 10) / 10 + ":" + Math.round(a.z * 10) / 10)
     } else if (ev.typ === "warten") {
       versucheWartende(R, s, ev.t, wetter)
     } else if (ev.typ === "verfall") {
@@ -3069,6 +3131,8 @@ module.exports = {
   ortszeit,
   preis,
   levelAusXp,
+  muellautoPunkt,
+  pegelReicht,
   // für Tests
-  _intern: { bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

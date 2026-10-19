@@ -330,6 +330,9 @@ const ORTE = {
   drk_unterkunft: { name: "DRK-Unterkunft", x: -52, z: 74, fest: true },
   wachstation: { name: "Wasserrettungsstation", x: 14, z: -44, fest: true },
   thw_unterkunft: { name: "THW-Unterkunft", x: 76, z: -40, fest: true },
+  // Müllabfuhr: Deponie (wird gekauft) und Ortseingang, über den die Müllautos ohne Deponie kommen und fahren
+  deponie: { name: "Deponie", x: 96, z: -12, fest: true },
+  ortseingang: { name: "Ortseingang", x: -90, z: -28 },
 }
 
 /** Bauplätze für die Häuser der Einsatzkräfte. Näher am Gerätehaus = teurer (kürzerer Weg im Alarmfall). */
@@ -447,7 +450,56 @@ const DWD_WARNUNGEN = {
       muster: ["STARKREGEN", "DAUERREGEN"], stufe_min: 2, wetter: "nass",
       ausloesen: [{ art: "th_wasser_keller", min: [60, 180] }, { art: "th_graben", min: [90, 240], stufe_min: 3 }],
     },
+    // Gewitter mit Orkanböen fällt oben schon unter Sturm; starkes Gewitter bringt Bruch, Unwetter auch Wasser und Stromausfall
+    {
+      muster: ["GEWITTER"], stufe_min: 2, wetter: "sturm",
+      ausloesen: [{ art: "th_baum_strasse", min: [20, 90] }, { art: "th_wasser_keller", min: [60, 180], stufe_min: 3 }, { art: "th_stromausfall", min: [60, 180], stufe_min: 3 }],
+    },
+    // Hitzewarnungen (STARKE HITZE, EXTREME HITZE)
+    {
+      muster: ["HITZE"], wetter: "hitze",
+      ausloesen: [{ art: "b_flaeche", min: [60, 240] }, { art: "rd_hitze", min: [30, 180] }],
+    },
   ],
+}
+
+/**
+ * Gerätehausbesetzung bei Unwetter (Ausbau unwetterbereitschaft): Gilt eine Warnung ab stufe_min, warten alle
+ * Feuerwehrleute, die nicht gerade arbeiten, am Gerätehaus. Sie reagieren in reaktion_s und haben keinen Weg.
+ */
+const UNWETTER_BEREITSCHAFT = { stufe_min: 3, reaktion_s: 10 } // spielwert
+
+/**
+ * Elbpegel (Integration PEGELONLINE). Der Pegel am Ort ist ein Tidepegel: Das Wasser steigt und fällt zweimal am Tag um
+ * rund 3 m. Maßgeblich ist deshalb der Abstand zum mittleren Tidehochwasser (MThw) bzw. Tideniedrigwasser (MTnw). Beide
+ * rechnet der Abgleich aus den Scheiteln der eigenen Messungen der letzten `tage`; bis `min_scheitel` da sind, gelten die
+ * Startwerte (geschätzt aus den Messungen vom 13. bis 19.10.2026, cm über Pegelnull).
+ * Sturmflut-Stufen nach der Einteilung des BSH (ab 1,5 m, 2,5 m, 3,5 m über dem mittleren Hochwasser). Sie ist für die
+ * Nordseeküste festgelegt; am Oberlauf der Tideelbe ist sie ein Spielwert. Eine Lage hält `lage_h` nach dem letzten
+ * Scheitel über der Grenze an. Einsatzarten mit `pegel_min` kommen mit echten Pegeldaten nur in einer solchen Lage.
+ */
+const PEGEL = {
+  mthw_start: 740, // spielwert
+  mtnw_start: 400, // spielwert
+  tage: 30,
+  min_scheitel: 10,
+  scheitel_fenster_min: 120, // Scheitel: höchster bzw. tiefster Wert in ±2 h
+  max_alter_min: 120, // ältere Messung gilt als unbekannt
+  lage_h: 12,
+  stufen: [
+    { id: "niedrig", name: "Niedrigwasser", unter_mtnw: 60 },
+    { id: "normal", name: "normal" },
+    { id: "erhoeht", name: "erhöhtes Hochwasser", ueber_mthw: 75 },
+    { id: "sturmflut", name: "Sturmflut", ueber_mthw: 150, quelle: "bsh" },
+    { id: "schwer", name: "schwere Sturmflut", ueber_mthw: 250, quelle: "bsh" },
+    { id: "sehr_schwer", name: "sehr schwere Sturmflut", ueber_mthw: 350, quelle: "bsh" },
+  ],
+  // Beginnt eine Lage, kommen diese Einsätze (nur gekaufte bzw. Großlagen ab ihrem Level), jede Lage einmal
+  ausloesen: {
+    sturmflut: [{ art: "th_deich", min: [30, 120] }, { art: "dlrg_hochwasser", min: [60, 180] }],
+    schwer: [{ art: "gl_hochwasser", min: [30, 90] }],
+  },
+  ansaugen_niedrig_s: 90, // spielwert: längere Saugleitung bei Niedrigwasser
 }
 
 /** Ausbau je Haus: wie schnell die Person zum Gerätehaus bzw. zur Dienststelle kommt. */
@@ -536,6 +588,7 @@ const ARBEITGEBER = {
   platzwart: { name: "Platzwart am Sportplatz", ort: "sportplatz", stellen: 1, gebaeude: "sportplatz", ab_stufe: 5 },
   werkstatt: { name: "Kfz-Werkstatt", ort: "werkstatt_dorf", stellen: 2, gebaeude: "werkstatt", ab_stufe: 2 },
   bauhof: { name: "Bauhof", ort: "bauhof", stellen: 2, gebaeude: "bauhof", ab_stufe: 1 },
+  deponie: { name: "Entsorgungszentrum", ort: "deponie", stellen: 2, gebaeude: "deponie", ab_stufe: 1 },
   geraetewart: { name: "Gerätewart an der Feuerwache", ort: "feuerwehrhaus", stellen: 1, sonder: true },
   busfahrer: { name: "Busfahrer Linie 1", ort: "marktplatz", stellen: 1, sonder: true },
   brieftraeger: { name: "Briefträger", ort: "marktplatz", stellen: 1, sonder: true },
@@ -1125,6 +1178,16 @@ const GEBAEUDE = {
     { name: "Unterkunft mit Fahrzeughalle und Werkstatt", bauzeit_h: 48, stellplaetze: 4, preis: 25000, lager_slots: 36, ab_level: 27 },
     { name: "Unterkunft mit Übungsgelände", bauzeit_h: 72, stellplaetze: 5, preis: 40000, lager_slots: 44, ab_level: 27, hinweis: "Trümmerkegel und Übungsbecken" },
   ],
+  // Deponie für die Müllabfuhr (docs/integrationen/KONZEPT.md, 4.3). Stufe 0: Die Müllautos fahren zur Anlage des
+  // Landkreises aus der Stadt. nimmt: Abfallarten, deren Müllauto hier ablädt. Unbehandelter Restmüll darf seit Juni 2005
+  // nicht mehr abgelagert werden, die Umladestation gibt ihn nur weiter.
+  deponie: [
+    { name: "keine Anlage in der Stadt", bauzeit_h: 0, preis: 0, nimmt: [] },
+    { name: "Wertstoffhof mit Containerplatz", bauzeit_h: 12, preis: 4000, ab_level: 3, nimmt: ["papier", "gelb"] },
+    { name: "Kompostplatz", bauzeit_h: 24, preis: 8000, ab_level: 6, nimmt: ["papier", "gelb", "bio", "gruen"] },
+    { name: "Umladestation für Restmüll", bauzeit_h: 36, preis: 15000, ab_level: 10, nimmt: ["papier", "gelb", "bio", "gruen", "restmuell"] },
+    { name: "Deponie mit Sickerwasser- und Gasfassung", bauzeit_h: 96, preis: 40000, ab_level: 16, nimmt: ["papier", "gelb", "bio", "gruen", "restmuell"] },
+  ],
   // Sportplatz in der Südostecke (Konzept DORFDIENSTE.md, Abschnitt 12). fitness: Gewinn je Training im Verein,
   // trimm: Trimm-dich-Pfad für alle, licht: Training auch im Winter. Maße angelehnt an DIN 18035-1, verkleinert.
   sportplatz: [
@@ -1142,7 +1205,7 @@ const GEBAEUDE = {
 }
 
 /** Wo an einem Gebäude gebaut wird (Ort aus ORTE). */
-const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft", wachstation: "wachstation", thw_unterkunft: "thw_unterkunft" }
+const GEBAEUDE_ORT = { geraetehaus: "feuerwehrhaus", dienststelle: "dienststelle", sportplatz: "sportplatz", werkstatt: "werkstatt_dorf", bauhof: "bauhof", rettungswache: "rettungswache", drk_unterkunft: "drk_unterkunft", wachstation: "wachstation", thw_unterkunft: "thw_unterkunft", deponie: "deponie" }
 
 /** Ausbauten, die einzeln gekauft werden. */
 const AUSBAU = {
@@ -1156,6 +1219,9 @@ const AUSBAU = {
   atemschutzwerkstatt: { gebaeude: "geraetehaus", name: "Atemschutzwerkstatt", preis: 12000, effekt: { atemschutz_pflege_faktor: 0.4 }, bauzeit_h: 24, ab_stufe: 3 },
   funkraum: { gebaeude: "geraetehaus", name: "Funkraum", preis: 3000, effekt: { fuehrung: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 2 },
   uebungshof: { gebaeude: "geraetehaus", name: "Übungshof", preis: 8000, effekt: { lehrgang_faktor: 0.8 }, bauzeit_h: 24, ab_stufe: 3 },
+  // Echte Daten aus Home Assistant (docs/integrationen/KONZEPT.md)
+  pegelmonitor: { gebaeude: "geraetehaus", name: "Pegelmonitor im Gerätehaus", preis: 800, effekt: { hochwasser_arbeit: -0.2 }, bauzeit_h: 1, klein: true, ab_stufe: 1, hinweis: "ab erhöhtem Hochwasser werden Sandsäcke vorab gefüllt: Deich und Keller gehen schneller" },
+  unwetterbereitschaft: { gebaeude: "geraetehaus", name: "Gerätehausbesetzung bei Unwetter (Bereitschaftsraum)", preis: 2000, effekt: { unwetter_bereitschaft: 1 }, bauzeit_h: 6, klein: true, ab_stufe: 2, hinweis: "bei Unwetterwarnung warten die Kräfte am Gerätehaus" },
   // Zusätzliche Unterflurhydranten an den Plätzen aus HYDRANT_PLAETZE (Index), mit Hinweisschild nach DIN 4066
   hydrant_a: { gebaeude: "ort", name: "Unterflurhydrant mit Hinweisschild (Platz 1)", preis: 2500, effekt: { hydrant_platz: 0 }, bauzeit_h: 8, ab_stufe: 0, quelle: "nbrandschg", hinweis: "verkürzt den Weg zur Wasserversorgung bei Bränden in der Nähe" },
   hydrant_b: { gebaeude: "ort", name: "Unterflurhydrant mit Hinweisschild (Platz 2)", preis: 2500, effekt: { hydrant_platz: 1 }, bauzeit_h: 8, ab_stufe: 0, quelle: "nbrandschg", hinweis: "verkürzt den Weg zur Wasserversorgung bei Bränden in der Nähe" },
@@ -1236,6 +1302,43 @@ const EINSATZARTEN = {
     text: "Am Markt brennt eine Mülltonne, Rauch zieht über den Platz.",
     verfallen_text: "Die Tonne ist heruntergebrannt, die Nachbarn haben mit Gartenschlauch nachgelöscht.",
   },
+  // Müllabfuhr (docs/integrationen/KONZEPT.md, 4.4). muellabfuhr: entsteht nur während einer echten Abfuhr dort, wo
+  // das Müllauto gerade hält (ABFALL.brand_anteil je Müllauto), nicht nach Intervall.
+  b_muellfahrzeug: {
+    org: "feuerwehr", name: "Brand im Müllfahrzeug", stichwort: "B Fahrzeug", preis: 400, muellabfuhr: true,
+    freischaltung: { nach: "b_muelltonne" },
+    orte: ["ortseingang"], intervall_min: 525600, ablauf_min: 15, arbeit_min: 20, ziel_eintreffen_min: 8, wachstum: 0.1,
+    mindestens: { personen: 2, geraete: [[{ fahrzeug_wasser: 1, cm_strahlrohr: 1 }, { c_schlauch_15: 2, cm_strahlrohr: 1, standrohr: 1 }]] },
+    optimal: { personen: 6, einheit: "staffel", geraete: [[{ waermebildkamera: 1 }], [{ besen_schaufel: 1 }], [{ pressluftatmer: 2 }]] },
+    psa: { helm: 1, handschuhe: 1, jacke: 1 },
+    regeln: ["einheitsfuehrer", "verkehrsabsicherung"],
+    text: "Aus der Presse des Müllautos qualmt es, vermutlich ein Akku. Der Fahrer hat die Ladung auf die Straße gekippt.",
+    verfallen_text: "Der Haufen ist ausgebrannt, die Straße bleibt bis zum Abend gesperrt.",
+  },
+  b_wertstoffhof: {
+    org: "feuerwehr", name: "Brand auf dem Wertstoffhof", stichwort: "B mittel", preis: 1500,
+    freischaltung: { nach: "b_muelltonne" }, braucht_gebaeude: { deponie: 1 },
+    orte: ["deponie"], intervall_min: 10080, ablauf_min: 15, arbeit_min: 30, ziel_eintreffen_min: 10, wachstum: 0.12,
+    bedingung: { wetter: ["hitze"], faktor: 2, sonst_faktor: 1 },
+    mindestens: { personen: 4, geraete: [[{ fahrzeug_wasser: 1 }, { standrohr: 1 }], [{ c_schlauch_15: 2 }, { c_schlauch_20: 2 }], [{ cm_strahlrohr: 1 }, { c_hohlstrahlrohr: 1 }]] },
+    optimal: { personen: 9, einheit: "gruppe", geraete: [[{ waermebildkamera: 1 }], [{ pressluftatmer: 2 }], [{ verteiler: 1, b_schlauch: 1 }]] },
+    psa: { helm: 1, handschuhe: 1, jacke: 1, haube: 1 },
+    regeln: ["einheitsfuehrer", "maschinist_pumpe"],
+    text: "Im Container für Elektroschrott brennt es, wahrscheinlich ein Lithium-Akku. Es knallt immer wieder.",
+    verfallen_text: "Der Container ist ausgebrannt, der Wertstoffhof bleibt zwei Tage zu.",
+  },
+  b_deponie: {
+    org: "feuerwehr", name: "Brand auf der Deponie", stichwort: "B groß", preis: 8000,
+    freischaltung: { nach: "b_wertstoffhof" }, braucht_gebaeude: { deponie: 4 },
+    orte: ["deponie"], intervall_min: 43200, ablauf_min: 30, arbeit_min: 180, ziel_eintreffen_min: 12, wachstum: 0.05,
+    bedingung: { wetter: ["hitze", "trocken"], faktor: 1.5, sonst_faktor: 0.5 },
+    mindestens: { personen: 9, qualifikation: { gf: 1, maschinist: 1 }, geraete: [[{ fahrzeug_wasser: 1 }], [{ b_schlauch: 4 }], [{ cm_strahlrohr: 2 }]] },
+    optimal: { personen: 18, qualifikation: { agt: 4 }, geraete: [[{ waermebildkamera: 1 }], [{ radlader_fahrzeug: 1 }], [{ pressluftatmer: 4 }], [{ tlf_fahrzeug: 1 }]] },
+    psa: { helm: 1, handschuhe: 1, jacke: 1, haube: 1 },
+    regeln: ["einheitsfuehrer", "maschinist_pumpe", "atemschutz_ueberwachung"],
+    text: "Im Abfallkörper glimmt es, Rauch steigt an mehreren Stellen auf. Der Radlader muss das Glutnest freilegen.",
+    verfallen_text: "Der Brand hat sich ausgebreitet, Kräfte aus dem Landkreis löschen die Nacht durch.",
+  },
   b_hecke: {
     org: "feuerwehr", name: "Heckenbrand", stichwort: "B klein", preis: 300,
     freischaltung: { nach: "b_muelltonne" },
@@ -1275,7 +1378,7 @@ const EINSATZARTEN = {
     verfallen_text: "Die Straße blieb stundenlang gesperrt.",
   },
   th_wasser_keller: {
-    org: "feuerwehr", name: "Wasser im Keller", stichwort: "TH Wasser", preis: 500,
+    org: "feuerwehr", name: "Wasser im Keller", stichwort: "TH Wasser", preis: 500, hochwasser: true,
     freischaltung: { nach: "b_hecke" },
     // Wohnhäuser der Karte (keller), tiefer gelegene häufiger (tief_gewicht, nur mit Geländehöhen der Karte)
     orte: ["nachbarhaus", "bibliothek"], ort_gruppen: ["keller"], tief_gewicht: 2, intervall_min: 720, ablauf_min: 40, arbeit_min: 25, ziel_eintreffen_min: 12,
@@ -1447,7 +1550,8 @@ const EINSATZARTEN = {
     freischaltung: { nach: "b_scheune" },
     // Qualmwasser tritt am landseitigen Deichfuß aus, am ehesten in den tiefsten Stellen (qualmwasser, tief_gewicht)
     orte: ["deich"], ort_gruppen: ["qualmwasser"], tief_gewicht: 3, intervall_min: 43200, ablauf_min: 120, arbeit_min: 240, ziel_eintreffen_min: 60,
-    bedingung: { monate: [1, 2, 3, 4, 6], sonst_faktor: 0.1 },
+    // Mit echten Pegeldaten nur bei Sturmflut (PEGEL), sonst nach Monaten
+    bedingung: { monate: [1, 2, 3, 4, 6], sonst_faktor: 0.1 }, pegel_min: "sturmflut", hochwasser: true,
     mindestens: { personen: 20, qualifikation: { zf: 1 }, geraete: [[{ sandsack: 10 }], [{ beleuchtung: 2 }]] },
     optimal: { personen: 40, geraete: [[{ sandsack: 20 }], [{ elw_fahrzeug: 1 }], [{ stromerzeuger: 2 }], [{ drohne: 1 }]] },
     regeln: ["einheitsfuehrer", "eigenschutz_wasser"],
@@ -1801,7 +1905,7 @@ const EINSATZARTEN = {
   // grosslage: wird nicht gekauft, kommt ab dem Level von selbst, selten. Die Leitstelle alarmiert alle Teile zugleich
   // (außer Nachforderungen wie das THW). Wie oft, hängt an der Zusammenarbeit der letzten gemeinsamen Einsätze.
   gl_hochwasser: {
-    org: "feuerwehr", name: "Großlage Elbhochwasser", stichwort: "Großlage Hochwasser", preis: 0, ab_level: 30, grosslage: true, warnung: true,
+    org: "feuerwehr", name: "Großlage Elbhochwasser", stichwort: "Großlage Hochwasser", preis: 0, ab_level: 30, grosslage: true, warnung: true, pegel_min: "schwer", hochwasser: true,
     orte: ["deich"], intervall_min: 20160, ablauf_min: 90, arbeit_min: 300, ziel_eintreffen_min: 20,
     bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.05 },
     mindestens: { personen: 9, qualifikation: { gf: 1 }, geraete: [[{ sandsack: 10 }]] },
@@ -1948,7 +2052,7 @@ const EINSATZARTEN = {
     verfallen_text: "Ein Schiff der Wasserschutzpolizei hat es nach langer Zeit abgeschleppt.",
   },
   dlrg_hochwasser: {
-    org: "dlrg", name: "Evakuierung bei Hochwasser", stichwort: "Wasser Hochwasser", preis: 2500,
+    org: "dlrg", name: "Evakuierung bei Hochwasser", stichwort: "Wasser Hochwasser", preis: 2500, pegel_min: "sturmflut",
     freischaltung: { nach: "dlrg_boot" },
     orte: ["deich"], intervall_min: 20160, ablauf_min: 60, arbeit_min: 90, ziel_eintreffen_min: 30,
     bedingung: { monate: [1, 2, 3, 4, 6], faktor: 1, sonst_faktor: 0.1 },
@@ -2545,6 +2649,35 @@ const GELAENDE = null
 /** Gruppen von Zufallsorten an Wohnhäusern: Dort entsteht ein Einsatz nur, wenn auf dem Bauplatz ein Haus steht. */
 const ZUFALLSORT_BEWOHNT = ["keller"]
 
+/**
+ * Müllabfuhr nach dem echten Abfallkalender (docs/integrationen/KONZEPT.md, Abschnitt 4). muster: Teile des Termin-
+ * namens (Großbuchstaben). Farben sind die in Deutschland üblichen, nicht die eines bestimmten Landkreises.
+ * Zeiten in Ortszeit. xp: für deine richtige Tonne, für eine vergessene Tonne beim Nachbarn (höchstens nachbar_max je
+ * Termin) und als Serienbonus. vergessen: Anteil der Einwohner, die ihre Tonne nicht rausstellen.
+ */
+const ABFALL = {
+  arten: {
+    restmuell: { name: "Restmüll", muster: ["HAUSMÜLL", "HAUSMUELL", "RESTMÜLL", "RESTMUELL", "RESTABFALL"], farbe: "#4a4f55", deckel: "#1f2124", versatz_min: 0 },
+    bio: { name: "Biotonne", muster: ["BIO"], farbe: "#6b4a2b", deckel: "#5a3c22", versatz_min: 20 },
+    gelb: { name: "Gelbe Tonne", muster: ["GELB", "WERTSTOFF", "LEICHTVERPACKUNG"], farbe: "#e7c21b", deckel: "#d4ae0a", versatz_min: 40 },
+    papier: { name: "Altpapier", muster: ["PAPIER", "PAPPE"], farbe: "#2a5db0", deckel: "#1f4a90", versatz_min: 60 },
+    gruen: { name: "Grünabfall", muster: ["GRÜN", "GRUEN", "GARTEN"], farbe: "#3f8a3a", deckel: "#3f8a3a", buendel: true, versatz_min: 80 },
+  },
+  vorabend_ab: 16,
+  rausstellen: [17, 22], // spielwert: Einwohner stellen ihre Tonne in diesem Zeitraum raus
+  abfuhr_ab: 7,
+  reinholen_bis: 20,
+  erinnerung: 18, // Push am Vorabend, wenn deine Tonne noch nicht draußen steht
+  vergessen: 0.08, // spielwert
+  halt_s: 35, // Schüttung je Tonne
+  tempo_ms: 4.5, // Sammelfahrt (rund 16 km/h)
+  transfer_ms: 10, // Fahrt zur Deponie oder aus der Stadt
+  xp: { richtig: 10, nachbar: 3, nachbar_max: 3, serie: [{ ab: 5, xp: 15 }, { ab: 10, xp: 30 }] },
+  brand_anteil: 0.04, // spielwert: Brand im Müllfahrzeug je Abfuhr (nur wenn gekauft)
+  tonnenbrand_anteil: 0.25, // spielwert: zusätzlicher Mülltonnenbrand in der Nacht vor der Abfuhr (nur wenn gekauft)
+  abfahren_tage: 7, // Haufen auf der Deponie werden so oft abgefahren (Papier, Gelb, Kompost); Restmüll geht gleich weiter
+}
+
 // Fahrzeuge werden je Organisation nach Preis gestaffelt freigeschaltet: das günstigste ab dem Level der
 // Organisation, jedes teurere ein Level später (gleich teure gemeinsam). Ein passender Einsatz schaltet früher frei
 // (simulation.js, fahrzeugSperre). ab_level steht dann im Regelwerk, damit die App dasselbe anzeigt.
@@ -2563,6 +2696,9 @@ module.exports = {
   GEBIETE,
   NACHBARHILFE,
   DWD_WARNUNGEN,
+  UNWETTER_BEREITSCHAFT,
+  PEGEL,
+  ABFALL,
   SIRENEN,
   ZUFALLSORTE,
   ZUFALLSORT_NAMEN,
