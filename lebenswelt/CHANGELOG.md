@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.36.1
+
+- Verletzungen nach Einsätzen gibt es erst ab dem Level, ab dem es das Krankenhaus gibt (`KRANKENHAUS.ab_level`, Level 24). Wer vorher noch im Krankenhaus lag, ist sofort wieder da.
+- Beruf `dorf` heißt jetzt „arbeitet in der Stadt“.
+
 ## 0.36.0
 
 - Elbe Springs, Einwohner (Entscheidung vom 19.10.2026): Es wohnt nur, wer eingeladen wurde. Zum Start drei Feuerwehrleute mit Namen (umbenennbar); bestehende Kräfte bleiben, fehlende ziehen sofort ein. Die Feuerwehr ist Ehrenamt: Feuerwehrleute bekommen ihren Job neu (Beruf `ohne`, bis du ihn vergibst).
