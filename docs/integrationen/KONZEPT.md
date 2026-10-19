@@ -11,16 +11,16 @@ Umgesetzt ist der Teil in der Datenbank-App (dieses Repository, Version 0.38.0).
 | **PEGELONLINE Zollenspieker** (Elbe) | Die Elbe in der Stadt steigt und fällt mit der echten Tide. Bei echter Sturmflut kommen Deichverteidigung, Evakuierung und ab Level 30 die Großlage Elbhochwasser, sonst nicht. Bei Niedrigwasser dauert das Ansaugen an der Elbe länger. Neuer Ausbau „Pegelmonitor“. |
 | **DWD-Unwetterwarnungen** (gab es schon) | Neu: Hitze und Gewitter. Neuer Ausbau „Gerätehausbesetzung bei Unwetter“: Bei Unwetter (Stufe 3 und höher) warten die Kräfte schon am Gerätehaus. |
 | **Abfallkalender Landkreis** | Am Vorabend stehen an den Häusern die Tonnen. Du stellst deine richtige Tonne an die Straße (Klick), die Einwohner ihre selbst. Am Abholtag fährt je Abfallart ein Müllauto durch die Stadt, leert nur die passenden Tonnen und fährt zur Deponie, sobald du sie gebaut hast. Neues Gebäude „Deponie“ in vier Stufen, drei neue Einsätze, Müllauto als Hindernis im Verkehr. |
-| **Garmin Connect** | Tageswerte (Schritte, Intensitätsminuten, Schlaf, Body Battery, HRV, Ruhepuls, Trainingsbereitschaft) für die Anzeige in der App, dazu ein Tagesverlauf. Bewusst ohne Wirkung auf das Spiel. |
+| **Garmin Connect** | Tageswerte (Schritte, Intensitätsminuten, Schlaf, Body Battery, HRV, Ruhepuls, Trainingsbereitschaft) für die Anzeige in der App, dazu ein Tagesverlauf. Gute Werte bringen ein paar XP, schlechte kosten nichts. Keine Wirkung auf die Einsatzwelt. |
 | **Paperless-ngx** | Neue Dokumente im Posteingang von Paperless landen im Eingang der Lebenswelt. Claude kann über die Lebenswelt in Paperless suchen, Dokumente lesen, umbenennen, verschlagworten und Aufgaben mit Fälligkeit daraus machen. |
-| **Kalender** (nur deiner) | Je Tag: Arbeit, Homeoffice, frei, Urlaub, Feiertag, mit Terminen. Claude weiß damit, wann du arbeitest. |
+| **Kalender** (deiner, dazu Familie zum Mitlesen) | Je Tag: Arbeit, Homeoffice, frei, Urlaub, Feiertag, mit Terminen. Claude weiß damit, wann du arbeitest. |
 
 ## 1. Grundsätze
 
 1. **Die echte Welt treibt, das Spiel erfindet nicht dazu.** Wo es echte Daten gibt (Pegel, Warnungen, Abfuhrtermine), richten sich die passenden Ereignisse nach ihnen. Ohne die Daten (Sensor fehlt, Messung zu alt) läuft alles wie bisher.
 2. **Nichts muss gesteuert werden** (Grundsatz aus DORFDIENSTE.md). Einzige Ausnahme ist deine eigene Tonne. Das ist Absicht: Der Klick ist die Erinnerung und die Bestätigung für die echte Tonne. Die Einwohner stellen ihre Tonnen selbst raus, und wer den Klick vergisst, verliert nichts außer der Serie.
 3. **Jeder Kauf wirkt messbar.** Die Deponie verkürzt keine Wege nur zur Optik: Sie nimmt Abfall auf, bringt Arbeitsplätze und neue Einsätze.
-4. **Kein Druck aus Gesundheitsdaten.** Garmin wird angezeigt, aber nicht belohnt oder bestraft (Entscheidung aus DORFDIENSTE.md, 12.6). Schlaf, HRV und Body Battery lassen sich kaum direkt beeinflussen. Eine Belohnung dafür würde zur Strafe für eine schlechte Nacht.
+4. **Kein Druck aus Gesundheitsdaten.** Gute Garmin-Werte bringen ein paar XP, schlechte kosten nie etwas (Entscheidung vom 19.10.2026). Eine schlechte Nacht ist so nur keine Belohnung, keine Strafe. Auf die Einsatzwelt wirkt Garmin nicht (DORFDIENSTE.md, 12.6).
 5. **Öffentlich und privat getrennt.** Dieses Repository ist öffentlich. Kalendernamen, Tokens und Adressen stehen nur in der Konfiguration der App in Home Assistant, nie im Code.
 6. **Kein KI-Guthaben im Spielbetrieb.** Pegel, Müllabfuhr und Unwetter rechnet die Datenbank-App ohne Claude. Claude kommt nur bei Paperless, Aufgaben und Kalender ins Spiel, und nur wenn du es aufrufst oder eine Routine einrichtest.
 
@@ -141,7 +141,17 @@ Dazu wirkt das **Müllauto als Hindernis**: Hält es gerade in der Nähe von Sta
 
 - Neue Route `GET /api/lebenswelt/garmin/heute`: Schritte und Ziel, Etagen, Intensitätsminuten und Wochenziel, Ruhepuls, Body Battery (aktuell, höchster, niedrigster Wert), Stress, Schlaf (Dauer, Tief-, REM-, Leichtschlaf, Schlafwert), HRV (Status, letzte Nacht, Wochenschnitt, Basis), Trainingsbereitschaft, VO2max, nächstes geplantes Training, letzte Synchronisierung. Gelesen wird direkt aus Home Assistant.
 - Um 23:55 Uhr wird der Tag als Dokument `garmin_tag` (Schlüssel = Datum) gespeichert, für Verläufe in der App und für Claude.
-- Keine Wirkung auf Spiel, XP oder Fitness im Dorf (Grundsatz 4). Die XP für Aktivitäten (Läufe usw.) bleiben wie bisher.
+- **XP nur für gute Werte** (Entscheidung vom 19.10.2026), ausgewertet um 23:55 Uhr, höchstens 20 XP am Tag:
+
+| Wert | XP |
+|---|---|
+| Schlafwert ab 70 / 80 / 90 | 2 / 5 / 8 |
+| Schlafbedarf gedeckt | 3 |
+| Schrittziel erreicht | 5 |
+| HRV ausgeglichen | 2 |
+| Body Battery erreicht 90 | 2 |
+
+  Schlechte Werte kosten nichts. Abholen mit `POST /api/lebenswelt/garmin/abholen`, die App bucht die XP. Keine Wirkung auf die Einsatzwelt oder die Fitness im Dorf. Die XP für Aktivitäten (Läufe usw.) bleiben wie bisher.
 
 **Frontend:** Karte „Heute“ im Bereich Gesundheit mit Ringen für Schritte und Intensitätsminuten, Schlafbalken, Body-Battery-Kurve aus `garmin_tag`, HRV-Status als Text.
 
@@ -179,7 +189,7 @@ Damit kann Claude in jeder Unterhaltung alle Dokumente durchsuchen und lesen, oh
 
 ## 7. Kalender
 
-- Option `kalender_entitaet`: dein Kalender (zum Beispiel `calendar.<dein_name>`). Andere Kalender (Familie) werden nicht gelesen.
+- Option `kalender_entitaet`: dein Kalender (zum Beispiel `calendar.<dein_name>`). Option `kalender_weitere`: Kalender der Familie zum Mitlesen. Deren Termine stehen je Tag unter `andere` mit Namen und bestimmen nie, ob du arbeitest; es sind meist die Termine der anderen.
 - Stündlich werden die nächsten 14 Tage gelesen und je Tag eingeordnet:
 
 | Art | Woran erkannt |
@@ -189,7 +199,7 @@ Damit kann Claude in jeder Unterhaltung alle Dokumente durchsuchen und lesen, oh
 | Dienst | „Dienst“, „Schicht“, „Bereitschaft“, „Früh-“, „Spät-“, „Nachtdienst“, „Lehrgang“, „Fortbildung“ |
 | Feiertag | gesetzliche Feiertage in Niedersachsen (berechnet, auch Reformationstag) |
 | Wochenende | Samstag, Sonntag ohne Dienst |
-| Arbeit (vermutet) | Werktag ohne Eintrag, Regelarbeitszeit aus Option `regelarbeitszeit` (Standard 07:00-16:00) |
+| Arbeit (vermutet) | Werktag ohne Eintrag, Zeiten aus Option `regelarbeitszeit`, auch je Wochentag (`Mo 06:00-15:00; Di-Do 06:00-15:30; Fr 06:00-12:00`) |
 
 - Ergebnis als Dokument `kalender`/`tage` und über `GET /api/lebenswelt/kalender`: je Tag Art, sicher oder vermutet, Arbeitszeit, Termine (Titel, von, bis). Termine der Müllabfuhr im eigenen Kalender werden übersprungen.
 - **Wofür:** Claude plant Fälligkeiten auf freie Abende und Tage und fasst morgens zusammen („heute Homeoffice, 12 Uhr Lauf“). Später denkbar: die Erinnerung an die Tonne früher schicken, wenn du am Vorabend Spät- oder Nachtdienst hast.

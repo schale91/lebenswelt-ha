@@ -81,3 +81,39 @@ test("Paperless: Kurzform ohne vollen Text, Eingang mit Verweis", () => {
   assert.equal(e.link, "http://paperless/documents/42/details")
   assert.match(e.details, /^Stadtwerke, Rechnung\. Sehr geehrter Herr X,/)
 })
+
+test("Regelarbeitszeit je Wochentag: Mo bis 15, Di bis Do bis 15:30, Fr bis 12", () => {
+  const regel = "Mo 06:00-15:00; Di-Do 06:00-15:30; Fr 06:00-12:00"
+  const z = K.regelzeiten(regel)
+  assert.deepEqual(z[1], ["06:00", "15:00"])
+  assert.deepEqual(z[3], ["06:00", "15:30"])
+  assert.deepEqual(z[5], ["06:00", "12:00"])
+  assert.equal(z[6], undefined)
+  const t = K.tage([], "2026-10-19", 5, regel)
+  assert.deepEqual(t.map((d) => d.wochentag + " " + d.von + "-" + d.bis), ["Mo 06:00-15:00", "Di 06:00-15:30", "Mi 06:00-15:30", "Do 06:00-15:30", "Fr 06:00-12:00"])
+  // Einfache Form gilt für Montag bis Freitag
+  assert.deepEqual(K.regelzeiten("07:00-16:00")[5], ["07:00", "16:00"])
+  // Ein Werktag ohne Regelzeit ist frei (vermutet)
+  assert.equal(K.tage([], "2026-10-23", 1, "Mo-Do 06:00-15:30")[0].art, "frei")
+})
+
+test("Weitere Kalender (Julia): stehen unter andere, bestimmen die Art des Tages nie", () => {
+  const julia = [
+    { summary: "Urlaub", start: { date: "2026-10-20" }, end: { date: "2026-10-21" } },
+    { summary: "Zahnarzt", start: { dateTime: "2026-10-20T10:00:00+02:00" }, end: { dateTime: "2026-10-20T11:00:00+02:00" } },
+  ]
+  const t = K.tage([], "2026-10-20", 1, "Di 06:00-15:30", [{ wer: "Julia", ereignisse: julia }])
+  assert.equal(t[0].art, "arbeit")
+  assert.deepEqual(t[0].andere.map((x) => x.wer + ": " + x.titel), ["Julia: Urlaub", "Julia: Zahnarzt"])
+  assert.equal(t[0].termine.length, 0)
+})
+
+test("Garmin-XP: nur für gute Werte, höchste Stufe je Regel, gedeckelt, schlechte Werte kosten nichts", () => {
+  const gut = G.xpAus({ schlafwert: 92, schlaf_min: 450, schlafbedarf_min: 430, schritte: 8000, schrittziel: 7770, hrv_status: "Balanced", body_battery_hoch: 100 })
+  assert.equal(gut.summe, 20)
+  assert.deepEqual(gut.gruende.map((g) => g.id + ":" + g.xp), ["schlafwert:8", "schlafdauer:3", "schritte:5", "hrv:2", "body_battery:2"])
+  const mittel = G.xpAus({ schlafwert: 84, schlaf_min: 346, schlafbedarf_min: 430, schritte: 104, schrittziel: 7770, hrv_status: "Unbalanced" })
+  assert.equal(mittel.summe, 5)
+  assert.equal(G.xpAus({ schlafwert: 40, schritte: 0 }).summe, 0)
+  assert.equal(G.xpAus({}).summe, 0)
+})
