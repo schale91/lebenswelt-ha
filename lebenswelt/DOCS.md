@@ -26,6 +26,7 @@ Speichert die Daten der Lebenswelt-App in Home Assistant. Technisch ist das [Poc
 | `regelarbeitszeit` | Arbeitszeit an Tagen ohne Eintrag im Kalender: `HH:MM-HH:MM` für Montag bis Freitag oder je Tag, z. B. `Mo 06:00-15:00; Di-Do 06:00-15:30; Fr 06:00-12:00`. |
 | `paperless_url` | Adresse von Paperless-ngx im Netz der Apps (Standard: die App Paperless-ngx). |
 | `paperless_token` | API-Token aus Paperless (Profil → API-Token). Leer: keine Verbindung zu Paperless. |
+| `paperless_link_basis` | Von außen erreichbare Adresse von Paperless für Links zu Dokumenten (Adresse, unter der Paperless im Browser aufgeht). Leer: Links mit `paperless_url`. |
 | `app_quelle` | Woher neue Versionen der App kommen: `besitzer/repository@zweig` (Standard `schale91/Claude@app-paket`). |
 | `app_token` | GitHub-Token nur zum Lesen dieses einen Repositorys. Ohne Token gibt es keine Updates per Knopf. |
 | `fcm_dienstkonto` | Schlüssel eines Firebase-Dienstkontos (der ganze JSON-Inhalt) für Push-Nachrichten an die Android-App. Leer = keine Push-Nachrichten. |
@@ -144,6 +145,9 @@ Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
 | PATCH | `/api/lebenswelt/paperless/dokument/{id}` | `{titel, korrespondent, dokumenttyp, tags_dazu, tags_weg, datum, aus_posteingang, neu_anlegen}` |
 | POST | `/api/lebenswelt/paperless/dokument/{id}/notiz` | `{text}` |
 | POST | `/api/lebenswelt/paperless/dokument/{id}/aufgabe` | `{titel, faellig, sphaere, kontext}` Aufgabe mit Verweis auf das Dokument |
+| POST | `/api/lebenswelt/paperless/dokument/{id}/frage` | `{text}` Rückfrage zum Dokument (typ `frage`, Status `offen`), erscheint in der App im Posteingang mit Antwortfeld; Push-Nachricht |
+| GET | `/api/lebenswelt/fragen?status=beantwortet` | Rückfragen, optional nach Status (`offen`, `beantwortet`, `verarbeitet`) |
+| PATCH | `/api/lebenswelt/fragen/{id}` | `{status: "verarbeitet"}`, optional `{antwort}` |
 | POST | `/api/lebenswelt/paperless/abgleich` | Posteingang sofort übernehmen |
 
 Das Einsatzspiel rechnet jede Minute im Hintergrund weiter. Es nutzt keine KI und verbraucht kein Guthaben. Die Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur lesbar.

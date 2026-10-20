@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.40.0
+
+- Rückfragen zu Paperless-Dokumenten als eigener Eintrag `frage` (Text, `paperless_id`, Dokumenttitel und Link, Status `offen`, `beantwortet` oder `verarbeitet`, Antwort, Zeitstempel). Bisher landeten Rückfragen als Aufgabe, dort wurde der Text abgeschnitten und es gab kein Antwortfeld.
+  - `POST /api/lebenswelt/paperless/dokument/{id}/frage` mit `{text}` legt eine Frage an und schickt eine Push-Nachricht.
+  - `GET /api/lebenswelt/fragen?status=beantwortet` liefert die Fragen (ohne `status` alle).
+  - `PATCH /api/lebenswelt/fragen/{id}` mit `{status: "verarbeitet"}` (optional `antwort`) setzt den Status.
+  - Die App zeigt offene Fragen im Posteingang und beantwortet sie in einem eigenen Fenster.
+- Neue Option `paperless_link_basis`: von außen erreichbare Adresse von Paperless für Dokumentlinks (zum Beispiel die Adresse, unter der Paperless im Browser aufgeht). Ohne Eintrag bleiben die Links wie bisher.
+- Bestehende Routen und Daten bleiben unverändert.
+
 ## 0.39.1
 
 - Schneller Start: Die Abgleiche nach dem Start (Garmin, Abfallkalender, App-Paket) laufen in der ersten Minute statt beim Start selbst. Vorher nahm der Server erst Anfragen an, wenn Home Assistant und GitHub geantwortet hatten; nach einem Neustart war die App so bis zu zwei Minuten nicht erreichbar.
