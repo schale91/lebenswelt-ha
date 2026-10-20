@@ -104,6 +104,28 @@ routerAdd("POST", "/api/lebenswelt/paperless/dokument/{id}/aufgabe", (e) =>
   require(`${__hooks}/ha_daten.js`).paperless(e, (pl, ich) => e.json(200, { ok: true, aufgabe: pl.aufgabe(e.app, ich.id, e.request.pathValue("id"), e.requestInfo().body || {}) })),
 )
 
+// {text}: Rückfrage zu einem Dokument (typ "frage"), erscheint in der App im Posteingang mit Antwortfeld.
+// Beantwortete holt GET /api/lebenswelt/fragen?status=beantwortet ab (fragen.pb.js).
+routerAdd("POST", "/api/lebenswelt/paperless/dokument/{id}/frage", (e) =>
+  require(`${__hooks}/ha_daten.js`).paperless(e, (pl, ich) => {
+    const fr = require(`${__hooks}/fragen.js`)
+    const text = String((e.requestInfo().body || {}).text || "").trim()
+    if (!text) return e.json(400, { fehler: "text fehlt." })
+    if (text.length > fr.TEXT_MAX) return e.json(400, { fehler: "text ist zu lang (höchstens " + fr.TEXT_MAX + " Zeichen)." })
+    const dok = pl.dokument(e.request.pathValue("id"))
+    if (!dok) return e.json(404, { fehler: "Dokument nicht gefunden." })
+    const frage = fr.lege(e.app, ich.id, dok, text)
+    require(`${__hooks}/push.js`).sende(e.app, ich.id, {
+      titel: "Rückfrage zu einem Dokument",
+      text: (dok.titel || "Dokument " + dok.id) + ": Claude hat eine Frage. Antwort im Posteingang.",
+      kanal: "allgemein",
+      id: "frage",
+      ha: true,
+    })
+    return e.json(200, { ok: true, frage })
+  }),
+)
+
 routerAdd("POST", "/api/lebenswelt/paperless/abgleich", (e) => require(`${__hooks}/ha_daten.js`).paperless(e, (pl, ich) => e.json(200, pl.abgleich(e.app, ich.id))))
 
 // Posteingang alle 15 Minuten in den Eingang der Lebenswelt übernehmen

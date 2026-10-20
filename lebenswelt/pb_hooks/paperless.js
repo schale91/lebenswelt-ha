@@ -11,7 +11,10 @@ const QUELLE = "paperless"
 function konfig() {
   const h = require(`${__hooks}/hilfen.js`)
   const o = h.optionen()
-  return { url: String(o.paperless_url || "http://ca5234a0-paperless-ngx:80").replace(/\/+$/, ""), token: String(o.paperless_token || "").trim() }
+  const url = String(o.paperless_url || "http://ca5234a0-paperless-ngx:80").replace(/\/+$/, "")
+  // Links zu Dokumenten: von außen erreichbare Adresse (Option paperless_link_basis), sonst wie bisher die interne
+  const link = String(o.paperless_link_basis || "").trim().replace(/\/+$/, "") || url
+  return { url, link, token: String(o.paperless_token || "").trim() }
 }
 
 function eingerichtet() {
@@ -104,7 +107,7 @@ function suche(q, posteingang, seite) {
   if (posteingang) p.push("is_in_inbox=true")
   const r = anfrage("GET", "/api/documents/?" + p.join("&"))
   if (r.status !== 200) throw new Error("Suche fehlgeschlagen (HTTP " + r.status + ").")
-  const url = konfig().url
+  const url = konfig().link
   return { anzahl: r.json.count || 0, weitere: Boolean(r.json.next), dokumente: (r.json.results || []).map((d) => kurz(d, n, url)) }
 }
 
@@ -114,7 +117,7 @@ function dokument(id) {
   const r = anfrage("GET", "/api/documents/" + Number(id) + "/")
   if (r.status === 404) return null
   if (r.status !== 200) throw new Error("Dokument nicht lesbar (HTTP " + r.status + ").")
-  const k = kurz(r.json, n, konfig().url)
+  const k = kurz(r.json, n, konfig().link)
   k.text = String(r.json.content || "")
   k.dateiname = r.json.original_file_name || null
   const no = anfrage("GET", "/api/documents/" + Number(id) + "/notes/")
@@ -165,7 +168,7 @@ function aendere(id, b) {
     r = anfrage("PATCH", "/api/documents/" + Number(id) + "/", patch)
   }
   if (r.status !== 200) throw new Error("Ändern fehlgeschlagen (HTTP " + r.status + "): " + JSON.stringify(r.json).slice(0, 300))
-  return kurz(r.json, namen(), konfig().url)
+  return kurz(r.json, namen(), konfig().link)
 }
 
 function notiz(id, text) {
@@ -180,7 +183,7 @@ function notiz(id, text) {
  */
 function abgleich(app, besitzer) {
   const n = namen(true)
-  const url = konfig().url
+  const url = konfig().link
   const r = anfrage("GET", "/api/documents/?is_in_inbox=true&page_size=100&ordering=-added")
   if (r.status !== 200) throw new Error("Posteingang nicht lesbar (HTTP " + r.status + ").")
   const offen = (r.json.results || []).map((d) => kurz(d, n, url))

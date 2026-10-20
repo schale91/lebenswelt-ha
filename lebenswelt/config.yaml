@@ -1,5 +1,5 @@
 name: Lebenswelt Datenbank
-version: "0.39.1"
+version: "0.40.0"
 slug: lebenswelt
 description: Datenbank und Schnittstelle für die Lebenswelt-App (PocketBase hinter dem Ingress von Home Assistant)
 url: https://github.com/schale91/lebenswelt-ha
@@ -35,6 +35,7 @@ options:
   regelarbeitszeit: "07:00-16:00"
   paperless_url: "http://ca5234a0-paperless-ngx:80"
   paperless_token: ""
+  paperless_link_basis: ""
   app_quelle: schale91/Claude@app-paket
   app_token: ""
   fcm_dienstkonto: ""
@@ -58,6 +59,7 @@ schema:
   regelarbeitszeit: str?
   paperless_url: url?
   paperless_token: password?
+  paperless_link_basis: str?
   app_quelle: str?
   app_token: password?
   fcm_dienstkonto: password?
