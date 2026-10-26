@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.43.3
+
+- Korrektur zu 0.43.0: Gekoppelte Handys und Kopplungscodes heißen jetzt `fit_geraet` und `fit_kopplung`. Der Typ `geraet` war schon für andere Einträge vergeben und seit 0.43.0 versehentlich schreibgeschützt; er ist wieder frei.
+- Kopplung: Hat die Person mit Fitness-Welt noch keinen Spielstand, kommt ihr Name aus der Person in Home Assistant (sonst „Papa“), statt der Benutzer-ID.
+
 ## 0.43.2
 
 - Beim Installieren eines App-Pakets liegt jetzt auch `manifest.json` im App-Ordner (`www/lebenswelt-…/`). Lebenswelt Fit liest daraus, ob es eine neue Version seiner eingebauten Web-App gibt, und lädt sie.
@@ -11,7 +16,7 @@
 ## 0.43.0
 
 - Lebenswelt Fit läuft lokal auf Papas Handy, ohne Home-Assistant-Anmeldung und ohne Tailscale.
-  - Koppeln per QR-Code: `POST /api/lebenswelt/geraete/kopplung` mit `{person}` (nur volle Lebenswelt) erzeugt einen Code, 15 Minuten gültig, einmal verwendbar. `POST /api/lebenswelt/fit/koppeln` mit `{code, name}` tauscht ihn gegen einen Geräteschlüssel. Gespeichert wird nur dessen Hashwert (Dokument `geraet`), je Person ein Gerät. `GET /api/lebenswelt/geraete` listet, `DELETE /api/lebenswelt/geraete/{id}` widerruft.
+  - Koppeln per QR-Code: `POST /api/lebenswelt/geraete/kopplung` mit `{person}` (nur volle Lebenswelt) erzeugt einen Code, 15 Minuten gültig, einmal verwendbar. `POST /api/lebenswelt/fit/koppeln` mit `{code, name}` tauscht ihn gegen einen Geräteschlüssel. Gespeichert wird nur dessen Hashwert (Dokument `fit_geraet`), je Person ein Gerät. `GET /api/lebenswelt/geraete` listet, `DELETE /api/lebenswelt/geraete/{id}` widerruft.
   - Neue Weiterleitung `lebenswelt_fit` für Home Assistant: Das Add-on legt sie beim Start nach `custom_components/lebenswelt_fit`. Eingeschaltet wird sie einmal mit `lebenswelt_fit:` in `configuration.yaml` und einem Neustart. Sie reicht `/api/lebenswelt_fit/…` an `/api/lebenswelt/…` weiter, nur mit dem Geräteschlüssel als Kopfzeile `X-Lebenswelt-Geraet`. Ohne gültigen Schlüssel geht nur das Koppeln.
   - Das Einsatzspiel rechnet auf dem Handy mit denselben Dateien wie der Server (`GET /api/lebenswelt/fit/einsatzpaket`). Der Schritt bis „jetzt“ steckt dafür in `einsatz/ablauf.js`, den Server und Handy gemeinsam nutzen.
   - `GET /api/lebenswelt/fit/einsatz` übernimmt die Welt aufs Handy. `PUT` sichert sie als `einsatzwelt/stand_geraet`, mit Protokoll. Danach rechnet der Server für diese Person nicht mehr mit, und `/api/lebenswelt/einsatz/*` antwortet für sie mit 409.

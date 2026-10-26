@@ -1,7 +1,7 @@
 // Gekoppelte Geräte: Lebenswelt Fit läuft auf Papas Handy ohne Home-Assistant-Anmeldung. Alex erzeugt in seiner
 // Lebenswelt einen Kopplungscode (QR-Code, 15 Minuten gültig, einmal verwendbar). Das Handy tauscht ihn gegen einen
 // Geräteschlüssel, den die Weiterleitung lebenswelt_fit in Home Assistant als Kopfzeile X-Lebenswelt-Geraet
-// mitschickt. Gespeichert wird nur der Hashwert des Schlüssels (Dokument typ "geraet" der Person), je Person ein
+// mitschickt. Gespeichert wird nur der Hashwert des Schlüssels (Dokument typ "fit_geraet" der Person), je Person ein
 // Gerät: Eine neue Kopplung ersetzt die alte. Widerrufen geht in Alex' Lebenswelt.
 
 const CODE_ZEICHEN = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -52,7 +52,7 @@ function geraetVon(app, schluessel) {
   if (z && Date.now() - z.zeit < 60000) return z.geraet
   let geraet = null
   try {
-    const r = app.findFirstRecordByFilter("dokumente", "typ = 'geraet' && schluessel = {:s} && geloescht = false", { s: h })
+    const r = app.findFirstRecordByFilter("dokumente", "typ = 'fit_geraet' && schluessel = {:s} && geloescht = false", { s: h })
     const d = lies(r)
     geraet = { id: r.id, person: r.getString("besitzer"), name: String(d.person_name || ""), geraet: String(d.name || "") }
     // Zuletzt gesehen, höchstens stündlich geschrieben
@@ -74,9 +74,22 @@ function vergiss() {
   speicher.set("geraete_stand", (speicher.get("geraete_stand") || 0) + 1)
 }
 
-/** Personen mit Fitness-Welt (Option fitness_personen), mit Namen aus dem Spielstand, wenn es einen gibt. */
+/** Namen der Personen in Home Assistant je Benutzer-ID (Entitäten person.*, Attribut user_id). */
+function haNamen() {
+  const namen = {}
+  for (const z of require(`${__hooks}/hilfen.js`).ha("/states") || []) {
+    if (String(z.entity_id).indexOf("person.") === 0 && z.attributes && z.attributes.user_id) namen[z.attributes.user_id] = String(z.attributes.friendly_name || "")
+  }
+  return namen
+}
+
+/**
+ * Personen mit Fitness-Welt (Option fitness_personen). Name aus dem Spielstand, sonst aus der Person in Home
+ * Assistant (vor dem ersten Start hat die Person noch keinen Spielstand), sonst „Papa“.
+ */
 function fitnessPersonen(app) {
   const h = require(`${__hooks}/hilfen.js`)
+  let namen = null
   const liste = []
   for (const eintrag of h.optionen().fitness_personen || []) {
     const id = String(eintrag || "").trim()
@@ -94,14 +107,19 @@ function fitnessPersonen(app) {
     if (!r && !/^[0-9a-f]{32}$/.test(id)) continue
     const pid = r ? r.getString("benutzer") : id
     if (liste.some((p) => p.id === pid)) continue
-    liste.push({ id: pid, name: r ? r.getString("name") || id : id })
+    let name = r ? r.getString("name") : ""
+    if (!name) {
+      if (!namen) namen = haNamen()
+      name = namen[pid] || "Papa"
+    }
+    liste.push({ id: pid, name: name })
   }
   return liste
 }
 
 /** Gekoppelte Geräte aller Personen (für Alex' Übersicht), ohne Hashwerte. */
 function geraete(app) {
-  return app.findRecordsByFilter("dokumente", "typ = 'geraet' && geloescht = false", "-created", 50, 0).map((r) => {
+  return app.findRecordsByFilter("dokumente", "typ = 'fit_geraet' && geloescht = false", "-created", 50, 0).map((r) => {
     const d = lies(r)
     return { id: r.id, person: r.getString("besitzer"), person_name: String(d.person_name || ""), name: String(d.name || ""), erstellt: String(d.erstellt || ""), zuletzt: String(d.zuletzt || "") }
   })
@@ -111,12 +129,12 @@ function geraete(app) {
 function neueKopplung(app, person) {
   const p = fitnessPersonen(app).find((x) => x.id === person)
   if (!p) return { fehler: "Diese Person hat keine Fitness-Welt (Option fitness_personen)." }
-  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'kopplung' && besitzer = {:b}", "", 0, 0, { b: p.id })) app.delete(alt)
+  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'fit_kopplung' && besitzer = {:b}", "", 0, 0, { b: p.id })) app.delete(alt)
   const code = $security.randomStringWithAlphabet(CODE_LAENGE, CODE_ZEICHEN)
   const bis = Date.now() + CODE_GUELTIG_MS
   const r = new Record(app.findCollectionByNameOrId("dokumente"))
   r.set("besitzer", p.id)
-  r.set("typ", "kopplung")
+  r.set("typ", "fit_kopplung")
   r.set("schluessel", code)
   r.set("geloescht", false)
   r.set("daten", { bis: bis, person_name: p.name })
@@ -136,7 +154,7 @@ function koppeln(app, code, name) {
   const c = codeNormal(code)
   let r = null
   try {
-    if (c.length === CODE_LAENGE) r = app.findFirstRecordByFilter("dokumente", "typ = 'kopplung' && schluessel = {:c}", { c: c })
+    if (c.length === CODE_LAENGE) r = app.findFirstRecordByFilter("dokumente", "typ = 'fit_kopplung' && schluessel = {:c}", { c: c })
   } catch (_) {
     r = null
   }
@@ -150,12 +168,12 @@ function koppeln(app, code, name) {
   const person = r.getString("besitzer")
   app.delete(r)
   // Ein Gerät je Person: Die alte Kopplung endet
-  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'geraet' && besitzer = {:b}", "", 0, 0, { b: person })) app.delete(alt)
+  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'fit_geraet' && besitzer = {:b}", "", 0, 0, { b: person })) app.delete(alt)
   vergiss()
   const schluessel = "lwf_" + $security.randomString(48)
   const g = new Record(app.findCollectionByNameOrId("dokumente"))
   g.set("besitzer", person)
-  g.set("typ", "geraet")
+  g.set("typ", "fit_geraet")
   g.set("schluessel", hash(schluessel))
   g.set("geloescht", false)
   g.set("daten", { name: geraetName(name), person_name: String(d.person_name || ""), erstellt: new Date().toISOString(), zuletzt: new Date().toISOString() })
@@ -166,7 +184,7 @@ function koppeln(app, code, name) {
 function entkoppeln(app, id) {
   try {
     const r = app.findRecordById("dokumente", id)
-    if (r.getString("typ") !== "geraet") return false
+    if (r.getString("typ") !== "fit_geraet") return false
     app.delete(r)
     vergiss()
     return true

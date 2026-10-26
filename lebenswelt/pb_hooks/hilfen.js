@@ -187,7 +187,7 @@ const KEINE_PERSON = { fehler: "Keine Person bekannt. Über Home Assistant öffn
  * Dokumente des Einsatzspiels schreibt nur die Simulation selbst; über die allgemeinen Routen sind sie nur lesbar.
  * Ebenso Geräte und Kopplungscodes (geraete.js).
  */
-const SPIEL_TYPEN = ["einsatzwelt", "einsatz", "geraet", "kopplung"]
+const SPIEL_TYPEN = ["einsatzwelt", "einsatz", "fit_geraet", "fit_kopplung"]
 function spielDokument(typ) {
   return SPIEL_TYPEN.indexOf(String(typ)) >= 0
 }
