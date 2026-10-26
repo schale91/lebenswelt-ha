@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.43.1
+
+- Die Weiterleitung `lebenswelt_fit` lässt sich jetzt als Integration hinzufügen (Einstellungen → Geräte & Dienste → Integration hinzufügen → „Lebenswelt Fit“), ohne `configuration.yaml`. Die Zeile `lebenswelt_fit:` funktioniert weiterhin.
+
 ## 0.43.0
 
 - Lebenswelt Fit läuft lokal auf Papas Handy, ohne Home-Assistant-Anmeldung und ohne Tailscale.

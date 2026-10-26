@@ -6,7 +6,8 @@ die Datenbank: Ohne gültigen Geräteschlüssel (aus der Kopplung per QR-Code) g
 werden nur Methode, Pfad, Abfrage, Inhalt und der Geräteschlüssel, keine anderen Kopfzeilen.
 
 Diese Datei legt das Add-on „Lebenswelt Datenbank“ beim Start hierher (custom_components/lebenswelt_fit) und
-trägt das Ziel ein. Eingeschaltet wird sie mit der Zeile ``lebenswelt_fit:`` in configuration.yaml.
+trägt das Ziel ein. Eingeschaltet wird sie als Integration „Lebenswelt Fit“ (Einstellungen → Geräte & Dienste →
+Integration hinzufügen), ohne Eingaben; alternativ mit der Zeile ``lebenswelt_fit:`` in configuration.yaml.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from aiohttp import ClientError, ClientTimeout, web
 import voluptuous as vol
 
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
@@ -30,9 +32,29 @@ GROESSE_MAX = 4 * 1024 * 1024
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Weiterleitung anmelden."""
+def _anmelden(hass: HomeAssistant) -> None:
+    """Weiterleitung einmal anmelden (Ansichten lassen sich in Home Assistant nicht wieder abmelden)."""
+    if hass.data.get(DOMAIN):
+        return
+    hass.data[DOMAIN] = True
     hass.http.register_view(FitWeiterleitung(hass))
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Mit ``lebenswelt_fit:`` in configuration.yaml."""
+    if DOMAIN in config:
+        _anmelden(hass)
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Als Integration hinzugefügt."""
+    _anmelden(hass)
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Entfernen: Die Weiterleitung bleibt bis zum nächsten Neustart, ohne Integration startet sie danach nicht mehr."""
     return True
 
 

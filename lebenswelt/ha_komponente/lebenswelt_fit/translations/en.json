@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lebenswelt Fit",
+        "description": "Enables the relay for the Lebenswelt Fit app. Paired phones reach the Lebenswelt database without a Home Assistant login. Nothing passes without a valid device key from pairing."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Lebenswelt Fit is already set up."
+    }
+  }
+}

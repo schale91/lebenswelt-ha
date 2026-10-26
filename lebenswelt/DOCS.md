@@ -59,7 +59,7 @@ Routen: `GET /api/lebenswelt/familie` (Bewegung der Familie für den Buggy und d
 
 Die Android-App „Lebenswelt Fit“ bringt die Lebenswelt mit und läuft auch ohne Netz: Bewegung eintragen, Karte, Einsatzspiel. Sobald das Handy Netz hat, gleicht sie mit dieser Datenbank ab (Spielstand, Buggy auf deiner Karte, Wünsche, Freigaben, Updates der App). Dafür braucht sie keine Home-Assistant-Anmeldung, nur eine einmalige Kopplung:
 
-1. Einmalig: In `configuration.yaml` die Zeile `lebenswelt_fit:` ergänzen und Home Assistant neu starten. Das schaltet die Weiterleitung ein, die das Add-on nach `custom_components/lebenswelt_fit` legt. Home Assistant muss von außen erreichbar sein (z. B. Tailscale Funnel oder Nabu Casa).
+1. Einmalig: Home Assistant neu starten (das Add-on legt die Weiterleitung nach `custom_components/lebenswelt_fit`), dann unter Einstellungen → Geräte & Dienste → Integration hinzufügen „Lebenswelt Fit“ wählen und bestätigen. Alternativ die Zeile `lebenswelt_fit:` in `configuration.yaml`. Home Assistant muss von außen erreichbar sein (z. B. Tailscale Funnel oder Nabu Casa).
 2. In deiner Lebenswelt unter Ich → „Handy koppeln“ die Person wählen. Es erscheint ein QR-Code, 15 Minuten gültig.
 3. In Lebenswelt Fit „QR-Code scannen“ tippen. Fertig.
 
