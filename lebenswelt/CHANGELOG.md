@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.43.2
+
+- Beim Installieren eines App-Pakets liegt jetzt auch `manifest.json` im App-Ordner (`www/lebenswelt-…/`). Lebenswelt Fit liest daraus, ob es eine neue Version seiner eingebauten Web-App gibt, und lädt sie.
+
 ## 0.43.1
 
 - Die Weiterleitung `lebenswelt_fit` lässt sich jetzt als Integration hinzufügen (Einstellungen → Geräte & Dienste → Integration hinzufügen → „Lebenswelt Fit“), ohne `configuration.yaml`. Die Zeile `lebenswelt_fit:` funktioniert weiterhin.

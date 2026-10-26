@@ -220,10 +220,13 @@ function installiere() {
       }
       for (const e of $os.readDir(o)) {
         const name = e.name()
-        if (e.isDir() || dateien.includes(name) || BEHALTEN.includes(name)) continue
+        if (e.isDir() || dateien.includes(name) || BEHALTEN.includes(name) || name === "manifest.json") continue
         $os.remove(`${o}/${name}`)
         geloescht++
       }
+      // Zuletzt die Liste der Dateien: Lebenswelt Fit lädt danach Updates seiner eingebauten Web-App (Fit.kt)
+      $os.writeFile(`${o}/.manifest.json.neu`, JSON.stringify(m), 0o644)
+      $os.rename(`${o}/.manifest.json.neu`, `${o}/manifest.json`)
     }
     console.log(`App-Paket ${m.erstellt} installiert: ${geschrieben} Dateien geschrieben, ${geloescht} alte gelöscht`)
     merke({ installiert_am: new Date().toISOString(), fehler: "" })
