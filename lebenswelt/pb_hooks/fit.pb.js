@@ -11,15 +11,17 @@ routerAdd("GET", "/api/lebenswelt/geraete", (e) => {
   const v = require(`${__hooks}/geraete.js`).nurVoll(e)
   if (!v.ich) return e.json(v.status, v.fehler)
   const g = require(`${__hooks}/geraete.js`)
-  return e.json(200, { personen: g.fitnessPersonen(e.app), geraete: g.geraete(e.app) })
+  // ich: die volle Lebenswelt selbst, koppelbar nur für TrainMe
+  return e.json(200, { personen: g.fitnessPersonen(e.app), ich: { id: v.ich.id, name: v.ich.anzeige || v.ich.name || "Ich" }, geraete: g.geraete(e.app) })
 })
 
-// Kopplungscode für eine Person erzeugen: {person}. Antwort mit Code und Gültigkeit; die App zeigt ihn als QR-Code.
+// Kopplungscode für eine Person erzeugen: {person, ziel?: "fit" | "trainme"}. Antwort mit Code und Gültigkeit; die
+// App zeigt ihn als QR-Code.
 routerAdd("POST", "/api/lebenswelt/geraete/kopplung", (e) => {
   const v = require(`${__hooks}/geraete.js`).nurVoll(e)
   if (!v.ich) return e.json(v.status, v.fehler)
   const body = e.requestInfo().body || {}
-  const k = require(`${__hooks}/geraete.js`).neueKopplung(e.app, String(body.person || ""))
+  const k = require(`${__hooks}/geraete.js`).neueKopplung(e.app, String(body.person || ""), body.ziel, v.ich)
   if (k.fehler) return e.json(400, k)
   return e.json(200, k)
 })
@@ -33,13 +35,14 @@ routerAdd("DELETE", "/api/lebenswelt/geraete/{id}", (e) => {
 
 // ---------- Lebenswelt Fit ----------
 
-// Code gegen Geräteschlüssel tauschen: {code, name}. Ohne Anmeldung erreichbar (siehe routerUse in lebenswelt.pb.js).
+// Code gegen Geräteschlüssel tauschen: {code, name, ziel?}. Ohne Anmeldung erreichbar (siehe routerUse in
+// lebenswelt.pb.js). Auch die TrainMe-APK koppelt hier (ziel "trainme").
 routerAdd("POST", "/api/lebenswelt/fit/koppeln", (e) => {
   const g = require(`${__hooks}/geraete.js`)
   const body = e.requestInfo().body || {}
-  const k = g.koppeln(e.app, body.code, body.name)
+  const k = g.koppeln(e.app, body.code, body.name, body.ziel ? String(body.ziel) : "")
   if (k.fehler) return e.json(k.status || 400, { fehler: k.fehler })
-  return e.json(200, { schluessel: k.schluessel, person: k.person, name: k.name, paket: g.paketPfad() })
+  return e.json(200, { schluessel: k.schluessel, person: k.person, name: k.name, ziel: k.ziel, paket: g.paketPfad() })
 })
 
 // Umwelt fürs Handy: Wetter der Karte, Umwelt der Einsatzwelt (Warnungen, Pegel, Abfuhr), Ordner der Web-App
