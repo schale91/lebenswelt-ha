@@ -5,6 +5,7 @@
 // - Sonntags: XP-Prüfung (levelt jemand zu schnell?), siehe xp_pruefung.js.
 // - Morgens: an Vorgänge beim LKA erinnern, deren Wiedervorlage heute fällig ist (Push ohne dienstliche Inhalte).
 // - Fitness-Welt: um 19 Uhr Ortszeit erinnern, wenn heute noch keine Bewegung eingetragen ist.
+// - Routinen: stündlich ab 4 Uhr Ortszeit die fälligen Aufgaben anlegen, Unerledigtes verfallen lassen (routinen.js).
 
 cronAdd("garmin", "*/15 * * * *", () => {
   try {
@@ -30,6 +31,22 @@ cronAdd("lka_wiedervorlage", "30 5 * * *", () => {
   } catch (err) {
     console.log("Erinnerung Wiedervorlage LKA fehlgeschlagen", err)
   }
+})
+
+// Stündlich, damit ein Neustart oder ein ausgefallener Lauf nichts verpasst (je Routine und Tag nur eine Aufgabe)
+cronAdd("routinen", "20 * * * *", () => {
+  try {
+    require(`${__hooks}/routinen.js`).lauf($app)
+  } catch (err) {
+    console.log("Routinen fehlgeschlagen", err)
+  }
+})
+
+// Sofort laufen lassen, z. B. nach dem Anlegen einer Routine in der App. Antwort {angelegt, verfallen, tag}
+routerAdd("POST", "/api/lebenswelt/routinen/lauf", (e) => {
+  const p = require(`${__hooks}/ha_daten.js`).personVoll(e)
+  if (p.antwort) return p.antwort
+  return e.json(200, require(`${__hooks}/routinen.js`).lauf(e.app, Date.now(), p.ich.id))
 })
 
 // Nach dem Start einmal Garmin, App-Paket und Abfallkalender abgleichen, in der ersten Minute statt beim Start selbst:

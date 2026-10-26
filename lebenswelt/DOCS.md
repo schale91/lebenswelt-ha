@@ -149,5 +149,6 @@ Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
 | GET | `/api/lebenswelt/fragen?status=beantwortet` | Rückfragen, optional nach Status (`offen`, `beantwortet`, `verarbeitet`) |
 | PATCH | `/api/lebenswelt/fragen/{id}` | `{status: "verarbeitet"}`, optional `{antwort}` |
 | POST | `/api/lebenswelt/paperless/abgleich` | Posteingang sofort übernehmen |
+| POST | `/api/lebenswelt/routinen/lauf` | Fällige Aufgaben aus Routinen (typ `routine`) sofort anlegen, sonst stündlich ab 4 Uhr (`{angelegt, verfallen, tag}`) |
 
 Das Einsatzspiel rechnet jede Minute im Hintergrund weiter. Es nutzt keine KI und verbraucht kein Guthaben. Die Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur lesbar.
