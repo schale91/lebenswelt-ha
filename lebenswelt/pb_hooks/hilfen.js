@@ -58,7 +58,18 @@ function vertrauteIps() {
   return ips
 }
 
+/**
+ * Gekoppeltes Gerät (Lebenswelt Fit über die Weiterleitung lebenswelt_fit in Home Assistant): Kopfzeile
+ * X-Lebenswelt-Geraet mit dem Geräteschlüssel, siehe geraete.js. Gibt das Gerät zurück oder null.
+ */
+function geraet(e) {
+  const s = String(e.request.header.get("X-Lebenswelt-Geraet") || "").trim()
+  return s ? require(`${__hooks}/geraete.js`).geraetVon(e.app, s) : null
+}
+
 function quelle(e) {
+  // Über die Weiterleitung von außen: nur mit gültigem Geräteschlüssel, nie über die Adresse
+  if (String(e.request.header.get("X-Lebenswelt-Geraet") || "") || String(e.request.header.get("X-Lebenswelt-Fit") || "")) return geraet(e) ? "geraet" : null
   const ip = absenderIp(e)
   if (ip === INGRESS) return "ingress"
   if (IMMER_ERLAUBT.indexOf(ip) !== -1) return "lokal"
@@ -89,6 +100,10 @@ function einzigePerson(app) {
 function benutzer(e) {
   const art = quelle(e)
   const kopf = (n) => String(e.request.header.get(n) || "").trim()
+  if (art === "geraet") {
+    const g = geraet(e)
+    return g ? { id: g.person, name: "", anzeige: g.name, art: art } : null
+  }
   if (art === "ingress" || art === "lokal") {
     const id = kopf("X-Remote-User-Id")
     if (/^[A-Za-z0-9_-]{1,100}$/.test(id)) return { id: id, name: kopf("X-Remote-User-Name"), anzeige: kopf("X-Remote-User-Display-Name"), art: art }
@@ -168,11 +183,14 @@ function ha(pfad, timeout) {
 const TYP_MUSTER = /^[a-z_]{1,40}$/
 const KEINE_PERSON = { fehler: "Keine Person bekannt. Über Home Assistant öffnen oder in der App-Konfiguration 'person' setzen." }
 
-/** Dokumente des Einsatzspiels schreibt nur die Simulation selbst; über die allgemeinen Routen sind sie nur lesbar. */
-const SPIEL_TYPEN = ["einsatzwelt", "einsatz"]
+/**
+ * Dokumente des Einsatzspiels schreibt nur die Simulation selbst; über die allgemeinen Routen sind sie nur lesbar.
+ * Ebenso Geräte und Kopplungscodes (geraete.js).
+ */
+const SPIEL_TYPEN = ["einsatzwelt", "einsatz", "geraet", "kopplung"]
 function spielDokument(typ) {
   return SPIEL_TYPEN.indexOf(String(typ)) >= 0
 }
 const NUR_LESEN = { fehler: "Dokumente des Einsatzspiels sind nur lesbar. Kaufen und Ändern geht über /api/lebenswelt/einsatz/." }
 
-module.exports = { ha, optionen, erlaubt, benutzer, profilVon, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }
+module.exports = { ha, optionen, erlaubt, quelle, benutzer, profilVon, spielstandVon, alsDokument, verschmelze, TYP_MUSTER, KEINE_PERSON, einzigePerson, spielDokument, NUR_LESEN }

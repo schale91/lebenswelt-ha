@@ -235,4 +235,4 @@ function installiere() {
   }
 }
 
-module.exports = { pruefe, installiere, zustand }
+module.exports = { pruefe, installiere, zustand, zielordner }
