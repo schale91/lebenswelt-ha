@@ -22,18 +22,9 @@ function lies(r) {
   return JSON.parse(toString(r.get("daten")) || "{}")
 }
 
-/** Wirft, wenn irgendwo im Stand eine Zahl NaN oder unendlich ist. So wird ein kaputter Stand nie gespeichert. */
-function pruefeZahlen(daten) {
-  JSON.stringify(daten, (k, v) => {
-    if (typeof v === "number" && !isFinite(v)) throw new Error("Ungültige Zahl in " + k)
-    return v
-  })
-}
-
-/** Grobe Formprüfung eines geladenen Stands. */
-function gueltig(stand) {
-  return !!stand && typeof stand === "object" && isFinite(stand.bis) && !!stand.einsatzarten && Array.isArray(stand.laufend) && Array.isArray(stand.personal) && Array.isArray(stand.ausgaben)
-}
+const A = require(`${__hooks}/einsatz/ablauf.js`)
+const pruefeZahlen = A.pruefeZahlen
+const gueltig = A.gueltig
 
 function schreibe(app, besitzer, typ, schluessel, daten) {
   pruefeZahlen(daten)
@@ -71,17 +62,6 @@ function pegelVerlauf(app, besitzer) {
 function abfallTermine(app, besitzer) {
   const r = finde(app, besitzer, WELT, "abfall")
   return r ? lies(r).termine || null : null
-}
-
-/** Zeiträume mit einer Unwetterwarnung ab UNWETTER_BEREITSCHAFT.stufe_min: [ab, bis] (für die Gerätehausbesetzung). */
-function bereitschaftAus(R, warnungen) {
-  const B = R.UNWETTER_BEREITSCHAFT
-  if (!B) return []
-  return warnungen
-    .filter((w) => (Number(w.stufe) || 0) >= B.stufe_min)
-    .map((w) => [w.ab, w.bis])
-    .sort((a, b) => a[0] - b[0])
-    .slice(-20)
 }
 
 /**
@@ -138,27 +118,27 @@ function aktuell(app, besitzer, jetzt) {
     schreibe(app, besitzer, WELT, "defekt_" + jetzt, { roh: stand })
     stand = S.neuerStand(R, jetzt)
   }
-  // Level der Lebenswelt aus dem Spielstand (nur steigend, XP gehen nie verloren); schaltet Dienste frei
-  stand.level = Math.max(stand.level || 0, levelVon(app, besitzer))
-  const verlauf = wetterVerlauf(app, besitzer)
-  const warnungen = warnungenVon(app, besitzer)
-  const bekannt = new Set(stand.laufend.map((e) => e.id))
-  // Echte Wetterwarnungen setzen das Spielwetter und passende Einsätze an
-  stand = S.warnungenAusloesen(R, stand, warnungen, jetzt)
-  stand.bereitschaft = bereitschaftAus(R, warnungen)
-  // Echter Elbpegel: Lage, Hochwasser-Einsätze, Niedrigwasser beim Ansaugen (docs/integrationen/KONZEPT.md, 2)
-  stand = P.pegelAusloesen(R, stand, P.lage(R, pegelVerlauf(app, besitzer), jetzt), jetzt, S._intern.zufall)
-  // Müllabfuhr nach dem Abfallkalender: Tonnen, Müllautos, Deponie (Abschnitt 4)
-  stand = M.fortschreiben(R, stand, abfallTermine(app, besitzer), jetzt)
-  stand = S.fortschreiben(stand, jetzt, (t) => S.wetterMitWarnungen(R, warnungen, verlauf, t), R)
-  meldeNeue(app, besitzer, stand.laufend.filter((e) => !bekannt.has(e.id)), jetzt)
+  // Wetter, Warnungen, Pegel und Abfuhr gelten für das ganze Dorf (siehe umweltFuer)
+  const f = A.fortschreiben(R, stand, umweltFuer(app, besitzer), jetzt)
+  stand = f.stand
+  meldeNeue(app, besitzer, f.neu, jetzt)
   erinnereTonne(app, besitzer, R, stand, jetzt)
   for (const e of stand.abgeschlossen) schreibe(app, besitzer, "einsatz", e.id, e)
   stand.abgeschlossen = []
   if (stand.ausgaben.length > AUSGABEN_MAX) stand.ausgaben = stand.ausgaben.slice(-AUSGABEN_MAX)
   schreibe(app, besitzer, WELT, "stand", stand)
-  const gilt = warnungen.filter((w) => w.ab <= jetzt && jetzt < w.bis && S.warnungsRegel(R, w))
-  return { stand: stand, wetter: S.wetterMitWarnungen(R, warnungen, verlauf, jetzt), warnungen: gilt.map((w) => ({ name: w.name, stufe: w.stufe, bis: w.bis })) }
+  return { stand: stand, wetter: f.wetter, warnungen: f.warnungen }
+}
+
+/**
+ * Umwelt der Einsatzwelt: Level der Person, dazu Wetterverlauf, DWD-Warnungen, Pegel und Abfuhrtermine. Diese
+ * schreibt der Wetter- und Abfallabgleich je Person mit Welt auf dem Server; wessen Welt auf einem gekoppelten Handy
+ * läuft (Lebenswelt Fit), bekommt die des Dorfes von der ersten Person mit Welt auf dem Server. Es ist dasselbe Dorf.
+ */
+function umweltFuer(app, besitzer) {
+  let q = besitzer
+  if (!finde(app, besitzer, WELT, "wetter")) q = besitzerMitWelt(app)[0] || besitzer
+  return { level: levelVon(app, besitzer), warnungen: warnungenVon(app, q), wetter: wetterVerlauf(app, q), pegel: pegelVerlauf(app, q), abfall: abfallTermine(app, q) }
 }
 
 /** Push für neue Einsätze (höchstens drei, nur frische, nicht nach langer Pause alles nachholen). */
@@ -344,4 +324,4 @@ function dwdWarnungen(h, token) {
 }
 
 
-module.exports = { abfallAbgleich, M, regelwerkFuer, aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }
+module.exports = { umweltFuer, abfallAbgleich, M, regelwerkFuer, aktuell, speichere, schreibe, finde, lies, besitzerMitWelt, wetterAbgleich, wetterAus, R, S }

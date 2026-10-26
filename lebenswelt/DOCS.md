@@ -55,6 +55,16 @@ Push-Nachrichten (mit eingerichtetem `fcm_dienstkonto`): an die Familie, wenn �
 
 Routen: `GET /api/lebenswelt/familie` (Bewegung der Familie für den Buggy und die Wochenübersicht, dazu der Stand der Wünsche).
 
+### Lebenswelt Fit lokal auf dem Handy (ab 0.43.0)
+
+Die Android-App „Lebenswelt Fit“ bringt die Lebenswelt mit und läuft auch ohne Netz: Bewegung eintragen, Karte, Einsatzspiel. Sobald das Handy Netz hat, gleicht sie mit dieser Datenbank ab (Spielstand, Buggy auf deiner Karte, Wünsche, Freigaben, Updates der App). Dafür braucht sie keine Home-Assistant-Anmeldung, nur eine einmalige Kopplung:
+
+1. Einmalig: In `configuration.yaml` die Zeile `lebenswelt_fit:` ergänzen und Home Assistant neu starten. Das schaltet die Weiterleitung ein, die das Add-on nach `custom_components/lebenswelt_fit` legt. Home Assistant muss von außen erreichbar sein (z. B. Tailscale Funnel oder Nabu Casa).
+2. In deiner Lebenswelt unter Ich → „Handy koppeln“ die Person wählen. Es erscheint ein QR-Code, 15 Minuten gültig.
+3. In Lebenswelt Fit „QR-Code scannen“ tippen. Fertig.
+
+Das Einsatzspiel rechnet danach auf dem Handy, mit denselben Regeln wie hier (die App lädt die Dateien der Simulation von dieser Datenbank). Die Datenbank hebt eine Sicherung auf; bei einem neuen Handy einfach neu koppeln, dann geht es dort weiter. Einsatz-Benachrichtigungen gibt es auf dem Handy nur bei offener App, die Erinnerung um 19 Uhr kommt weiter. Widerrufen geht in deiner Lebenswelt unter „Handy koppeln“.
+
 ## Schiffsverkehr auf der Elbe
 
 Die App zeigt die echten Schiffe vor dem Deich (Binnenschiffe, Tanker, Fahrgastschiffe, Sportboote) nach ihren AIS-Daten. Freigeschaltet wird das im Shop der App.

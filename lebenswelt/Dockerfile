@@ -22,6 +22,7 @@ RUN apk add --no-cache ca-certificates openssl python3 py3-websockets \
 COPY pb_hooks /pb_hooks
 COPY pb_migrations /pb_migrations
 COPY ais /ais
+COPY ha_komponente /ha_komponente
 COPY start.sh /start.sh
 
 # /data ist der dauerhafte Speicher der App und steckt in jedem Home-Assistant-Backup.

@@ -4,7 +4,12 @@
 
 routerUse((e) => {
   const h = require(`${__hooks}/hilfen.js`)
+  const pfad = String(e.request.url.path || "")
+  // Lebenswelt Fit koppeln: kommt ohne Geräteschlüssel über die Weiterleitung, der Kopplungscode ist der Ausweis
+  if (e.request.method === "POST" && pfad === "/api/lebenswelt/fit/koppeln") return e.next()
   if (!h.erlaubt(e)) return e.json(403, { fehler: "Nur über Home Assistant erreichbar." })
+  // Gekoppelte Geräte erreichen nur die Schnittstelle der Lebenswelt, nicht PocketBase selbst
+  if (h.quelle(e) === "geraet" && pfad.indexOf("/api/lebenswelt/") !== 0) return e.json(403, { fehler: "Nicht erlaubt." })
   return e.next()
 })
 
