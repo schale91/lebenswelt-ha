@@ -311,6 +311,7 @@ const ORTE = {
   arbeit_freibad: { name: "Freibad", x: 19, z: 62 },
   arbeit_hafen: { name: "Hafen", x: 19, z: 62 },
   arbeit_bauernhof: { name: "Bauernhof", x: 19, z: 62 },
+  arbeit_eisdiele: { name: "Eisdiele", x: 19, z: 62 },
   hecke_werkstatt: { name: "Hecke an der Werkstatt", x: 40, z: 6 },
   muelltonnen: { name: "Mülltonnen am Markt", x: 12, z: 58 },
   nachbarhaus: { name: "Haus der Nachbarn", x: -30, z: -2 },
@@ -605,6 +606,7 @@ const ARBEITGEBER = {
   freibad: { name: "Freibad Elbe Springs", ort: "arbeit_freibad", stellen: 2, katalog: true },
   hafen: { name: "Hafen mit Fähranleger", ort: "arbeit_hafen", stellen: 2, katalog: true },
   bauernhof: { name: "Bauernhof Meyerdierks", ort: "arbeit_bauernhof", stellen: 2, katalog: true },
+  eisdiele: { name: "Eisdiele am Marktplatz", ort: "arbeit_eisdiele", stellen: 1, katalog: true },
 }
 
 /**
@@ -1462,6 +1464,19 @@ const EINSATZARTEN = {
     folge: ["p_tuer_begleitung", "rd_versorgung"],
     text: "Eine ältere Nachbarin öffnet nicht, durch die Tür sind Hilferufe zu hören.",
     verfallen_text: "Der Rettungsdienst hat die Tür mit dem Schlüsseldienst geöffnet, deutlich später.",
+  },
+  // Rauchwarnmelder in einer Wohnung, niemand öffnet (Freigabe vom 19.10.2026): meist angebranntes Essen, manchmal Brand
+  rwm: {
+    org: "feuerwehr", name: "Rauchmelder piept, niemand öffnet", stichwort: "B RWM", preis: 1100,
+    freischaltung: { nach: "th_tuer" },
+    orte: ["nachbarhaus"], intervall_min: 600, ablauf_min: 12, arbeit_min: 8, ziel_eintreffen_min: 8,
+    mindestens: { personen: 3, qualifikation: { agt: 2 }, geraete: [[{ pressluftatmer: 2 }], [{ tueroeffnung: 1 }, { steckleiter_teil: 2 }, { klappleiter: 1 }]] },
+    optimal: { personen: 6, einheit: "staffel", geraete: [[{ waermebildkamera: 1 }], [{ hrt: 1 }]] },
+    psa: { helm: 2, jacke: 2, haube: 1 },
+    regeln: ["einheitsfuehrer", "atemschutz_ueberwachung"],
+    zufall: { fehlalarm: 0.8, folge_bei_echt: "b_wohnung" },
+    text: "Aus einer Wohnung piept seit Minuten ein Rauchmelder, auf Klingeln öffnet niemand. Im Treppenhaus riecht es leicht verbrannt.",
+    verfallen_text: "Die Nachbarn haben den Vermieter erreicht. Angebranntes Essen, der Topf ist hinüber, die Küche voller Rauch.",
   },
   fr_reanimation: {
     org: "feuerwehr", name: "First Responder: Person bewusstlos", stichwort: "FR", preis: 2000,

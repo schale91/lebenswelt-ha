@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.41.0
+
+- Neue Einsatzart „Rauchmelder piept, niemand öffnet“ (`rwm`, Stichwort B RWM, Freigabe vom 19.10.2026): Staffel nach FwDV 3 mit zwei Atemschutzgeräteträgern und Türöffnungswerkzeug, meist angebranntes Essen (80 % Fehlalarm), sonst folgt ein Wohnungsbrand. Freischaltung nach der Türöffnung, Kaufpreis wie die Türöffnung.
+- Neuer Arbeitgeber „Eisdiele am Marktplatz“ (`eisdiele`, eine Stelle) für das gleichnamige Katalog-Gebäude der App.
+- Bestehende Einsatzarten, Routen und Daten bleiben unverändert.
+
 ## 0.40.0
 
 - Rückfragen zu Paperless-Dokumenten als eigener Eintrag `frage` (Text, `paperless_id`, Dokumenttitel und Link, Status `offen`, `beantwortet` oder `verarbeitet`, Antwort, Zeitstempel). Bisher landeten Rückfragen als Aufgabe, dort wurde der Text abgeschnitten und es gab kein Antwortfeld.
