@@ -3,11 +3,12 @@
 # Containers als Ziel. Nur bei Änderungen schreiben; Home Assistant lädt sie beim nächsten Neustart.
 ZIEL=/homeassistant/custom_components/lebenswelt_fit
 if [ -d /homeassistant ]; then
-  mkdir -p /tmp/lebenswelt_fit
-  sed "s/@ZIEL@/$(hostname)/" /ha_komponente/lebenswelt_fit/__init__.py > /tmp/lebenswelt_fit/__init__.py
-  cp /ha_komponente/lebenswelt_fit/manifest.json /tmp/lebenswelt_fit/manifest.json
-  if ! diff -rq /tmp/lebenswelt_fit "$ZIEL" >/dev/null 2>&1; then
-    mkdir -p "$ZIEL" && cp /tmp/lebenswelt_fit/__init__.py /tmp/lebenswelt_fit/manifest.json "$ZIEL/" \
+  rm -rf /tmp/lebenswelt_fit && cp -r /ha_komponente/lebenswelt_fit /tmp/lebenswelt_fit
+  sed -i "s/@ZIEL@/$(hostname)/" /tmp/lebenswelt_fit/__init__.py
+  # Vergleich nur über die eigenen Dateien (Home Assistant legt dort __pycache__ an)
+  (cd /tmp/lebenswelt_fit && find . -type f | sort | xargs md5sum) > /tmp/lebenswelt_fit.md5
+  if ! (cd "$ZIEL" 2>/dev/null && md5sum -c -s /tmp/lebenswelt_fit.md5); then
+    rm -rf "$ZIEL" && mkdir -p /homeassistant/custom_components && cp -r /tmp/lebenswelt_fit "$ZIEL" \
       && echo "Lebenswelt Fit: Weiterleitung in custom_components aktualisiert (wirkt nach dem nächsten Neustart von Home Assistant)"
   fi
 fi

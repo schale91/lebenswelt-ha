@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lebenswelt Fit",
+        "description": "Schaltet die Weiterleitung für die App Lebenswelt Fit ein. Gekoppelte Handys erreichen damit die Lebenswelt Datenbank, ohne Anmeldung bei Home Assistant. Ohne gültigen Geräteschlüssel aus der Kopplung geht nichts durch."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Lebenswelt Fit ist schon eingerichtet."
+    }
+  }
+}
