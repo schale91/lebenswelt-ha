@@ -180,6 +180,7 @@ Claude erreicht die Lebenswelt in jeder Unterhaltung über den Connector „Home
 | POST | `/api/lebenswelt/paperless/dokument/{id}/frage` | `{text}` Rückfrage an Alex (typ `frage`: `text, paperless_id, titel, link, status, antwort, erstellt, beantwortet_am, verarbeitet_am`) |
 | GET | `/api/lebenswelt/fragen?status=beantwortet` | beantwortete Rückfragen abholen |
 | PATCH | `/api/lebenswelt/fragen/{id}` | `{status: "verarbeitet"}` nach Übernahme der Antwort |
+| POST | `/api/lebenswelt/routinen/lauf` | fällige Aufgaben aus Routinen sofort anlegen |
 
 Damit kann Claude in jeder Unterhaltung alle Dokumente durchsuchen und lesen, ohne dass sie irgendwo anders liegen. „Automatisch“ heißt: Auf Wunsch richtet Claude eine Routine ein (zum Beispiel täglich 18 Uhr), die den Posteingang durchgeht, Dokumente sinnvoll benennt (`JJJJ-MM-TT Korrespondent - Inhalt` oder nach deinem Schema), Tags und Typ setzt, Fristen erkennt und Aufgaben mit Fälligkeit anlegt. Das kostet Guthaben bei jedem Lauf.
 

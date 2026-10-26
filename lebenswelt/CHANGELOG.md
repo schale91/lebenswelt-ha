@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.42.0
+
+- Routinen für wiederkehrende Aufgaben, dienstlich wie privat (Entscheidung vom 26.10.2026). Eine Routine ist ein Dokument `routine` mit `titel`, `rhythmus` (`taeglich`, `wochentage` mit `tage` 0 bis 6, `monatlich` mit `monatstag`), `sphaere`, `bereich`, `kontext`, `aufwand`, `energie` und `pausiert`.
+  - Stündlich ab 4 Uhr Ortszeit legt das Add-on die fälligen Aufgaben an (Schlüssel `routine:<id>:<tag>`, Feld `routine`), höchstens eine je Routine und Tag, auch wenn sie gelöscht wurde.
+  - Dienstliche Routinen nur an Arbeitstagen laut Kalender (Arbeit, Homeoffice, Dienst), ohne Kalender montags bis freitags.
+  - Unerledigtes stapelt sich nicht: Häufige Routinen (täglich, mehrere Wochentage) verfallen am nächsten Morgen, seltene beim nächsten Termin. Verfallene Aufgaben werden weich gelöscht (`verfallen: true`), XP gibt es dafür keine.
+  - Die Routine merkt sich `serie` (am Stück erledigt), `beste_serie` und `zuletzt`.
+  - `POST /api/lebenswelt/routinen/lauf` legt sofort an, etwa nach dem Anlegen einer Routine in der App.
+- Bestehende Routen und Daten bleiben unverändert.
+
 ## 0.41.0
 
 - Neue Einsatzart „Rauchmelder piept, niemand öffnet“ (`rwm`, Stichwort B RWM, Freigabe vom 19.10.2026): Staffel nach FwDV 3 mit zwei Atemschutzgeräteträgern und Türöffnungswerkzeug, meist angebranntes Essen (80 % Fehlalarm), sonst folgt ein Wohnungsbrand. Freischaltung nach der Türöffnung, Kaufpreis wie die Türöffnung.
