@@ -24,7 +24,10 @@ Prüfen:
 node werkzeuge/pruefe-regelwerk.js --baum
 node --test test/*.test.js
 python3 test/ais_test.py
+POCKETBASE=/pfad/zu/pocketbase node werkzeuge/pruefe-start.js
 ```
+
+Die Startprobe startet PocketBase mit allen Hooks und Migrationen und fragt die wichtigsten Routen ab. Alles zusammen läuft bei jedem Pull Request als Action „Tests“. Die Ende-zu-Ende-Tests mit der App stehen in [`docs/ARBEITSABLAUF.md`](docs/ARBEITSABLAUF.md#änderungen-am-add-on).
 
 ## Daten aus Home Assistant
 
