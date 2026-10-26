@@ -1,8 +1,10 @@
 // Gekoppelte Geräte: Lebenswelt Fit läuft auf Papas Handy ohne Home-Assistant-Anmeldung. Alex erzeugt in seiner
 // Lebenswelt einen Kopplungscode (QR-Code, 15 Minuten gültig, einmal verwendbar). Das Handy tauscht ihn gegen einen
 // Geräteschlüssel, den die Weiterleitung lebenswelt_fit in Home Assistant als Kopfzeile X-Lebenswelt-Geraet
-// mitschickt. Gespeichert wird nur der Hashwert des Schlüssels (Dokument typ "fit_geraet" der Person), je Person ein
-// Gerät: Eine neue Kopplung ersetzt die alte. Widerrufen geht in Alex' Lebenswelt.
+// mitschickt. Gespeichert wird nur der Hashwert des Schlüssels (Dokument typ "fit_geraet" der Person), je Person und
+// App ein Gerät: Eine neue Kopplung ersetzt die alte derselben App. Widerrufen geht in Alex' Lebenswelt.
+// Apps (ziel): "fit" (Lebenswelt Fit, nur Personen mit Fitness-Welt) und "trainme" (TrainMe-APK, alle Personen;
+// erreicht nur /api/lebenswelt/ich und /api/lebenswelt/trainme…).
 
 const CODE_ZEICHEN = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 const CODE_LAENGE = 8
@@ -10,6 +12,18 @@ const CODE_GUELTIG_MS = 15 * 60 * 1000
 const SCHLUESSEL_MUSTER = /^lwf_[A-Za-z0-9]{48}$/
 /** Fehlversuche beim Koppeln, über alle Codes: höchstens so viele je Viertelstunde. */
 const FEHLVERSUCHE_MAX = 20
+const ZIELE = ["fit", "trainme"]
+
+/** App einer Kopplung; ältere Einträge ohne Angabe gehören zu Lebenswelt Fit. */
+function zielVon(z) {
+  return ZIELE.indexOf(String(z || "")) >= 0 ? String(z) : "fit"
+}
+
+/** Darf ein Gerät dieser App den Pfad aufrufen? TrainMe bekommt nur seine eigenen Routen. */
+function pfadErlaubt(ziel, pfad) {
+  if (zielVon(ziel) !== "trainme") return true
+  return /^\/api\/lebenswelt\/(ich|trainme)(\/|$)/.test(String(pfad || ""))
+}
 
 /** Code aus der Eingabe: groß, ohne Leer- und Trennzeichen (der Code selbst enthält kein I, L, O, 0 und 1). */
 function codeNormal(c) {
@@ -54,7 +68,7 @@ function geraetVon(app, schluessel) {
   try {
     const r = app.findFirstRecordByFilter("dokumente", "typ = 'fit_geraet' && schluessel = {:s} && geloescht = false", { s: h })
     const d = lies(r)
-    geraet = { id: r.id, person: r.getString("besitzer"), name: String(d.person_name || ""), geraet: String(d.name || "") }
+    geraet = { id: r.id, person: r.getString("besitzer"), name: String(d.person_name || ""), geraet: String(d.name || ""), ziel: zielVon(d.ziel) }
     // Zuletzt gesehen, höchstens stündlich geschrieben
     if (!d.zuletzt || Date.now() - Date.parse(d.zuletzt) > 3600000) {
       d.zuletzt = new Date().toISOString()
@@ -121,15 +135,20 @@ function fitnessPersonen(app) {
 function geraete(app) {
   return app.findRecordsByFilter("dokumente", "typ = 'fit_geraet' && geloescht = false", "-created", 50, 0).map((r) => {
     const d = lies(r)
-    return { id: r.id, person: r.getString("besitzer"), person_name: String(d.person_name || ""), name: String(d.name || ""), erstellt: String(d.erstellt || ""), zuletzt: String(d.zuletzt || "") }
+    return { id: r.id, person: r.getString("besitzer"), person_name: String(d.person_name || ""), name: String(d.name || ""), ziel: zielVon(d.ziel), erstellt: String(d.erstellt || ""), zuletzt: String(d.zuletzt || "") }
   })
 }
 
-/** Neuer Kopplungscode für eine Person mit Fitness-Welt; ein noch offener alter Code verfällt. */
-function neueKopplung(app, person) {
-  const p = fitnessPersonen(app).find((x) => x.id === person)
-  if (!p) return { fehler: "Diese Person hat keine Fitness-Welt (Option fitness_personen)." }
-  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'fit_kopplung' && besitzer = {:b}", "", 0, 0, { b: p.id })) app.delete(alt)
+/**
+ * Neuer Kopplungscode für eine Person; ein noch offener alter Code derselben App verfällt. Lebenswelt Fit nur für
+ * Personen mit Fitness-Welt, TrainMe auch für die fragende Person selbst (ich).
+ */
+function neueKopplung(app, person, ziel, ich) {
+  ziel = zielVon(ziel)
+  let p = fitnessPersonen(app).find((x) => x.id === person)
+  if (!p && ziel === "trainme" && ich && ich.id === person) p = { id: ich.id, name: String(ich.anzeige || ich.name || "Ich") }
+  if (!p) return { fehler: ziel === "trainme" ? "Unbekannte Person." : "Diese Person hat keine Fitness-Welt (Option fitness_personen)." }
+  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'fit_kopplung' && besitzer = {:b}", "", 0, 0, { b: p.id })) if (zielVon(lies(alt).ziel) === ziel) app.delete(alt)
   const code = $security.randomStringWithAlphabet(CODE_LAENGE, CODE_ZEICHEN)
   const bis = Date.now() + CODE_GUELTIG_MS
   const r = new Record(app.findCollectionByNameOrId("dokumente"))
@@ -137,13 +156,16 @@ function neueKopplung(app, person) {
   r.set("typ", "fit_kopplung")
   r.set("schluessel", code)
   r.set("geloescht", false)
-  r.set("daten", { bis: bis, person_name: p.name })
+  r.set("daten", { bis: bis, person_name: p.name, ziel: ziel })
   app.save(r)
-  return { code: code, bis: bis, person: p }
+  return { code: code, bis: bis, person: p, ziel: ziel }
 }
 
-/** Code gegen einen Geräteschlüssel tauschen. Gibt {schluessel, person, name} oder {status, fehler} zurück. */
-function koppeln(app, code, name) {
+/**
+ * Code gegen einen Geräteschlüssel tauschen. ziel (optional): App, die koppeln will; ein Code einer anderen App wird
+ * dann nicht verbraucht. Gibt {schluessel, person, name, ziel} oder {status, fehler} zurück.
+ */
+function koppeln(app, code, name, ziel) {
   const speicher = $app.store()
   const fehl = speicher.get("kopplung_fehl") || { ab: Date.now(), n: 0 }
   if (Date.now() - fehl.ab > CODE_GUELTIG_MS) {
@@ -165,10 +187,12 @@ function koppeln(app, code, name) {
     if (r) app.delete(r)
     return { status: 403, fehler: "Der Code stimmt nicht oder ist abgelaufen. Bitte in Alex' Lebenswelt einen neuen erzeugen." }
   }
+  if (ziel && zielVon(ziel) !== zielVon(d.ziel)) return { status: 400, fehler: zielVon(d.ziel) === "trainme" ? "Dieser Code ist für TrainMe." : "Dieser Code ist für Lebenswelt Fit." }
   const person = r.getString("besitzer")
+  ziel = zielVon(d.ziel)
   app.delete(r)
-  // Ein Gerät je Person: Die alte Kopplung endet
-  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'fit_geraet' && besitzer = {:b}", "", 0, 0, { b: person })) app.delete(alt)
+  // Ein Gerät je Person und App: Die alte Kopplung derselben App endet
+  for (const alt of app.findRecordsByFilter("dokumente", "typ = 'fit_geraet' && besitzer = {:b}", "", 0, 0, { b: person })) if (zielVon(lies(alt).ziel) === ziel) app.delete(alt)
   vergiss()
   const schluessel = "lwf_" + $security.randomString(48)
   const g = new Record(app.findCollectionByNameOrId("dokumente"))
@@ -176,9 +200,9 @@ function koppeln(app, code, name) {
   g.set("typ", "fit_geraet")
   g.set("schluessel", hash(schluessel))
   g.set("geloescht", false)
-  g.set("daten", { name: geraetName(name), person_name: String(d.person_name || ""), erstellt: new Date().toISOString(), zuletzt: new Date().toISOString() })
+  g.set("daten", { name: geraetName(name), person_name: String(d.person_name || ""), ziel: ziel, erstellt: new Date().toISOString(), zuletzt: new Date().toISOString() })
   app.save(g)
-  return { schluessel: schluessel, person: person, name: String(d.person_name || "") }
+  return { schluessel: schluessel, person: person, name: String(d.person_name || ""), ziel: ziel }
 }
 
 function entkoppeln(app, id) {
@@ -222,4 +246,4 @@ function nurPerson(e) {
 const EINSATZ_MODULE = ["regelwerk.js", "simulation.js", "pegel.js", "muell.js", "karte.js", "ablauf.js"]
 const EINSATZ_ID = /^[A-Za-z0-9_:.-]{1,80}$/
 
-module.exports = { nurVoll, nurPerson, EINSATZ_MODULE, EINSATZ_ID,  codeNormal, kopplungGilt, schluesselGueltig, geraetName, geraetVon, fitnessPersonen, geraete, neueKopplung, koppeln, entkoppeln, paketPfad, CODE_ZEICHEN, CODE_LAENGE }
+module.exports = { nurVoll, nurPerson, EINSATZ_MODULE, EINSATZ_ID, ZIELE, zielVon, pfadErlaubt, codeNormal, kopplungGilt, schluesselGueltig, geraetName, geraetVon, fitnessPersonen, geraete, neueKopplung, koppeln, entkoppeln, paketPfad, CODE_ZEICHEN, CODE_LAENGE }

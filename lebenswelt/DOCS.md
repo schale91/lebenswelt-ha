@@ -65,6 +65,14 @@ Die Android-App „Lebenswelt Fit“ bringt die Lebenswelt mit und läuft auch o
 
 Das Einsatzspiel rechnet danach auf dem Handy, mit denselben Regeln wie hier (die App lädt die Dateien der Simulation von dieser Datenbank). Die Datenbank hebt eine Sicherung auf; bei einem neuen Handy einfach neu koppeln, dann geht es dort weiter. Einsatz-Benachrichtigungen gibt es auf dem Handy nur bei offener App, die Erinnerung um 19 Uhr kommt weiter. Widerrufen geht in deiner Lebenswelt unter „Handy koppeln“.
 
+## TrainMe statt Kraftbuch (ab 0.44.0)
+
+Der Trainingsplaner [TrainMe](https://github.com/schale91/TrainMe) läuft in der Lebenswelt an der Stelle des Kraftbuchs und speichert hier, je Person. Dieselben Daten sieht die TrainMe-APK auf dem Handy, wenn sie gekoppelt ist: in deiner Lebenswelt unter „Handy koppeln“ die App TrainMe und die Person wählen, dann in TrainMe unter Profil „Mit Lebenswelt koppeln“ den QR-Code scannen oder Adresse und Code eingeben. Ungekoppelt arbeitet die APK wie für alle anderen nur auf dem Handy.
+
+Beim ersten Start übernimmt TrainMe einmal Plan, Protokoll, Maxima, Verletzungen, Geräte und Bandfarben aus dem Kraftbuch. Die alten Dokumente bleiben unverändert als Archiv. XP für Training vergibt weiter die Lebenswelt.
+
+Routen: `GET`/`PUT /api/lebenswelt/trainme`, `GET /api/lebenswelt/trainme/kraftbuch`, `GET /api/lebenswelt/trainme/gesundheit`.
+
 ## Schiffsverkehr auf der Elbe
 
 Die App zeigt die echten Schiffe vor dem Deich (Binnenschiffe, Tanker, Fahrgastschiffe, Sportboote) nach ihren AIS-Daten. Freigeschaltet wird das im Shop der App.

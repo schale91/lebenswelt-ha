@@ -10,6 +10,8 @@ routerUse((e) => {
   if (!h.erlaubt(e)) return e.json(403, { fehler: "Nur über Home Assistant erreichbar." })
   // Gekoppelte Geräte erreichen nur die Schnittstelle der Lebenswelt, nicht PocketBase selbst
   if (h.quelle(e) === "geraet" && pfad.indexOf("/api/lebenswelt/") !== 0) return e.json(403, { fehler: "Nicht erlaubt." })
+  // TrainMe-Geräte erreichen nur ihre eigenen Routen
+  if (h.quelle(e) === "geraet" && !require(`${__hooks}/geraete.js`).pfadErlaubt((h.geraet(e) || {}).ziel, pfad)) return e.json(403, { fehler: "Nicht erlaubt." })
   return e.next()
 })
 

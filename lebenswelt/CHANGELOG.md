@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.44.0
+
+- TrainMe ersetzt das Kraftbuch (Entscheidung vom 26.10.2026). Die Daten von TrainMe liegen je Person in dieser Datenbank: Dokument `trainme`/`stamm` (Profil, eigener Plan, Maxima, Tests, Bandfarben) und je Trainingstag `trainme_tag`/`JJJJ-MM-TT` (Protokoll und erledigte Einheiten). Neuere Zeit gewinnt beim Stamm, Tage werden zusammengeführt, damit zwei Geräte am selben Tag nichts verlieren.
+  - `GET /api/lebenswelt/trainme?seit=…` lädt, `PUT /api/lebenswelt/trainme` speichert `{stamm?, tage?}`.
+  - `GET /api/lebenswelt/trainme/kraftbuch` liefert die Dokumente des früheren Kraftbuchs für die einmalige Übernahme. Sie bleiben als Archiv stehen.
+  - `GET /api/lebenswelt/trainme/gesundheit` liefert die Garmin-Werte der letzten Tage (nur für die Person mit der Uhr) und das letzte Körpergewicht.
+- Kopplung je App: `POST /api/lebenswelt/geraete/kopplung` nimmt `ziel` (`fit` oder `trainme`). Je Person und App ein Gerät, eine TrainMe-Kopplung beendet also nicht Lebenswelt Fit. TrainMe lässt sich auch für die volle Lebenswelt selbst koppeln (`ich` in `GET /api/lebenswelt/geraete`). Ein TrainMe-Gerät erreicht nur `/api/lebenswelt/ich` und `/api/lebenswelt/trainme…`. Ältere Kopplungen gelten als Lebenswelt Fit.
+
 ## 0.43.3
 
 - Korrektur zu 0.43.0: Gekoppelte Handys und Kopplungscodes heißen jetzt `fit_geraet` und `fit_kopplung`. Der Typ `geraet` war schon für andere Einträge vergeben und seit 0.43.0 versehentlich schreibgeschützt; er ist wieder frei.
