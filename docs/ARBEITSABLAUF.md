@@ -66,6 +66,7 @@ So läuft es:
   8. Eine Rückfrage zu einem Paperless-Dokument steht im Eingang, wird beantwortet und gibt XP. `GET /api/lebenswelt/fragen?status=beantwortet` liefert die Antwort wie für den täglichen Claude-Lauf. Nach „verarbeitet“ ist sie aus dem Eingang verschwunden.
   9. Mit einem Rathaus auf Stufe 2 öffnet der Rathaus-Knopf die Verwaltung: „Alles einsammeln“ leert die vollen Kassen (Münzen steigen in App und Datenbank), das Bürgerbüro zeigt die Einwohner, der Ratssaal ist bis Stufe 3 gesperrt.
   10. Im 3D-Dorf (Fitnessprofil, `?dorf`) lässt sich die Karte mit Finger bzw. Maus bis zu einer Blase „Gebiet freischalten“ schieben, sie liegt dann im Bild, und Antippen öffnet das Fenster mit Preis und Level.
+  11. Im Fenster einer Einsatzart steht der günstigste nächste Kauf als Knopf. Kaufen bucht die Münzen ab, danach steht sofort der nächste Schritt da.
 - Tagesstart und Tagesabschluss gelten für jede Testperson als heute schon gesehen (`e2e/hilfen.ts`). Sonst legt sich je nach Uhrzeit des Laufs (4 bis 14 Uhr, ab 18 Uhr) ein Fenster über die App.
 
 Start in `app/`:
