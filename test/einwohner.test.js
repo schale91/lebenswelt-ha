@@ -28,6 +28,34 @@ test("Zum Start: du und drei Feuerwehrleute mit Namen, noch ohne Job", () => {
   assert.ok(s.personal.every((p) => S._intern.einsatzbereitFuer(R, p, "feuerwehr", T0, s)))
 })
 
+test("Startausrüstung: einmal eine Klappleiter, wenn noch keine Leiter da ist", () => {
+  const s = elbe()
+  assert.equal(s.lager.feuerwehr.klappleiter, 1)
+  // Schon geschenkt: kein zweites Mal, auch nicht nach dem Verkauf
+  delete s.lager.feuerwehr.klappleiter
+  assert.equal(S.fortschreiben(s, T0 + 60000, trocken, R).lager.feuerwehr.klappleiter, undefined)
+  // Bestehende Welt mit eigener Leiter: nichts dazu
+  const alt = elbe()
+  delete alt.startgeschenk
+  alt.lager.feuerwehr = { steckleiter_teil: 2 }
+  const w = S.fortschreiben(alt, T0 + 60000, trocken, R)
+  assert.equal(w.lager.feuerwehr.klappleiter, undefined)
+  assert.equal(w.startgeschenk, true)
+  // Bestehende Welt ohne Leiter: bekommt sie beim nächsten Fortschreiben
+  const ohne = elbe()
+  delete ohne.startgeschenk
+  ohne.lager.feuerwehr = {}
+  assert.equal(S.fortschreiben(ohne, T0 + 60000, trocken, R).lager.feuerwehr.klappleiter, 1)
+})
+
+test("Mit der Startleiter läuft die erste Katze sofort", () => {
+  const s = elbe()
+  const r = S.sofort(s, "tier_katze", T0 + 1000, trocken, R)
+  assert.ok(!r.fehler, r.fehler)
+  assert.ok(!r.einsatz.wartet, r.einsatz.grund)
+  assert.equal(r.einsatz.status, "alarmiert")
+})
+
 test("Bestehende Kräfte bleiben, verlieren aber den alten Job; fehlende Startkräfte ziehen ein; nur einmal", () => {
   const s = elbe()
   delete s.einwohner_start
