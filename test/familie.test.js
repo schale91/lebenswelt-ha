@@ -35,6 +35,25 @@ test("Bewegung aus dem Spielstand: nur gültige Einträge ab dem Stichtag, nur b
   assert.deepEqual(F.bewegungAus({ version: 3 }, "2026-10-01"), [])
 })
 
+test("Reha-Sport und Fahrrad zählen als Bewegung (auch für die Erinnerung am Abend)", () => {
+  const daten = {
+    state: {
+      bewegungen: [
+        { id: "r", art: "rehasport", datum: "2026-11-02", zeit: 1, minuten: 45, xp: 110 },
+        { id: "f", art: "fahrrad", datum: "2026-11-02", zeit: 2, minuten: 30, xp: 45 },
+      ],
+    },
+  }
+  assert.deepEqual(
+    F.bewegungAus(daten, "2026-11-01").map((x) => [x.art, x.minuten]),
+    [
+      ["rehasport", 45],
+      ["fahrrad", 30],
+    ],
+  )
+  assert.equal(F.braucheErinnerung(daten, "2026-11-02"), false)
+})
+
 test("Stichtag vor n Tagen", () => {
   assert.equal(F.tagVor(Date.UTC(2026, 9, 14, 12), 14), "2026-09-30")
 })

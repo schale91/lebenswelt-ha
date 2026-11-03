@@ -1,6 +1,6 @@
 // Fitness-Welt und Familie. Personen in der Option fitness_personen bekommen in der App nur die Fitness-Welt:
 // dieselbe Karte, dasselbe Einsatzspiel und derselbe Shop, aber kein Smarthome, keine Aufgaben, kein Kraftbuch und
-// kein Update-Knopf. Ihre Bewegung (Schritte, Physio, Nilo schieben) sieht die ganze Familie, damit der Buggy auf
+// kein Update-Knopf. Ihre Bewegung (Schritte, Physio, Reha-Sport, Fahrrad, Nilo schieben) sieht die ganze Familie, damit der Buggy auf
 // jeder Karte schiebt. Reine Funktionen, in Node getestet.
 
 /** Steht die Person (HA-Benutzer-ID oder Anmeldename, Groß- und Kleinschreibung egal) in der Liste? */
@@ -10,7 +10,8 @@ function istFitness(ich, liste) {
   return namen.indexOf(String(ich.id || "").toLowerCase()) >= 0 || (!!ich.name && namen.indexOf(String(ich.name).toLowerCase()) >= 0)
 }
 
-const ARTEN = ["schritte", "heimphysio", "praxisphysio", "nilo"]
+// Reha-Sport und Fahrrad seit 02.11.2026 (Wunsch aus der Fitness-Welt)
+const ARTEN = ["schritte", "heimphysio", "praxisphysio", "rehasport", "fahrrad", "nilo"]
 const zahlOder = (v) => (typeof v === "number" && isFinite(v) && v > 0 ? v : undefined)
 
 /**

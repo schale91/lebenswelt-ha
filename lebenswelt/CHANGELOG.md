@@ -6,6 +6,10 @@
 - Neues Gerät „Aufzug-Notbefreiungsset (Dreikantschlüssel, Handrad)“.
 - Der Gerätewagen Logistik heißt jetzt GW-L1 und nennt seine Norm (DIN 14555-21). Preis und Beladung bleiben.
 
+## 0.44.1
+
+- Fitness-Welt: Reha-Sport (`rehasport`) und Fahrrad (`fahrrad`) zählen als Bewegung. Die Familie sieht sie in der Übersicht, und die Erinnerung am Abend bleibt aus, wenn nur das eingetragen ist.
+
 ## 0.44.0
 
 - TrainMe ersetzt das Kraftbuch (Entscheidung vom 26.10.2026). Die Daten von TrainMe liegen je Person in dieser Datenbank: Dokument `trainme`/`stamm` (Profil, eigener Plan, Maxima, Tests, Bandfarben) und je Trainingstag `trainme_tag`/`JJJJ-MM-TT` (Protokoll und erledigte Einheiten). Neuere Zeit gewinnt beim Stamm, Tage werden zusammengeführt, damit zwei Geräte am selben Tag nichts verlieren.
