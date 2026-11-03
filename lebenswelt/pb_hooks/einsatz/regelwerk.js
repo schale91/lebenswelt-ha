@@ -903,6 +903,7 @@ const GERAETE = {
   rettungssatz: { name: "Hydraulischer Rettungssatz (Spreizer, Schneidgerät, Rettungszylinder)", slots: 4, preis: 9000, org: "feuerwehr", kategorie: "th" },
   unterbaumaterial: { name: "Unterbaumaterial und Keile", slots: 1, preis: 300, org: "feuerwehr", kategorie: "th" },
   tueroeffnung: { name: "Türöffnungswerkzeug", slots: 0.5, preis: 700, org: "feuerwehr", kategorie: "th" },
+  aufzugschluessel: { name: "Aufzug-Notbefreiungsset (Dreikantschlüssel, Handrad)", slots: 0.25, preis: 150, org: "feuerwehr", kategorie: "th" },
   mehrgasmessgeraet: { name: "Mehrgasmessgerät", slots: 0.25, preis: 1200, org: "feuerwehr", kategorie: "abc" },
   sprungpolster: { name: "Sprungpolster", slots: 3, preis: 3500, org: "feuerwehr", kategorie: "rettung" },
   hebegurte: { name: "Hebegurte und Großtier-Rettungsset", slots: 2, preis: 1400, org: "feuerwehr", kategorie: "tier" },
@@ -1039,7 +1040,7 @@ const FAHRZEUGE = {
   },
   rw: { org: "feuerwehr", name: "Rüstwagen (RW)", besatzung: [1, 2], slots: 30, preis: 38000, tempo_kmh: 60, stellplatz: 1, fahrer: "fuehrerschein_c", grundbeladung: { rettungssatz: 1, stromerzeuger: 1, beleuchtung: 2, unterbaumaterial: 1 } },
   elw1: { org: "feuerwehr", name: "Einsatzleitwagen ELW 1", besatzung: [1, 2], slots: 4, preis: 9000, tempo_kmh: 70, stellplatz: 1, fahrer: "fahrberechtigung", fuehrung: true, grundbeladung: { hrt: 2 } },
-  gw_l: { org: "feuerwehr", name: "Gerätewagen Logistik (GW-L)", besatzung: [1, 2], slots: 34, preis: 22000, tempo_kmh: 60, stellplatz: 1, fahrer: "fuehrerschein_c", grundbeladung: { b_schlauch: 20, sandsack: 2 } },
+  gw_l: { org: "feuerwehr", name: "Gerätewagen Logistik GW-L1", norm: "DIN 14555-21", besatzung: [1, 2], slots: 34, preis: 22000, tempo_kmh: 60, stellplatz: 1, fahrer: "fuehrerschein_c", grundbeladung: { b_schlauch: 20, sandsack: 2 } },
   mzb: { org: "feuerwehr", name: "Mehrzweckboot mit Trailer", besatzung: [1, 2], slots: 4, preis: 15000, tempo_kmh: 40, stellplatz: 1, fahrer: "boot", wasser: true, grundbeladung: { rettungsweste: 3, rettungsring: 1 } },
   // Polizei
   fusstreife: { org: "polizei", name: "Fußstreife", besatzung: [0, 2], slots: 1, preis: 0, tempo_kmh: 5, stellplatz: 0, fahrer: null, grundbeladung: { taschenlampe: 1 } },
@@ -1477,6 +1478,19 @@ const EINSATZARTEN = {
     zufall: { fehlalarm: 0.8, folge_bei_echt: "b_wohnung" },
     text: "Aus einer Wohnung piept seit Minuten ein Rauchmelder, auf Klingeln öffnet niemand. Im Treppenhaus riecht es leicht verbrannt.",
     verfallen_text: "Die Nachbarn haben den Vermieter erreicht. Angebranntes Essen, der Topf ist hinüber, die Küche voller Rauch.",
+  },
+  // Person im Aufzug eingeschlossen (Freigabe KW 44/2026): Notbefreiung mit Dreikantschlüssel, Kabine von Hand auf
+  // die nächste Haltestelle, Person beruhigen. Meist kommt der Aufzugsdienst zu spät, deshalb die Feuerwehr.
+  th_aufzug: {
+    org: "feuerwehr", name: "Person im Aufzug eingeschlossen", stichwort: "TH Aufzug", preis: 1000,
+    freischaltung: { nach: "th_tuer" },
+    orte: ["arbeit_rathaus", "arbeit_arztpraxis"], intervall_min: 900, ablauf_min: 20, arbeit_min: 12, ziel_eintreffen_min: 10,
+    mindestens: { personen: 2, geraete: [[{ aufzugschluessel: 1 }, { tueroeffnung: 1 }]] },
+    optimal: { personen: 6, einheit: "staffel", qualifikation: { erste_hilfe: 1 }, geraete: [[{ aufzugschluessel: 1 }], [{ hrt: 1 }]] },
+    regeln: ["einheitsfuehrer"],
+    folge: ["rd_versorgung"],
+    text: "Ein Aufzug ist zwischen zwei Etagen stehengeblieben. In der Kabine ist eine Person, sie hat über den Notruf Bescheid gegeben und wird unruhig.",
+    verfallen_text: "Der Aufzugsdienst kam nach über einer Stunde. Die Person war erschöpft, der Rettungsdienst hat sie durchgecheckt.",
   },
   fr_reanimation: {
     org: "feuerwehr", name: "First Responder: Person bewusstlos", stichwort: "FR", preis: 2000,

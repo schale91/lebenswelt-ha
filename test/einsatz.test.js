@@ -506,3 +506,13 @@ test("Umstellung: nach alter Regel freigeschaltete, nicht gekaufte Arten müssen
   n.freigeschaltet.push("b_muelltonne")
   assert.ok(S.fortschreiben(n, T0 + 2 * MIN, trocken, R).freigeschaltet.includes("b_muelltonne"))
 })
+
+test("Aufzug-Einsatz: nach der Türöffnung, im Rathaus oder in der Arztpraxis, Notbefreiung mit Dreikantschlüssel", () => {
+  const a = R.EINSATZARTEN.th_aufzug
+  assert.equal(a.freischaltung.nach, "th_tuer")
+  assert.equal(a.stichwort, "TH Aufzug")
+  for (const o of a.orte) assert.ok(R.ORTE[o], o)
+  assert.ok(R.GERAETE.aufzugschluessel)
+  assert.deepEqual(a.mindestens.geraete[0].map((g) => Object.keys(g)[0]), ["aufzugschluessel", "tueroeffnung"])
+  assert.equal(R.FAHRZEUGE.gw_l.norm, "DIN 14555-21")
+})

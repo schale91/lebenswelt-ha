@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.45.0
+
+- Neue Einsatzart „Person im Aufzug eingeschlossen“ (TH Aufzug, Freigabe KW 44): nach der Türöffnung freigeschaltet, im Rathaus oder in der Arztpraxis. Mindestens zwei Kräfte mit Aufzug-Notbefreiungsset oder Türöffnungswerkzeug, optimal eine Staffel mit Erster Hilfe. Folge: Versorgung durch den Rettungsdienst.
+- Neues Gerät „Aufzug-Notbefreiungsset (Dreikantschlüssel, Handrad)“.
+- Der Gerätewagen Logistik heißt jetzt GW-L1 und nennt seine Norm (DIN 14555-21). Preis und Beladung bleiben.
+
 ## 0.44.2
 
 - Elbe Springs: Die Feuerwehr bekommt einmal eine Klappleiter geschenkt, wenn sie noch keine Leiter hat (`startgeschenk` im Stand). So läuft der erste Einsatz „Katze auf Baum“ sofort, auch ohne Münzen. Bestehende Welten ohne Leiter bekommen sie beim nächsten Fortschreiben, wer schon eine Leiter hat, bekommt nichts dazu.
