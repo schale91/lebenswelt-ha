@@ -2445,6 +2445,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   freischaltregel(R, s)
   rueckkehrerEinziehen(R, s, s.bis)
   einwohnerStart(R, s, s.bis)
+  startgeschenk(R, s)
   krankenhausVorLevel(R, s)
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
@@ -2639,6 +2640,19 @@ function einwohnerStart(R, s, jetzt) {
     if (!h) break
     s.personal.push(neuePerson(s, "feuerwehr", h.id, jetzt, Object.assign({ beruf: "ohne" }, START_KRAEFTE[i % START_KRAEFTE.length])))
   }
+}
+
+/**
+ * Startausrüstung (03.11.2026): In Elbe Springs bekommt die Feuerwehr einmal eine Klappleiter geschenkt, wenn sie noch
+ * keine Leiter hat. Sonst kann der erste Einsatz (Katze auf Baum) nicht laufen, solange noch keine Münzen da sind.
+ */
+function startgeschenk(R, s) {
+  if (s.welt !== "elbe" || s.startgeschenk || !R.GERAETE.klappleiter) return
+  s.startgeschenk = true
+  s.lager.feuerwehr = s.lager.feuerwehr || {}
+  const hat = (id) => (s.lager.feuerwehr[id] || 0) + s.fahrzeuge.reduce((n, f) => n + ((f.beladung && f.beladung[id]) || 0), 0)
+  if (Object.entries(R.GERAETE).some(([id, g]) => g.org === "feuerwehr" && g.kategorie === "leiter" && hat(id) > 0)) return
+  s.lager.feuerwehr.klappleiter = (s.lager.feuerwehr.klappleiter || 0) + 1
 }
 
 /** Freie Stellen bei einem Arbeitgeber im Dorf (Bewohner in Häusern, die noch gebaut werden, zählen mit). */
@@ -3029,6 +3043,7 @@ function neustart(stand, jetzt, R) {
   s.neustart = { zeit: jetzt, erstattung, einsaetze: Object.values(stand.einsatzarten || {}).reduce((n, a) => n + (a.anzahl || 0), 0), personal: (stand.personal || []).length }
   rueckkehrerEinziehen(R, s, jetzt)
   einwohnerStart(R, s, jetzt)
+  startgeschenk(R, s)
   return { stand: s, erstattung }
 }
 

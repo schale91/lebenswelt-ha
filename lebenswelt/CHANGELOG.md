@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.44.2
+
+- Elbe Springs: Die Feuerwehr bekommt einmal eine Klappleiter geschenkt, wenn sie noch keine Leiter hat (`startgeschenk` im Stand). So läuft der erste Einsatz „Katze auf Baum“ sofort, auch ohne Münzen. Bestehende Welten ohne Leiter bekommen sie beim nächsten Fortschreiben, wer schon eine Leiter hat, bekommt nichts dazu.
+
 ## 0.44.1
 
 - Fitness-Welt: Reha-Sport (`rehasport`) und Fahrrad (`fahrrad`) zählen als Bewegung. Die Familie sieht sie in der Übersicht, und die Erinnerung am Abend bleibt aus, wenn nur das eingetragen ist.
