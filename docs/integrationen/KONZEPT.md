@@ -210,7 +210,11 @@ Damit kann Claude in jeder Unterhaltung alle Dokumente durchsuchen und lesen, oh
 
 ## 8. YouTube und Gmail
 
-**Gmail: ja, aber über Claude, nicht über die Datenbank-App.** Claude hat schon einen Gmail-Connector (Lesen, Labels, Entwürfe), und den Ablauf „Mails sichten, Aufgaben daraus“ gibt es schon als Skill. Sinnvoll ist, dass Claude daraus Einträge im Eingang der Lebenswelt anlegt (`quelle: gmail`, Link zur Mail) statt in einer eigenen Liste. Dafür braucht es keine neue Route; `POST /api/lebenswelt/dokumente` reicht. Die Datenbank-App selbst soll Gmail nicht lesen: Das hieße, ein Google-Passwort oder App-Passwort in Home Assistant abzulegen, und der Nutzen wäre derselbe. Die Gmail-Integration von Home Assistant kann ohnehin nur senden und die Abwesenheitsnotiz setzen, nicht lesen.
+**Gmail: ja, aber über Claude, nicht über die Datenbank-App.** Claude hat schon einen Gmail-Connector (Lesen, Labels, Entwürfe), und den Ablauf „Mails sichten, Aufgaben daraus“ gibt es schon als Skill. Claude legt daraus Einträge im Eingang der Lebenswelt an (`quelle: gmail`, Schlüssel `gmail:<threadId>`, Link zur Mail) statt in einer eigenen Liste.
+
+**Umgesetzt mit 0.46.0** (Auftrag vom 03.11.2026): Jeden Werktag morgens kommen alle nicht kategorisierten Mails und alle Mails mit Handlungsbedarf in den Posteingang, je mit 2 bis 4 anklickbaren Vorschlägen und einem Feld für eine eigene Eingabe. Die Entscheidung führt Claude im nächsten Lauf in Gmail aus (labeln, archivieren, To-Do, Antwortentwurf, Newsletter; Papierkorb nur auf ausdrückliche Wahl). Je Entscheidung gibt es einmal 3 XP, höchstens 30 am Tag (`POSTEINGANG_XP` im Regelwerk). Eigene Routen statt `POST /api/lebenswelt/dokumente`, damit Eingaben geprüft werden, keine Entscheidung überschrieben wird und XP nicht doppelt gebucht werden: `GET /api/lebenswelt/gmail`, `POST …/gmail/eingang`, `POST …/gmail/{id}/entscheidung`, `PATCH …/gmail/{id}`, `POST …/gmail/abholen` (lebenswelt/DOCS.md). Der Text der Routine steht in `docs/integrationen/GMAIL_ROUTINE.md`; dienstliche Mails kommen nicht in die Lebenswelt.
+
+Die Datenbank-App selbst soll Gmail nicht lesen: Das hieße, ein Google-Passwort oder App-Passwort in Home Assistant abzulegen, und der Nutzen wäre derselbe. Die Gmail-Integration von Home Assistant kann ohnehin nur senden und die Abwesenheitsnotiz setzen, nicht lesen.
 
 **YouTube: nein.** Die YouTube-Integration von Home Assistant zeigt nur Daten zu Kanälen (neuestes Video, Abonnenten), nicht was du schaust; den Wiedergabeverlauf gibt die YouTube-Schnittstelle nicht heraus. Für die Lebenswelt bleibt höchstens „neues Video von Kanal X“, das hat keinen Bezug zu Alltag oder Spiel. Wenn du Bildschirmzeit im Blick haben willst, ist das ein eigenes Thema (Android-Bildschirmzeit), nicht YouTube.
 
@@ -227,6 +231,7 @@ Damit kann Claude in jeder Unterhaltung alle Dokumente durchsuchen und lesen, oh
 | Karte | `orte.deponie`, `orte.ortseingang` im Dokument `karte/elbe` | Lage auf dem Stadtplan mitschicken |
 | Garmin | `/api/lebenswelt/garmin/heute`, Dokumente `garmin_tag` | Karte „Heute“ |
 | Eingang | Dokumente `eingang` mit `quelle: paperless` | Symbol Paperless, Link zum Dokument |
+| Gmail | Dokumente `eingang` mit `quelle: gmail`, Routen `/api/lebenswelt/gmail…` | Symbol Mail, Absender, Betreff, Auszug, Link; Vorschläge als Knöpfe, eigene Eingabe, Status, XP an der Poststation |
 | Kalender | `/api/lebenswelt/kalender` | Zeile „Heute“ im Briefing |
 
 Dieses Repository war in der Sitzung, in der das Konzept entstand, nicht klonbar (automatische Rechteprüfung). Für das Frontend eine Sitzung mit beiden Repositories starten (siehe `docs/einsatzspiel/START.md`).

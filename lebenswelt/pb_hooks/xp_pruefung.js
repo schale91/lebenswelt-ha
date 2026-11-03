@@ -2,7 +2,8 @@
 // Als Modul, weil PocketBase jeden Handler in einem eigenen Kontext ausführt.
 //
 // Grundlage ist das XP-Tagebuch der App im Spielstand (zustand: daten.state.xpTage: {tag: {xp, n}}) und als Nachweis, was in der
-// Datenbank in der Woche erledigt oder eingetragen wurde (Aufgaben, Vorgänge, Garmin, Kraftbuch, Bewegungen).
+// Datenbank in der Woche erledigt oder eingetragen wurde (Aufgaben, Vorgänge, Garmin, Kraftbuch, Bewegungen,
+// entschiedene Mails im Posteingang).
 // Mehr XP bei entsprechend mehr Erledigtem gilt als Fleiß. Auffällig ist, wenn XP ohne passende Nachweise steigen.
 // Ergebnis: ein Dokument typ "xp_pruefung" bei der Person mit voller Lebenswelt und, wenn etwas auffällt,
 // eine Nachricht an sie (auch für Personen mit Fitness-Welt).
@@ -127,11 +128,15 @@ function nachweiseVon(app, besitzer, spielstand, ab) {
   const zaehle = (t) => {
     if (t && t >= ab) zahl[t] = (zahl[t] || 0) + 1
   }
-  const docs = app.findRecordsByFilter("dokumente", "besitzer = {:b} && geloescht = false && (typ = 'aufgabe' || typ = 'unteraufgabe' || typ = 'vorgang' || typ = 'aktivitaet' || typ = 'trainingslog')", "", 0, 0, { b: besitzer })
+  const docs = app.findRecordsByFilter("dokumente", "besitzer = {:b} && geloescht = false && (typ = 'aufgabe' || typ = 'unteraufgabe' || typ = 'vorgang' || typ = 'aktivitaet' || typ = 'trainingslog' || (typ = 'eingang' && schluessel ~ 'gmail:%'))", "", 0, 0, { b: besitzer })
   for (const r of docs) {
     const d = JSON.parse(toString(r.get("daten")) || "{}")
     const typ = r.getString("typ")
     if (typ === "aktivitaet") zaehle(tagVon(d.start))
+    // Gmail im Posteingang: jede entschiedene Mail ist ein Nachweis (XP aus POSTEINGANG_XP)
+    else if (typ === "eingang") {
+      if (d.xp_gebucht && d.entschieden_am) zaehle(tagVon(d.entschieden_am))
+    }
     else if (typ === "trainingslog") {
       for (const uebung of Object.values(d.sets || {})) for (const satz of Object.values(uebung || {})) if (satz && satz.updatedAt) zaehle(tagVon(satz.updatedAt))
     } else if (d.status === "Erledigt" && d.erledigt_am) zaehle(tagVon(d.erledigt_am))

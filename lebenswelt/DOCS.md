@@ -129,6 +129,16 @@ Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
 - **Kalender:** je Tag Arbeit, Homeoffice, Dienst, Urlaub, Feiertag oder Wochenende, damit Claude weiß, wann du arbeitest.
 - **Paperless-ngx:** Posteingang alle 15 Minuten in den Eingang. Claude sucht, liest und bearbeitet Dokumente über die Routen unten (über den Connector „Homeassistent MCP“). Einrichtung: in Paperless unter Profil einen API-Token erzeugen und hier als `paperless_token` eintragen, App neu starten. Paperless lehnt Aufrufe über den Ingress anderer Apps ab, deshalb geht die Verbindung direkt über das Netz der Apps.
 
+## Gmail im Posteingang (ab 0.46.0)
+
+Die Datenbank-App liest Gmail nicht selbst. Eine Claude-Routine (Text in `docs/integrationen/GMAIL_ROUTINE.md`) legt jeden Werktag morgens neue Mails und Mails mit Handlungsbedarf als Einträge im Posteingang an: `typ: eingang`, `quelle: gmail`, Schlüssel `gmail:<threadId>`, mit Absender, Betreff, Datum, Auszug (höchstens 300 Zeichen), Link zur Mail, einer vorgeschlagenen Kategorie und 2 bis 4 Vorschlägen (`optionen: [{id, text, aktion, daten}]`, Aktionen `labeln`, `archivieren`, `to_do`, `antwort_entwurf`, `newsletter`, `papierkorb_vorschlagen`). In der App wählst du einen Vorschlag oder schreibst eine eigene Eingabe; der nächste Lauf führt das in Gmail aus und setzt den Eintrag auf `verarbeitet` mit dem Ergebnis. Ist deine Eingabe mehrdeutig, kommt der Eintrag mit einer Rückfrage zurück.
+
+- Status: `offen`, `entschieden`, `verarbeitet`. Eine entschiedene Mail gilt im Posteingang als sortiert (`verarbeitet: true`), auch bevor der Lauf sie erledigt hat.
+- Kommt derselbe Thread noch einmal, wird ein offener Eintrag aktualisiert; eine entschiedene oder verarbeitete Mail bleibt, wie sie ist. Gelöschte Einträge kommen nicht wieder.
+- XP: je entschiedener Mail einmal `POSTEINGANG_XP.gmail_entscheidung` (3), höchstens `tag_max` (30) am Tag, Skill Organisator. Werte im Regelwerk. Die App holt sie mit `POST /api/lebenswelt/gmail/abholen` ab und legt sie an der Poststation zum Einsammeln bereit. Die Sonntagsprüfung zählt entschiedene Mails als Nachweis.
+- Push-Nachricht bei neuen Mails, nur mit der Anzahl, ohne Inhalte.
+- Dienstliche Mails kommen nicht in die Lebenswelt.
+
 ## Schnittstelle
 
 | Methode | Pfad | Zweck |
@@ -167,6 +177,11 @@ Konzept und Hintergründe: `docs/integrationen/KONZEPT.md` im Repository.
 | GET | `/api/lebenswelt/fragen?status=beantwortet` | Rückfragen, optional nach Status (`offen`, `beantwortet`, `verarbeitet`) |
 | PATCH | `/api/lebenswelt/fragen/{id}` | `{status: "verarbeitet"}`, optional `{antwort}` |
 | POST | `/api/lebenswelt/paperless/abgleich` | Posteingang sofort übernehmen |
+| GET | `/api/lebenswelt/gmail?status=entschieden` | Mails im Posteingang, optional nach Status (`offen`, `entschieden`, `verarbeitet`) |
+| POST | `/api/lebenswelt/gmail/eingang` | Routine: `{mails: [{thread_id, titel, absender, datum, auszug, link, kategorie_vorschlag, optionen}]}` anlegen oder zusammenführen (`{neu, aktualisiert, unveraendert, fehler}`), Push mit der Anzahl |
+| POST | `/api/lebenswelt/gmail/{id}/entscheidung` | App: `{auswahl?, eigene_eingabe?}`, Status `entschieden`, bucht einmal XP zum Abholen |
+| PATCH | `/api/lebenswelt/gmail/{id}` | Routine: `{status: "verarbeitet", ergebnis?}` oder `{status: "offen", rueckfrage, optionen?}` |
+| POST | `/api/lebenswelt/gmail/abholen` | App: XP der Entscheidungen abholen (`{xp, skill, eintraege}`) |
 | POST | `/api/lebenswelt/routinen/lauf` | Fällige Aufgaben aus Routinen (typ `routine`) sofort anlegen, sonst stündlich ab 4 Uhr (`{angelegt, verfallen, tag}`) |
 
 Das Einsatzspiel rechnet jede Minute im Hintergrund weiter. Es nutzt keine KI und verbraucht kein Guthaben. Die Dokumente `einsatzwelt` und `einsatz` sind über die allgemeinen Dokument-Routen nur lesbar.

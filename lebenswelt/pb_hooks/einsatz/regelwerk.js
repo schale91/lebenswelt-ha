@@ -2720,7 +2720,12 @@ const ABFALL = {
   }
 })()
 
+// XP für den Posteingang der Lebenswelt (Gmail über die Claude-Routine, docs/integrationen/GMAIL_ROUTINE.md):
+// je entschiedener Mail einmal, höchstens tag_max am Tag. Klein gehalten, die Münzen kommen aus der Arbeit.
+const POSTEINGANG_XP = { gmail_entscheidung: 3, tag_max: 30, skill: "organisator" } // spielwert
+
 module.exports = {
+  POSTEINGANG_XP,
   KRANKENHAUS,
   GEBIETE,
   NACHBARHILFE,
