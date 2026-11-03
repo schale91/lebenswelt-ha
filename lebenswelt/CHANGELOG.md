@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.45.0
+
+- Neue Einsatzart „Person im Aufzug eingeschlossen“ (TH Aufzug, Freigabe KW 44): nach der Türöffnung freigeschaltet, im Rathaus oder in der Arztpraxis. Mindestens zwei Kräfte mit Aufzug-Notbefreiungsset oder Türöffnungswerkzeug, optimal eine Staffel mit Erster Hilfe. Folge: Versorgung durch den Rettungsdienst.
+- Neues Gerät „Aufzug-Notbefreiungsset (Dreikantschlüssel, Handrad)“.
+- Der Gerätewagen Logistik heißt jetzt GW-L1 und nennt seine Norm (DIN 14555-21). Preis und Beladung bleiben.
+
 ## 0.44.0
 
 - TrainMe ersetzt das Kraftbuch (Entscheidung vom 26.10.2026). Die Daten von TrainMe liegen je Person in dieser Datenbank: Dokument `trainme`/`stamm` (Profil, eigener Plan, Maxima, Tests, Bandfarben) und je Trainingstag `trainme_tag`/`JJJJ-MM-TT` (Protokoll und erledigte Einheiten). Neuere Zeit gewinnt beim Stamm, Tage werden zusammengeführt, damit zwei Geräte am selben Tag nichts verlieren.
