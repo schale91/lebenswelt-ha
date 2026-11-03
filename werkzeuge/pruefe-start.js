@@ -22,6 +22,10 @@ const ROUTEN = [
   ["GET", "/api/lebenswelt/einsatz/stand"],
   ["GET", "/api/lebenswelt/einsatz/protokoll"],
   ["GET", "/api/lebenswelt/trainme"],
+  // Gmail im Posteingang (ab 0.46.0): Liste, Anlegen ohne Mails (400) und XP abholen
+  ["GET", "/api/lebenswelt/gmail"],
+  ["POST", "/api/lebenswelt/gmail/eingang"],
+  ["POST", "/api/lebenswelt/gmail/abholen"],
   ["POST", "/api/lebenswelt/routinen/lauf"],
 ]
 // Fehler der JS-Laufzeit im Protokoll (ein Hook, der beim Laden oder in einer Route scheitert)

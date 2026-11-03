@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.46.0
+
+- Gmail im Posteingang: Eine Claude-Routine legt werktags Mails als Einträge an (`typ: eingang`, `quelle: gmail`, Schlüssel `gmail:<threadId>`) mit Absender, Betreff, Datum, Auszug, Link, Kategorie-Vorschlag und 2 bis 4 Vorschlägen. Entscheidung in der App per Vorschlag oder eigener Eingabe, der nächste Lauf führt sie in Gmail aus.
+  - Neue Routen: `GET /api/lebenswelt/gmail`, `POST /api/lebenswelt/gmail/eingang`, `POST /api/lebenswelt/gmail/{id}/entscheidung`, `PATCH /api/lebenswelt/gmail/{id}`, `POST /api/lebenswelt/gmail/abholen`.
+  - Eingaben werden geprüft (Längen, erlaubte Aktionen und Status, Label-IDs beim Labeln). Kein Eintrag doppelt, keine Entscheidung wird überschrieben.
+  - XP je entschiedener Mail einmal (Regelwerk `POSTEINGANG_XP`: 3 XP, höchstens 30 am Tag), auch beim erneuten Anlegen desselben Threads nicht doppelt. Die Sonntagsprüfung zählt Entscheidungen als Nachweis.
+  - Push-Nachricht bei neuen Mails, nur mit der Anzahl.
+  - Text der Routine in `docs/integrationen/GMAIL_ROUTINE.md`, Startprobe um die neuen Routen erweitert.
+
 ## 0.45.0
 
 - Neue Einsatzart „Person im Aufzug eingeschlossen“ (TH Aufzug, Freigabe KW 44): nach der Türöffnung freigeschaltet, im Rathaus oder in der Arztpraxis. Mindestens zwei Kräfte mit Aufzug-Notbefreiungsset oder Türöffnungswerkzeug, optimal eine Staffel mit Erster Hilfe. Folge: Versorgung durch den Rettungsdienst.
