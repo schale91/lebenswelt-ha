@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.46.1
+
+- Fitness-Welt: Gartenarbeit (`garten`) zählt als Bewegung in Minuten, wie Nilo schieben. Die Familie sieht sie in der Übersicht, und die Erinnerung am Abend bleibt aus, wenn nur Gartenarbeit eingetragen ist.
+
 ## 0.46.0
 
 - Gmail im Posteingang: Eine Claude-Routine legt werktags Mails als Einträge an (`typ: eingang`, `quelle: gmail`, Schlüssel `gmail:<threadId>`) mit Absender, Betreff, Datum, Auszug, Link, Kategorie-Vorschlag und 2 bis 4 Vorschlägen. Entscheidung in der App per Vorschlag oder eigener Eingabe, der nächste Lauf führt sie in Gmail aus.

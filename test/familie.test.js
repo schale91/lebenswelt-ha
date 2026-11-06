@@ -54,6 +54,12 @@ test("Reha-Sport und Fahrrad zählen als Bewegung (auch für die Erinnerung am A
   assert.equal(F.braucheErinnerung(daten, "2026-11-02"), false)
 })
 
+test("Gartenarbeit zählt als Bewegung, auch für die Erinnerung am Abend", () => {
+  const daten = { state: { bewegungen: [{ id: "g", art: "garten", datum: "2026-11-06", zeit: 1, minuten: 60, xp: 90 }] } }
+  assert.deepEqual(F.bewegungAus(daten, "2026-11-01").map((x) => [x.art, x.minuten]), [["garten", 60]])
+  assert.equal(F.braucheErinnerung(daten, "2026-11-06"), false)
+})
+
 test("Stichtag vor n Tagen", () => {
   assert.equal(F.tagVor(Date.UTC(2026, 9, 14, 12), 14), "2026-09-30")
 })
