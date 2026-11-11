@@ -79,6 +79,16 @@ cronAdd("app_paket", "*/10 * * * *", () => {
   }
 })
 
+// Aufträge zum App-Paket (sofort nachsehen, installieren sobald neuer als X): jede Minute nachsehen, ob etwas ansteht.
+// Ohne Auftrag wird nur zustand.json gelesen; GitHub fragt arbeite() höchstens alle 2 Minuten und nur bis zur Frist.
+cronAdd("app_paket_auftrag", "* * * * *", () => {
+  try {
+    require(`${__hooks}/app_paket.js`).arbeite()
+  } catch (err) {
+    console.log("App-Paket-Auftrag fehlgeschlagen", err)
+  }
+})
+
 
 // Sonntagsprüfung XP: 16 Uhr UTC, also 17 Uhr Winterzeit bzw. 18 Uhr Sommerzeit (vor dem Anonymisieren)
 cronAdd("xp_pruefung", "0 16 * * 0", () => {

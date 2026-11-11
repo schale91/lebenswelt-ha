@@ -46,6 +46,7 @@ Claude erledigt das über den Connector „Homeassistent MCP“ (`ha_manage_app`
 - Die Datenbank-App sieht alle 10 Minuten nach einem neuen App-Paket (Option `app_token` muss gesetzt sein).
 - In der App erscheint „Update verfügbar · Installieren“. Erst dieser Tipp spielt die neue Version ein.
 - Claude kann das ebenfalls: Über den Connector „Homeassistent MCP“ fragt `ha_manage_app` (Proxy, `GET /api/lebenswelt/app-paket`) den Stand ab. Ist `verfuegbar` neuer als `installiert`, spielt `POST /api/lebenswelt/app-paket/installieren` die Version ein. Danach die App einmal neu laden.
+- Nach dem Zusammenführen reicht ein Aufruf (ab Datenbank 0.46.2): `POST /api/lebenswelt/app-paket/auftrag` mit `{"neuer_als": "<merged_at des Pull Requests>"}`. Er antwortet sofort; das Add-on installiert die neue Version, sobald sie gebaut ist, und gibt nach 30 Minuten auf. Stand unter `auftrag` in `GET /api/lebenswelt/app-paket` (Einzelheiten in `lebenswelt/DOCS.md`).
 
 ## Ende-zu-Ende-Tests
 
