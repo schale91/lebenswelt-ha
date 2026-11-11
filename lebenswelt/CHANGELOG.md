@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.46.2
+
+- App-Paket ohne Warten: Nachsehen und Herunterladen dauern bei mehreren hundert Dateien länger als 30 Sekunden, Aufrufe über den Proxy von Home Assistant liefen deshalb in eine Zeitüberschreitung. Neu antworten zwei Aufrufe sofort (202), die Arbeit übernimmt ein Minutentakt im Hintergrund:
+  - `POST /api/lebenswelt/app-paket?hintergrund=1` (oder `{"hintergrund": true}`): in der nächsten Minute nachsehen und herunterladen, nicht installieren. Ohne Angabe bleibt der Aufruf wie bisher (wartet).
+  - `POST /api/lebenswelt/app-paket/auftrag` mit `{"neuer_als": "<Zeitpunkt>", "minuten": 30}`: installieren, sobald eine Version neuer als `neuer_als` bereitliegt, mit demselben Code wie „Installieren“ in der App (`server.json` bleibt). Nach der Frist (Standard 30, 5 bis 120 Minuten) erledigt sich der Auftrag von selbst. `DELETE` bricht ihn ab.
+  - `GET /api/lebenswelt/app-paket` zeigt dazu `nachsehen_angefordert` und `auftrag` (`seit`, `neuer_als`, `bis`, `stand`: `wartet`, `erledigt`, `abgelaufen`, `fehler`, `abgebrochen`, dazu `versuche`, `fehler`, `ende`, `installiert`). Der Zustand liegt in `zustand.json` und übersteht einen Neustart.
+  - GitHub wird geschont: Ein Auftrag sieht höchstens alle 2 Minuten nach und nur bis zur Frist, nach 3 gescheiterten Versuchen gibt er auf. Der Takt von 10 Minuten bleibt.
+  - Rechte wie bisher: ohne Person 401, Fitness-Welt 403.
+- Nur ein Abruf zur Zeit, jetzt auch, wenn zwei Läufe in derselben Sekunde starten (atomare Belegung im Speicher vor der Sperrdatei). Ein gescheiterter Download lässt keinen halben Zwischenordner mehr liegen, alte Zwischenordner abgebrochener Läufe werden aufgeräumt.
+- Startprobe: neue Routen, App- und Datenordner liegen dabei im Probeordner statt unter `/data`.
+
 ## 0.46.1
 
 - Fitness-Welt: Gartenarbeit (`garten`) zählt als Bewegung in Minuten, wie Nilo schieben. Die Familie sieht sie in der Übersicht, und die Erinnerung am Abend bleibt aus, wenn nur Gartenarbeit eingetragen ist.

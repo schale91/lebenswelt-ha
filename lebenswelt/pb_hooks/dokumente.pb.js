@@ -172,22 +172,42 @@ routerAdd("POST", "/api/lebenswelt/garmin", (e) => {
 routerAdd("GET", "/api/lebenswelt/app-paket", (e) => {
   return e.json(200, require(`${__hooks}/app_paket.js`).zustand())
 })
+// Ohne Angabe wie bisher: nachsehen und herunterladen, Antwort erst danach (kann länger als 30 s dauern).
+// Mit ?hintergrund=1 (oder {"hintergrund": true}): sofort 202, nachgesehen wird in der nächsten Minute.
 routerAdd("POST", "/api/lebenswelt/app-paket", (e) => {
-  const h = require(`${__hooks}/hilfen.js`)
-  const ich = h.benutzer(e)
-  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
-  // Fitness-Welt (Papa) spielt keine Updates ein, das bleibt bei der vollen Lebenswelt
-  if (h.profilVon(ich) === "fitness") return e.json(403, { fehler: "Updates spielt nur die volle Lebenswelt ein." })
-  return e.json(200, require(`${__hooks}/app_paket.js`).pruefe())
+  const ap = require(`${__hooks}/app_paket.js`)
+  const nein = ap.verweigert(e)
+  if (nein) return e.json(nein.status, nein.body)
+  const body = e.requestInfo().body || {}
+  const wert = String(e.request.url.query().get("hintergrund") || "")
+  if (body.hintergrund === true || wert === "1" || wert === "true") return e.json(202, ap.fordereAn())
+  return e.json(200, ap.pruefe())
 })
 routerAdd("POST", "/api/lebenswelt/app-paket/installieren", (e) => {
-  const h = require(`${__hooks}/hilfen.js`)
-  const ich = h.benutzer(e)
-  if (!ich) return e.json(401, { fehler: "Keine Home-Assistant-Person übermittelt." })
-  // Fitness-Welt (Papa) spielt keine Updates ein, das bleibt bei der vollen Lebenswelt
-  if (h.profilVon(ich) === "fitness") return e.json(403, { fehler: "Updates spielt nur die volle Lebenswelt ein." })
-  const z = require(`${__hooks}/app_paket.js`).installiere()
+  const ap = require(`${__hooks}/app_paket.js`)
+  const nein = ap.verweigert(e)
+  if (nein) return e.json(nein.status, nein.body)
+  const z = ap.installiere()
   return e.json(z.fehler ? 500 : 200, z)
+})
+// Auftrag: installieren, sobald eine Version neuer als neuer_als bereitliegt ({neuer_als?, minuten?}), sofort 202.
+// Abgearbeitet im Minutentakt (aufgaben_im_hintergrund.pb.js), Stand im GET unter auftrag.
+routerAdd("POST", "/api/lebenswelt/app-paket/auftrag", (e) => {
+  const ap = require(`${__hooks}/app_paket.js`)
+  const nein = ap.verweigert(e)
+  if (nein) return e.json(nein.status, nein.body)
+  const body = e.requestInfo().body || {}
+  try {
+    return e.json(202, ap.beauftrage({ neuer_als: body.neuer_als, minuten: body.minuten }))
+  } catch (err) {
+    return e.json(400, { fehler: String(err && err.message ? err.message : err) })
+  }
+})
+routerAdd("DELETE", "/api/lebenswelt/app-paket/auftrag", (e) => {
+  const ap = require(`${__hooks}/app_paket.js`)
+  const nein = ap.verweigert(e)
+  if (nein) return e.json(nein.status, nein.body)
+  return e.json(200, ap.brichAb())
 })
 
 // Push-Nachrichten an die Android-App: Gerät anmelden, Stand, Test

@@ -105,7 +105,46 @@ Einrichtung:
 
 Enthält das Paket die Android-App (`lebenswelt.apk`, `android.json`), legt das Add-on sie mit in den Ordner; die App bietet sie dann zum Herunterladen an.
 
-Routen: `GET /api/lebenswelt/app-paket` (bereitliegende und installierte Version, letzter Fehler), `POST /api/lebenswelt/app-paket` (sofort nachsehen), `POST /api/lebenswelt/app-paket/installieren` (bereitliegende Version einspielen).
+Routen: `GET /api/lebenswelt/app-paket` (bereitliegende und installierte Version, letzter Fehler, Aufträge), `POST /api/lebenswelt/app-paket` (sofort nachsehen), `POST /api/lebenswelt/app-paket/installieren` (bereitliegende Version einspielen), `POST` und `DELETE /api/lebenswelt/app-paket/auftrag` (siehe unten). Alle `POST` und `DELETE` brauchen eine Person (sonst 401) und sind für die Fitness-Welt gesperrt (403).
+
+### Ohne Warten: Hintergrund und Auftrag (ab 0.46.2)
+
+Eine neue Version hat mehrere hundert Dateien, Nachsehen und Herunterladen dauern dann länger als 30 Sekunden. Aufrufer mit kurzer Zeitgrenze (Claude über den Proxy von Home Assistant) nutzen deshalb die zwei Aufrufe, die sofort mit 202 antworten. Abgearbeitet wird im Minutentakt im Hintergrund.
+
+| Aufruf | Wirkung |
+|---|---|
+| `POST /api/lebenswelt/app-paket?hintergrund=1` (oder Body `{"hintergrund": true}`) | In der nächsten Minute nachsehen und eine neue Version herunterladen, nicht installieren. Mehrfach aufgerufen bleibt es eine Anforderung. Ohne `hintergrund` wartet der Aufruf wie bisher. |
+| `POST /api/lebenswelt/app-paket/auftrag` mit `{"neuer_als": "…", "minuten": 30}` | Auftrag: installieren, sobald eine Version bereitliegt, die neuer ist als `neuer_als`. |
+| `DELETE /api/lebenswelt/app-paket/auftrag` | Laufenden Auftrag abbrechen. |
+
+Parameter des Auftrags:
+
+- `neuer_als`: Zeitpunkt nach ISO 8601 (z. B. `2026-11-11T09:30:00Z`), verglichen mit `erstellt` aus dem Paket (Zeitpunkt des Baus in der GitHub Action). `"jetzt"` nimmt die Uhrzeit des Add-ons. Ohne Angabe: neuer als die installierte Version.
+- `minuten`: Frist, Standard 30, erlaubt 5 bis 120. Danach erledigt sich der Auftrag von selbst (`abgelaufen`).
+
+Es gibt höchstens einen Auftrag. Ein neuer ersetzt einen wartenden (`ersetzt` nennt dessen `seit`). Der letzte Auftrag bleibt im `GET` sichtbar, bis ein neuer kommt:
+
+```json
+"auftrag": { "seit": "2026-11-11T09:31:02.000Z", "neuer_als": "2026-11-11T09:30:00.000Z", "bis": "2026-11-11T10:01:02.000Z",
+             "stand": "erledigt", "versuche": 0, "fehler": "", "ende": "2026-11-11T09:36:00.000Z",
+             "installiert": "2026-11-11T09:34:40.000Z", "geschrieben": 412, "geloescht": 9 }
+```
+
+- `stand`: `wartet`, `erledigt` (installiert, oder die verlangte Version war schon installiert, dann mit `hinweis`), `abgelaufen`, `fehler` (nach 3 gescheiterten Versuchen, Grund in `fehler`) oder `abgebrochen`.
+- `nachsehen_angefordert`: Zeitpunkt einer noch offenen Anforderung, sonst leer.
+- Installiert wird mit demselben Code wie über „Installieren“ in der App, `server.json` bleibt unberührt. Ein Download, der scheitert, lässt die bereitliegende Version, wie sie war; eine unvollständige Version wird neu geladen und nie eingespielt.
+- Der Zustand liegt in `/data/app_paket/zustand.json`. Nach einem Neustart des Add-ons geht ein wartender Auftrag einfach weiter.
+
+GitHub wird geschont: Jeder Blick kostet eine Anfrage an die GitHub-API, eine neue Version eine je Datei. Deshalb bleibt es beim Takt von 10 Minuten, und es lädt immer nur ein Abruf zur Zeit (Sperre). Ein Auftrag sieht zusätzlich höchstens alle 2 Minuten nach, nur bis zu seiner Frist, und gibt nach 3 gescheiterten Versuchen auf. Ohne Anforderung und Auftrag liest der Minutentakt nur `zustand.json`.
+
+Beispiel: Nach dem Zusammenführen eines Pull Requests im App-Repository reicht ein Aufruf. Als `neuer_als` dient der Zeitpunkt des Zusammenführens (`merged_at` auf GitHub), denn das Paket wird erst danach gebaut:
+
+```
+POST /api/lebenswelt/app-paket/auftrag
+{"neuer_als": "2026-11-11T09:30:00Z"}
+```
+
+Die Action baut etwa drei Minuten, danach ist die neue Version nach höchstens etwa drei Minuten installiert (Takt des Auftrags). Wer will, sieht mit `GET /api/lebenswelt/app-paket` unter `auftrag.stand` nach. `"jetzt"` statt `merged_at` geht nur, wenn der Aufruf vor dem Ende des Baus kommt; ist das Paket schon gebaut, wäre es älter als „jetzt“, und der Auftrag liefe ab.
 
 ## Push-Nachrichten an die Android-App
 
