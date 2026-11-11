@@ -494,8 +494,8 @@ function dwdAus(zustaende) {
 function neuerStand(R, jetzt, saat) {
   const s = {
     version: 2,
-    // Freischaltung neuer Einsatzarten nur nach einem Tag, an dem jeder Einsatz 5 Sterne hatte
-    freischaltregel: 2,
+    // Freischaltung: je 5-Sterne-Tag (Tagesdurchschnitt ab 4,9) die nächste Einsatzart, ohne Level (Regel 3)
+    freischaltregel: 3,
     level: 0,
     bis: jetzt,
     zufall: saat === undefined ? jetzt % 100000 : saat,
@@ -1024,9 +1024,49 @@ function orgFrei(R, s, org) {
   return !o || levelReicht(s, o.ab_level)
 }
 
-/** Einsatzarten mit start_level werden mit dem Level kaufbar (der erste Einsatz einer neuen Organisation). */
+/**
+ * Gibt es die Organisation in dieser Welt schon? Ihr Level ist erreicht und ihr Gebäude gehört zur Welt (in Elbe
+ * Springs gibt es zum Beispiel noch keine Wachstation der DLRG).
+ */
+function orgDa(R, s, org) {
+  const o = R.ORGANISATIONEN && R.ORGANISATIONEN[org]
+  return !o || (orgFrei(R, s, org) && (!o.gebaeude || (s.gebaeude || {})[o.gebaeude] !== undefined))
+}
+
+/** Einsatzarten, die man kauft (keine Folgeeinsätze, Großlagen oder Baustellen-Einsätze): Für sie zählt kein Level. */
+const kaufArt = (a) => Boolean(a) && !a.folge_nur && !a.grosslage && !a.baustelle
+/** Level-Grenze einer Einsatzart: nur noch für Großlagen und Baustellen-Einsätze, die von selbst kommen. */
+const artLevelReicht = (s, a) => kaufArt(a) || levelReicht(s, a.ab_level)
+
+/**
+ * Was als Nächstes freigeschaltet wird (Regel 3, Wunsch vom 11.11.2026), in dieser Reihenfolge: alle Einsatzarten,
+ * deren Vorgänger schon freigeschaltet ist, deren Organisation es in der Welt gibt und deren Gebäude steht, die
+ * günstigste zuerst. Feuerwehr, Polizei und die weiteren Dienste stehen in einer gemeinsamen Reihe; das Level spielt
+ * keine Rolle. Der erste Einsatz einer neuen Organisation (start_level) reiht sich ein, sobald es die Organisation gibt.
+ */
+function freischaltKandidaten(R, s) {
+  const frei = (id) => s.freigeschaltet.indexOf(id) >= 0
+  const aus = []
+  let nr = 0
+  for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
+    nr += 1
+    if (!kaufArt(a) || !(a.preis > 0) || frei(id) || s.einsatzarten[id]) continue
+    if (!a.freischaltung && !a.start_level) continue
+    if (a.freischaltung && !frei(a.freischaltung.nach)) continue
+    if (!orgDa(R, s, a.org)) continue
+    if (Object.entries(a.braucht_gebaeude || {}).some(([g, st]) => ((s.gebaeude || {})[g] || 0) < st)) continue
+    aus.push({ id, preis: a.preis, nr })
+  }
+  return aus.sort((x, y) => x.preis - y.preis || x.nr - y.nr).map((x) => x.id)
+}
+
+/** Merkt im Stand, was der nächste 5-Sterne-Tag freischaltet (für die Anzeige in der App); null, wenn nichts ansteht. */
+function naechsteFreischaltung(R, s) {
+  s.naechste_freischaltung = freischaltKandidaten(R, s)[0] || null
+}
+
+/** Großlagen kommen ab ihrem Level von selbst. Einsatzarten zum Kaufen schaltet nur noch ein 5-Sterne-Tag frei. */
 function levelFreischalten(R, s, jetzt) {
-  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.start_level && levelReicht(s, a.start_level) && s.freigeschaltet.indexOf(id) < 0) s.freigeschaltet.push(id)
   // Großlagen werden nicht gekauft: ab ihrem Level kommen sie von selbst (die an Baustellen hängen mit der Baustelle)
   if (jetzt) for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.grosslage && !a.baustelle && levelReicht(s, a.ab_level) && !s.einsatzarten[id]) aktiviereArt(R, s, id, jetzt)
 }
@@ -2301,36 +2341,46 @@ function abschliessen(R, s, e) {
 }
 
 /**
- * Abrechnung eines Tages um Mitternacht: Durchschnitt der Sterne aller Einsätze, XP daraus, und Freischaltung
- * neuer Einsatzarten. Freigeschaltet wird nur nach einem Tag, an dem jeder Einsatz 5 Sterne hatte (auch jeder
- * wiederholte und jeder verfallene zählt) und die vorausgesetzte Art erfolgreich war, also frühestens am Folgetag.
+ * Abrechnung eines Tages um Mitternacht: Durchschnitt der Sterne aller Einsätze, XP daraus, und Freischaltung der
+ * nächsten Einsatzart. Regel 3 (Wunsch vom 11.11.2026): Nach einem 5-Sterne-Tag, also einem Tagesdurchschnitt von
+ * mindestens 4,9 (verfallene Einsätze zählen mit 0 Sternen), wird genau eine Einsatzart freigeschaltet, die nächste
+ * aus freischaltKandidaten. Erst dann, aber dann von selbst: kein Level und kein bestimmter Einsatz am selben Tag
+ * nötig. Kaufen muss man sie weiterhin.
  */
-/** Hatte jeder Einsatz des Tages 5 Sterne? Tage aus der Zeit vor der Regel (ohne Zähler) zählen nicht. */
-function tagMitNurFuenf(d) {
-  return d.anzahl > 0 && d.fuenf === d.anzahl
+const FREISCHALT_SCHNITT = 4.9
+
+/** Tagesdurchschnitt, auf eine Nachkommastelle gerundet, so wie er angezeigt wird */
+const tagesschnitt = (d) => (d.anzahl ? Math.round((d.sterne / d.anzahl) * 10) / 10 : 0)
+
+/** War das ein 5-Sterne-Tag? */
+function fuenfSterneTag(d) {
+  return d.anzahl > 0 && tagesschnitt(d) >= FREISCHALT_SCHNITT
 }
 
 /**
- * Umstellung auf die Regel "ein Tag nur mit 5-Sterne-Einsätzen": Was nach der alten Regel (Tagesdurchschnitt)
- * freigeschaltet, aber noch nicht gekauft wurde, muss neu verdient werden.
+ * Umstellungen der Freischaltregel. Regel 2 (ein Tag nur mit 5-Sterne-Einsätzen): Was nach der alten Regel
+ * freigeschaltet, aber noch nicht gekauft wurde, musste neu verdient werden. Regel 3 (Tagesdurchschnitt ab 4,9, eine
+ * Einsatzart je Tag, ohne Level): Was schon freigeschaltet ist, bleibt.
  */
 function freischaltregel(R, s) {
-  if (s.freischaltregel >= 2) return
-  const alt = (id) => R.EINSATZARTEN[id] && R.EINSATZARTEN[id].freischaltung && !R.EINSATZARTEN[id].start_level && !s.einsatzarten[id]
-  s.freigeschaltet = s.freigeschaltet.filter((id) => !alt(id))
-  for (const d of Object.values(s.tage || {})) if (d.freigeschaltet) d.freigeschaltet = d.freigeschaltet.filter((id) => !alt(id))
-  s.freischaltregel = 2
+  if (s.freischaltregel >= 3) return
+  if (!(s.freischaltregel >= 2)) {
+    const alt = (id) => R.EINSATZARTEN[id] && R.EINSATZARTEN[id].freischaltung && !R.EINSATZARTEN[id].start_level && !s.einsatzarten[id]
+    s.freigeschaltet = s.freigeschaltet.filter((id) => !alt(id))
+    for (const d of Object.values(s.tage || {})) if (d.freigeschaltet) d.freigeschaltet = d.freigeschaltet.filter((id) => !alt(id))
+  }
+  s.freischaltregel = 3
 }
 
 function tagesabschluss(R, s, tag) {
   const d = s.tage[tag]
   if (!d || d.abgerechnet) return
-  d.durchschnitt = d.anzahl ? Math.round((d.sterne / d.anzahl) * 10) / 10 : 0
+  d.durchschnitt = tagesschnitt(d)
   d.xp = d.anzahl ? Math.min(TAG_XP_MAX, Math.round(d.durchschnitt * 10 * Math.sqrt(d.anzahl))) : 0
   d.freigeschaltet = []
-  for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
-    if (!a.freischaltung || s.freigeschaltet.indexOf(id) >= 0) continue
-    if (d.arten.indexOf(a.freischaltung.nach) >= 0 && tagMitNurFuenf(d)) {
+  if (fuenfSterneTag(d)) {
+    const id = freischaltKandidaten(R, s)[0]
+    if (id) {
       s.freigeschaltet.push(id)
       d.freigeschaltet.push(id)
     }
@@ -2447,6 +2497,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   einwohnerStart(R, s, s.bis)
   startgeschenk(R, s)
   krankenhausVorLevel(R, s)
+  naechsteFreischaltung(R, s)
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)
@@ -2467,7 +2518,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
       // Mit echten Pegeldaten kommen Hochwasser-Einsätze nur in einer passenden Lage, dann ohne Monatsbedingung
       const pegelF = art.pegel_min && R.PEGEL && s.pegel ? (pegelReicht(R, s, art.pegel_min) ? 1 : 0) : null
-      let f = levelReicht(s, art.ab_level) && !pausiert(s, art) && !art.muellabfuhr ? (pegelF !== null ? pegelF : bedingungFaktor(art, ev.t, wetter(ev.t))) : 0
+      let f = artLevelReicht(s, art) && !pausiert(s, art) && !art.muellabfuhr ? (pegelF !== null ? pegelF : bedingungFaktor(art, ev.t, wetter(ev.t))) : 0
       // Großlagen kommen öfter, wenn die Zusammenarbeit gut ist
       if (art.grosslage && R.GROSSLAGE) {
         const z = s.zusammenarbeit || []
@@ -2484,7 +2535,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const a = s.angemeldet.find((x) => x.id === ev.id)
       s.angemeldet = s.angemeldet.filter((x) => x !== a)
       const art = R.EINSATZARTEN[a.art]
-      if (art && s.einsatzarten[a.art] && levelReicht(s, art.ab_level) && !pausiert(s, art)) erzeuge(R, s, a.art, ev.t, wetter, null, "punkt:" + Math.round(a.x * 10) / 10 + ":" + Math.round(a.z * 10) / 10)
+      if (art && s.einsatzarten[a.art] && artLevelReicht(s, art) && !pausiert(s, art)) erzeuge(R, s, a.art, ev.t, wetter, null, "punkt:" + Math.round(a.x * 10) / 10 + ":" + Math.round(a.z * 10) / 10)
     } else if (ev.typ === "warten") {
       versucheWartende(R, s, ev.t, wetter)
     } else if (ev.typ === "verfall") {
@@ -2518,6 +2569,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   }
   aufraeumen(s, bis)
   s.bis = bis
+  naechsteFreischaltung(R, s)
   return s
 }
 
@@ -2730,8 +2782,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!a || a.folge_nur) return fehler("Diese Einsatzart gibt es nicht zu kaufen.")
     if (a.grosslage) return fehler("Großlagen werden nicht gekauft, sie kommen ab Level " + a.ab_level + " von selbst.")
     if (s.einsatzarten[id]) return fehler("Schon gekauft.")
-    if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet.")
-    if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
+    if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet. Das bringt der nächste 5-Sterne-Tag (Tagesdurchschnitt ab 4,9).")
     for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
     roh = a.preis
     aktiviereArt(R, s, id, jetzt)
@@ -2939,6 +2990,7 @@ function kaufe(stand, auftrag, jetzt, R) {
 
   // Vielleicht kann ein wartender Einsatz jetzt alarmiert werden
   versucheWartende(R, s, jetzt, (t) => wetterBei(null, t))
+  naechsteFreischaltung(R, s)
   return buchung ? { stand: s, preis: preis(R, roh), buchung } : { stand: s, preis: preis(R, roh) }
 }
 
@@ -3149,5 +3201,5 @@ module.exports = {
   muellautoPunkt,
   pegelReicht,
   // für Tests
-  _intern: { ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

@@ -66,7 +66,9 @@ test("Feuerwehrleute treten ins DRK ein (zwei Organisationen, nicht mehr)", () =
 
 test("Helfer vor Ort: von der Unterkunft im Gemeindehaus, danach Rettungsdienst mit Erster Hilfe", () => {
   const s = S.fortschreiben(dorf(), T0, trocken, R)
-  assert.ok(s.freigeschaltet.includes("drk_hvo"))
+  // Seit Regel 3 schaltet das Level nichts mehr frei; der erste Einsatz des DRK steht in der Reihe für den nächsten 5-Sterne-Tag
+  assert.ok(!s.freigeschaltet.includes("drk_hvo"))
+  assert.ok(S._intern.freischaltKandidaten(R, s).includes("drk_hvo"))
   assert.deepEqual(S._intern.standortVon(R, s, "drk"), R.ORTE.bibliothek)
   const { e, alle } = einsatz(s, "drk_hvo", "marktplatz")
   assert.equal(e.status, "abgeschlossen")
@@ -147,6 +149,7 @@ test("Wer im DRK und in der Feuerwehr ist, rückt nie zu zwei Einsätzen zugleic
 test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, mit DRK", () => {
   let s = dorf()
   s = S.fortschreiben(s, T0, trocken, R)
+  s.freigeschaltet.push("drk_hvo")
   s = kaufe(s, { art: "einsatzart", id: "drk_hvo" })
   s = kaufe(s, { art: "ausbau", id: "hvo_parallel" })
   const ende = T0 + 4 * 24 * STD

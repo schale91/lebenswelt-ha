@@ -113,6 +113,7 @@ test("Person im Eis: ab Level 24 unterstützen Strömungsretter der DLRG", () =>
 test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, mit Wachdienst", () => {
   let s = dorf()
   s = S.fortschreiben(s, T0, trocken, R)
+  s.freigeschaltet.push("dlrg_badeunfall")
   s = kaufe(s, { art: "einsatzart", id: "dlrg_badeunfall" })
   const ende = T0 + 3 * 24 * STD
   const ganz = S.fortschreiben(s, ende, trocken, R)

@@ -47,9 +47,15 @@ test("Vor Level 12 gibt es weder Werkstatt noch Bauhof, auch keine Folgeeinsätz
   assert.ok(!alle.some((e) => e.art === "bh_oel"), "keine Reinigung durch den Bauhof vor Level 12")
 })
 
-test("Ab Level 12 sind Panne, Streuen und Ast kaufbar", () => {
-  const s = S.fortschreiben(stand(12), T0 + MIN, trocken, R)
-  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) assert.ok(s.freigeschaltet.includes(id), id)
+test("Ab Level 12 stehen Panne, Streuen und Ast in der Reihe: Jeder 5-Sterne-Tag schaltet eine davon frei", () => {
+  const vorher = S.fortschreiben(stand(11), T0 + MIN, trocken, R)
+  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) assert.ok(!S._intern.freischaltKandidaten(R, vorher).includes(id), id + " vor Level 12")
+  let s = S.fortschreiben(stand(12), T0 + MIN, trocken, R)
+  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) {
+    assert.ok(!s.freigeschaltet.includes(id), id + " nicht mehr durch das Level allein")
+    assert.ok(S._intern.freischaltKandidaten(R, s).includes(id), id + " steht in der Reihe")
+  }
+  s.freigeschaltet.push("ab_panne")
   assert.ok(kaufe(s, { art: "einsatzart", id: "ab_panne" }).einsatzarten.ab_panne)
 })
 
@@ -111,6 +117,7 @@ test("Falschparker: der Abschleppdienst setzt um, danach ist die Zufahrt frei", 
 
 test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, mit Werkstatt und Bauhof bei Glätte", () => {
   let s = stand(12)
+  s.freigeschaltet.push("ab_panne", "bh_streuen")
   s = kaufe(s, { art: "einsatzart", id: "ab_panne" })
   s = kaufe(s, { art: "einsatzart", id: "bh_streuen" })
   s = kaufe(s, { art: "gebaeude", id: "bauhof" })

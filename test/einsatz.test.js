@@ -473,23 +473,70 @@ function tagMit(anzahl, fuenf, extra) {
   return { nachts: S.fortschreiben(s, S._intern.tagesende(tag) + MIN, trocken, R), tag }
 }
 
-test("Freischaltung: nur nach einem Tag, an dem jeder Einsatz 5 Sterne hatte", () => {
+test("Freischaltung (Regel 3): Tagesdurchschnitt ab 4,9 schaltet genau die nächste Einsatzart frei", () => {
   const alle = tagMit(6, 6)
-  assert.ok(alle.nachts.freigeschaltet.includes("b_muelltonne"), "sechs von sechs mit 5 Sternen")
-  assert.ok(alle.nachts.tage[alle.tag].freigeschaltet.includes("b_muelltonne"), "steht in der Tagesbilanz")
-  const fastAlle = tagMit(6, 5)
-  assert.ok(fastAlle.nachts.tage[fastAlle.tag].durchschnitt >= 4.5)
-  assert.ok(!fastAlle.nachts.freigeschaltet.includes("b_muelltonne"), "ein Einsatz mit 4 Sternen verhindert die Freischaltung")
-})
-
-test("Freischaltung: ein verfallener Einsatz verhindert sie, Tage ohne Zähler zählen nicht", () => {
+  assert.deepEqual(alle.nachts.tage[alle.tag].freigeschaltet, ["b_muelltonne"], "genau eine, die günstigste in der Reihe")
+  assert.ok(alle.nachts.freigeschaltet.includes("b_muelltonne"))
+  // 9 von 10 mit 5 Sternen, einer mit 4: Schnitt 4,9 reicht
+  const knapp = tagMit(10, 9)
+  assert.equal(knapp.nachts.tage[knapp.tag].durchschnitt, 4.9)
+  assert.deepEqual(knapp.nachts.tage[knapp.tag].freigeschaltet, ["b_muelltonne"])
+  // 5 von 6: Schnitt 4,8 reicht nicht
+  const zuWenig = tagMit(6, 5)
+  assert.equal(zuWenig.nachts.tage[zuWenig.tag].durchschnitt, 4.8)
+  assert.deepEqual(zuWenig.nachts.tage[zuWenig.tag].freigeschaltet, [])
+  // Ein verfallener Einsatz (0 Sterne) drückt den Schnitt
   const verfallen = tagMit(4, 3, { sterne: 15, erfolgreich: 3 })
   assert.ok(!verfallen.nachts.freigeschaltet.includes("b_muelltonne"))
-  const altbestand = tagMit(3, 3, { fuenf: undefined })
-  assert.ok(!altbestand.nachts.freigeschaltet.includes("b_muelltonne"), "ohne Zähler aus der Zeit vor der Regel")
+  // Ein Tag ohne Einsatz schaltet nichts frei
+  const leer = tagMit(0, 0)
+  assert.deepEqual(leer.nachts.tage[leer.tag].freigeschaltet, [])
 })
 
-test("Umstellung: nach alter Regel freigeschaltete, nicht gekaufte Arten müssen neu verdient werden", () => {
+test("Freischaltung (Regel 3): eine gemeinsame Reihe über Feuerwehr und Polizei, ohne Level und ohne bestimmten Einsatz am Tag", () => {
+  // Der Tag enthielt nur Katzeneinsätze; freigeschaltet wird trotzdem auch ein Polizeieinsatz, sobald er dran ist
+  let s = S.neuerStand(R, T0, 31)
+  s.level = 0
+  const reihe = []
+  for (let i = 0; i < 12; i++) {
+    for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e13
+    const tag = S._intern.tagVon(s.bis + 1)
+    const erwartet = S._intern.freischaltKandidaten(R, s)[0]
+    if (i > 0) assert.equal(s.naechste_freischaltung, erwartet, "der Stand nennt, was als Nächstes kommt")
+    s.tage = s.tage || {}
+    s.tage[tag] = { anzahl: 2, sterne: 10, erfolgreich: 2, fuenf: 2, arten: ["tier_katze"], abgerechnet: false }
+    s = S.fortschreiben(s, S._intern.tagesende(tag) + MIN, trocken, R)
+    assert.deepEqual(s.tage[tag].freigeschaltet, [erwartet], "Tag " + (i + 1))
+    reihe.push(erwartet)
+  }
+  const orgs = new Set(reihe.map((id) => R.EINSATZARTEN[id].org))
+  assert.ok(orgs.has("feuerwehr") && orgs.has("polizei"), reihe.join(", "))
+  // Die Reihe folgt dem Preis, und jeder Vorgänger war schon freigeschaltet
+  for (let i = 1; i < reihe.length; i++) {
+    const vor = R.EINSATZARTEN[reihe[i]].freischaltung.nach
+    assert.ok(vor === "tier_katze" || vor === "p_ruhestoerung" || reihe.indexOf(vor) < i, reihe[i] + " nach " + vor)
+  }
+  // Einsatzarten mit Level-Angabe (gemeinsame Einsätze ab 8) kommen auf Level 0 genauso dran
+  assert.equal(s.level, 0)
+  assert.equal(s.naechste_freischaltung, S._intern.freischaltKandidaten(R, s)[0])
+  // Dienste, die es noch nicht gibt (Werkstatt ab Level 12, DLRG ab 24), stehen nicht in der Reihe
+  for (const id of S._intern.freischaltKandidaten(R, s)) assert.ok(["feuerwehr", "polizei"].includes(R.EINSATZARTEN[id].org), id)
+})
+
+test("Freischaltung (Regel 3): Elbe Springs kennt nur seine eigenen Dienste, Gebäude-Voraussetzungen zählen", () => {
+  const elbe = S.neustart(S.neuerStand(R, T0, 31), T0, R)
+  const s = elbe.stand || elbe
+  s.level = 30
+  const k = S._intern.freischaltKandidaten(R, s)
+  for (const id of k) {
+    const a = R.EINSATZARTEN[id]
+    assert.ok(S._intern.orgDa(R, s, a.org), id)
+    for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) assert.ok((s.gebaeude[g] || 0) >= st, id)
+  }
+  assert.ok(!k.some((id) => ["dlrg", "drk", "rettungsdienst"].includes(R.EINSATZARTEN[id].org)), "keine Wachstation, keine Rettungswache in Elbe Springs")
+})
+
+test("Umstellung von der ersten Regel: damals freigeschaltete, nicht gekaufte Arten müssen neu verdient werden", () => {
   const s = S.neuerStand(R, T0, 31)
   delete s.freischaltregel
   const tag = S._intern.tagVon(T0 - 86400000)
@@ -501,10 +548,19 @@ test("Umstellung: nach alter Regel freigeschaltete, nicht gekaufte Arten müssen
   assert.ok(n.freigeschaltet.includes("b_hecke"), "schon gekauft: bleibt")
   assert.ok(n.freigeschaltet.includes("tier_katze"), "Startarten bleiben")
   assert.deepEqual(n.tage[tag].freigeschaltet, [])
-  assert.equal(n.freischaltregel, 2)
+  assert.equal(n.freischaltregel, 3)
   // Nur einmal: was danach nach der neuen Regel freigeschaltet wird, bleibt
   n.freigeschaltet.push("b_muelltonne")
   assert.ok(S.fortschreiben(n, T0 + 2 * MIN, trocken, R).freigeschaltet.includes("b_muelltonne"))
+})
+
+test("Umstellung von Regel 2 auf Regel 3: Was freigeschaltet ist, bleibt", () => {
+  const s = S.neuerStand(R, T0, 31)
+  s.freischaltregel = 2
+  s.freigeschaltet.push("b_muelltonne")
+  const n = S.fortschreiben(s, T0 + MIN, trocken, R)
+  assert.ok(n.freigeschaltet.includes("b_muelltonne"))
+  assert.equal(n.freischaltregel, 3)
 })
 
 test("Aufzug-Einsatz: nach der Türöffnung, im Rathaus oder in der Arztpraxis, Notbefreiung mit Dreikantschlüssel", () => {

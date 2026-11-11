@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.46.2
+
+- Einsatzspiel, neue Regel für die Freischaltung (Wunsch von Alex, 11.11.2026): Nach einem 5-Sterne-Tag, also einem Tagesdurchschnitt von mindestens 4,9 Sternen, wird um Mitternacht genau eine neue Einsatzart freigeschaltet. Vorher musste jeder einzelne Einsatz des Tages 5 Sterne haben und der Vorgänger am selben Tag erfolgreich gewesen sein.
+  - Das Level spielt für Einsatzarten keine Rolle mehr: keine Sperre „Erst ab Level“ beim Kauf, und gekaufte Einsatzarten treten unabhängig vom Level auf. Großlagen und Baustellen-Einsätze kommen wie bisher von selbst.
+  - Eine gemeinsame Reihe über Feuerwehr, Polizei und die weiteren Dienste: Dran ist die günstigste Einsatzart, deren Vorgänger schon freigeschaltet ist, deren Dienst es im Ort gibt und deren Gebäude steht. Der erste Einsatz eines neuen Dienstes (Werkstatt, Bauhof, später DLRG) wird nicht mehr durch das Level freigeschaltet, sondern reiht sich ein.
+  - Der Stand nennt in `naechste_freischaltung`, was der nächste 5-Sterne-Tag bringt. Was schon freigeschaltet ist, bleibt (`freischaltregel: 3`).
+
 ## 0.46.1
 
 - Fitness-Welt: Gartenarbeit (`garten`) zählt als Bewegung in Minuten, wie Nilo schieben. Die Familie sieht sie in der Übersicht, und die Erinnerung am Abend bleibt aus, wenn nur Gartenarbeit eingetragen ist.
