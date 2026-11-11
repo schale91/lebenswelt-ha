@@ -27,6 +27,14 @@ const ROUTEN = [
   ["POST", "/api/lebenswelt/gmail/eingang"],
   ["POST", "/api/lebenswelt/gmail/abholen"],
   ["POST", "/api/lebenswelt/routinen/lauf"],
+  // App-Paket ohne Warten (ab 0.46.2): ohne Person abgewiesen (genau 401, nichts angelegt), nachsehen im Hintergrund,
+  // Auftrag anlegen, Stand, Auftrag abbrechen
+  ["POST", "/api/lebenswelt/app-paket/auftrag", { status: 401, ohnePerson: true }],
+  ["GET", "/api/lebenswelt/app-paket", { pruefe: (j) => j.auftrag === null || "Auftrag trotz 401 angelegt" }],
+  ["POST", "/api/lebenswelt/app-paket?hintergrund=1"],
+  ["POST", "/api/lebenswelt/app-paket/auftrag"],
+  ["GET", "/api/lebenswelt/app-paket"],
+  ["DELETE", "/api/lebenswelt/app-paket/auftrag"],
 ]
 // Fehler der JS-Laufzeit im Protokoll (ein Hook, der beim Laden oder in einer Route scheitert)
 const FEHLER = /(SyntaxError|ReferenceError|TypeError|RangeError|GoError|failed to (load|execute|apply)|panic:)/i
@@ -46,7 +54,9 @@ async function main() {
   const port = await freierPort()
   const basis = `http://127.0.0.1:${port}`
   let protokoll = ""
-  const pb = spawn(pocketbase, ["serve", "--http", `127.0.0.1:${port}`, "--dir", daten, "--hooksDir", join(ADDON, "pb_hooks"), "--migrationsDir", join(ADDON, "pb_migrations")])
+  // App-Ordner und Zwischenstände des Add-ons im leeren Probeordner, nicht unter /homeassistant/www und /data
+  const env = { ...process.env, LEBENSWELT_WWW: join(daten, "www"), LEBENSWELT_DATEN: join(daten, "addon") }
+  const pb = spawn(pocketbase, ["serve", "--http", `127.0.0.1:${port}`, "--dir", daten, "--hooksDir", join(ADDON, "pb_hooks"), "--migrationsDir", join(ADDON, "pb_migrations")], { env })
   pb.stdout.on("data", (d) => (protokoll += d))
   pb.stderr.on("data", (d) => (protokoll += d))
   const beendet = new Promise((ok) => pb.on("exit", (code) => ok(code)))
@@ -61,17 +71,21 @@ async function main() {
       if (Date.now() > bis) throw new Error("PocketBase antwortet nach 60 s nicht")
       await new Promise((f) => setTimeout(f, 250))
     }
-    for (const [methode, pfad] of ROUTEN) {
-      const r = await fetch(basis + pfad, { method: methode, headers: { "X-Remote-User-Id": PERSON, "Content-Type": "application/json" }, body: methode === "GET" ? undefined : "{}" })
+    for (const [methode, pfad, erwartet = {}] of ROUTEN) {
+      const kopf = { "Content-Type": "application/json", ...(erwartet.ohnePerson ? {} : { "X-Remote-User-Id": PERSON }) }
+      const r = await fetch(basis + pfad, { method: methode, headers: kopf, body: methode === "GET" ? undefined : "{}" })
       const text = await r.text()
       let json = true
+      let inhalt = null
       try {
-        JSON.parse(text)
+        inhalt = JSON.parse(text)
       } catch {
         json = false
       }
       // 404 heißt: Die Route fehlt, meist weil ihre Datei nicht geladen hat
-      const ok = r.status < 500 && r.status !== 404 && json
+      const zusatz = json && erwartet.pruefe ? erwartet.pruefe(inhalt) : true
+      const ok = (erwartet.status ? r.status === erwartet.status : r.status < 500 && r.status !== 404) && json && zusatz === true
+      if (zusatz !== true) console.log(`       ${zusatz}`)
       console.log(`${ok ? "ok    " : "FEHLER"} ${r.status} ${methode} ${pfad}`)
       if (!ok) fehler.push(`${methode} ${pfad}: ${r.status} ${text.slice(0, 300)}`)
     }

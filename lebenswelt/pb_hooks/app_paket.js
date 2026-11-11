@@ -6,6 +6,13 @@
 // Ordner www/lebenswelt-*/ mit einer server.json, genau wie der Installer: erst die Programmdateien, dann
 // stand.json und index.html (Reihenfolge aus manifest.json), danach werden alte Dateien gelöscht.
 // server.json wird nie angefasst.
+//
+// Für Aufrufer mit kurzer Zeitgrenze (Claude über den Proxy von Home Assistant, 30 s) gibt es zwei Aufträge, die
+// sofort antworten und im Minutentakt (cron "app_paket_auftrag", arbeite()) abgearbeitet werden:
+// - „nachsehen“: einmal so bald wie möglich nach einer neuen Version sehen (Feld nachsehen_angefordert);
+// - „installieren, sobald neuer als X“ (Feld auftrag): bis zur Frist höchstens alle 2 Minuten nachsehen, dann mit
+//   installiere() einspielen, also mit genau demselben Code wie der Knopf in der App.
+// Beides steht in zustand.json und übersteht so einen Neustart des Add-ons.
 
 const WWW = $os.getenv("LEBENSWELT_WWW") || "/homeassistant/www"
 const DATEN = $os.getenv("LEBENSWELT_DATEN") || "/data"
@@ -20,7 +27,8 @@ function text(b) {
 function quelle() {
   const h = require(`${__hooks}/hilfen.js`)
   const o = h.optionen()
-  const q = String(o.app_quelle || "schale91/Claude@app-paket").trim()
+  // LEBENSWELT_APP_QUELLE nur für Tests (eine http-Adresse statt GitHub), wie LEBENSWELT_WWW und LEBENSWELT_DATEN
+  const q = String($os.getenv("LEBENSWELT_APP_QUELLE") || o.app_quelle || "schale91/Claude@app-paket").trim()
   const token = String(o.app_token || "").trim()
   if (/^https?:\/\//.test(q)) return { github: false, url: (p) => q.replace(/\/$/, "") + "/" + p, kopf: {}, token }
   const [repo, zweig] = q.split("@")
@@ -42,6 +50,15 @@ function hole(q, pfad) {
   if (r.statusCode === 401 || r.statusCode === 404) throw new Error(`HTTP ${r.statusCode} für ${pfad} (Token fehlt, ist abgelaufen oder hat keinen Lesezugriff)`)
   if (r.statusCode !== 200) throw new Error(`HTTP ${r.statusCode} für ${pfad}`)
   return r.body
+}
+
+/** Alles, was nach außen geht (GitHub, Push). Die Node-Tests ersetzen es mit _ersetzeAbruf(). */
+const abruf = {
+  quelle,
+  hole,
+  meldeNeueVersion() {
+    require(`${__hooks}/push.js`).sendeAllen($app, { titel: "Update verfügbar", text: "In der Lebenswelt auf „Installieren“ tippen.", kanal: "allgemein", id: "update" })
+  },
 }
 
 /** Ordner der App in www: lebenswelt-* mit einer server.json (die legt die Einrichtung an). */
@@ -121,6 +138,9 @@ function zustand() {
     geprueft: z.geprueft || "",
     installiert_am: z.installiert_am || "",
     fehler: z.fehler || "",
+    // Aufträge für Aufrufer mit kurzer Zeitgrenze (siehe arbeite())
+    nachsehen_angefordert: z.nachsehen_angefordert || "",
+    auftrag: z.auftrag || null,
   }
 }
 
@@ -138,19 +158,52 @@ const SPERRE = `${DATEN}/app_paket/sperre`
 const SPERRE_MS = 5 * 60 * 1000
 
 /**
+ * Atomar im Speicher des Servers belegen: getOrSet hält dabei die Sperre des Speichers, zwei Läufe in derselben
+ * Sekunde (z. B. die Prüfung alle 10 Minuten und der Minutentakt der Aufträge um :00) bekommen also nie beide true.
+ * Nach einem Neustart ist der Speicher leer, dort läuft dann auch nichts mehr.
+ */
+function belegeSpeicher(schluessel, liegenGebliebenMs) {
+  const s = $app.store()
+  const jetzt = Date.now()
+  const marke = `${jetzt}-${Math.random().toString(36).slice(2)}`
+  const wert = String(s.getOrSet(schluessel, () => marke))
+  if (wert === marke) return true
+  if (jetzt - Number(wert.split("-")[0]) < liegenGebliebenMs) return false
+  s.remove(schluessel) // liegen geblieben
+  return String(s.getOrSet(schluessel, () => marke)) === marke
+}
+
+function gibSpeicherFrei(schluessel) {
+  try {
+    $app.store().remove(schluessel)
+  } catch (_) {
+    // schon weg
+  }
+}
+
+/**
  * Nur ein Abruf zur Zeit: Der Knopf in der App und die Prüfung alle 10 Minuten liefen sonst gleichzeitig und löschten
  * sich gegenseitig den Zwischenordner (Fehler "no such file or directory"). Eine Sperre älter als 5 Minuten gilt als
- * liegen geblieben.
+ * liegen geblieben. Die Datei bleibt wie bisher, davor steht seit 0.46.2 die atomare Belegung im Speicher.
  */
 function sperren() {
+  if (!belegeSpeicher("app_paket_abruf", SPERRE_MS)) return false
   try {
     const seit = Number(text($os.readFile(SPERRE)))
-    if (Date.now() - seit < SPERRE_MS) return false
+    if (Date.now() - seit < SPERRE_MS) {
+      gibSpeicherFrei("app_paket_abruf")
+      return false
+    }
   } catch (_) {
     // keine Sperre
   }
-  $os.mkdirAll(`${DATEN}/app_paket`, 0o755)
-  $os.writeFile(SPERRE, String(Date.now()), 0o644)
+  try {
+    $os.mkdirAll(`${DATEN}/app_paket`, 0o755)
+    $os.writeFile(SPERRE, String(Date.now()), 0o644)
+  } catch (err) {
+    gibSpeicherFrei("app_paket_abruf")
+    throw err
+  }
   return true
 }
 
@@ -160,38 +213,72 @@ function entsperren() {
   } catch (_) {
     // schon weg
   }
+  gibSpeicherFrei("app_paket_abruf")
 }
 
-/** Sieht nach einer neuen Version und lädt sie herunter, spielt sie aber nicht ein. */
-function pruefe() {
-  if (!sperren()) return zustand()
+/** Zwischenordner abgebrochener Läufe (z. B. Neustart mitten im Herunterladen), älter als eine halbe Stunde. */
+function raeumeAuf(jetzt) {
   try {
-    const q = quelle()
+    for (const e of $os.readDir(`${DATEN}/app_paket`)) {
+      const m = /^neu-(\d+)$/.exec(e.name())
+      if (e.isDir() && m && jetzt - Number(m[1]) > 30 * 60 * 1000) $os.removeAll(`${DATEN}/app_paket/${e.name()}`)
+    }
+  } catch (_) {
+    // nichts aufzuräumen
+  }
+}
+
+/**
+ * Sieht nach einer neuen Version und lädt sie herunter, spielt sie aber nicht ein.
+ * false, wenn gerade ein anderer Abruf läuft (dann passiert nichts), sonst true (auch bei einem Fehler, der dann in
+ * zustand.json steht).
+ */
+function lade() {
+  if (!sperren()) return false
+  let neu = ""
+  try {
+    raeumeAuf(Date.now())
+    const q = abruf.quelle()
     if (q.github && !q.token) throw new Error("Kein app_token in der Konfiguration des Add-ons.")
-    const manifest = JSON.parse(text(hole(q, "manifest.json")))
+    const manifest = JSON.parse(text(abruf.hole(q, "manifest.json")))
     const dateien = pruefeManifest(manifest)
     const vorhanden = bereitesManifest()
     // Auch eine unvollständige bereitliegende Version (frühere Läufe) wird neu geladen
     if (!vorhanden || vorhanden.erstellt !== manifest.erstellt || !vollstaendig(vorhanden)) {
       // Erst vollständig in einen eigenen Zwischenordner, dann umbenennen: "bereit" ist nie halb
-      const neu = `${DATEN}/app_paket/neu-${Date.now()}`
+      neu = `${DATEN}/app_paket/neu-${Date.now()}`
       $os.removeAll(neu)
       $os.mkdirAll(neu, 0o755)
-      for (const d of dateien) $os.writeFile(`${neu}/${d}`, hole(q, d), 0o644)
+      for (const d of dateien) $os.writeFile(`${neu}/${d}`, abruf.hole(q, d), 0o644)
       $os.writeFile(`${neu}/manifest.json`, JSON.stringify(manifest), 0o644)
       $os.removeAll(BEREIT)
       $os.rename(neu, BEREIT)
+      neu = ""
       console.log(`App-Paket ${manifest.erstellt} heruntergeladen, wartet auf Installieren`)
-      if (vorhanden) require(`${__hooks}/push.js`).sendeAllen($app, { titel: "Update verfügbar", text: "In der Lebenswelt auf „Installieren“ tippen.", kanal: "allgemein", id: "update" })
+      if (vorhanden) abruf.meldeNeueVersion()
     }
     merke({ geprueft: new Date().toISOString(), fehler: "" })
   } catch (err) {
     const fehler = String(err && err.message ? err.message : err)
     console.log("App-Paket: " + fehler)
+    // Halb heruntergeladenen Zwischenordner nicht liegen lassen; "bereit" bleibt, wie es war
+    if (neu) {
+      try {
+        $os.removeAll(neu)
+      } catch (_) {
+        // dann räumt ein späterer Lauf auf
+      }
+    }
     merke({ geprueft: new Date().toISOString(), fehler })
   } finally {
     entsperren()
   }
+  return true
+}
+
+/** Sieht nach einer neuen Version und lädt sie herunter, spielt sie aber nicht ein (wartet, bis das fertig ist). */
+function pruefe() {
+  lade()
   return zustand()
 }
 
@@ -238,4 +325,204 @@ function installiere() {
   }
 }
 
-module.exports = { pruefe, installiere, zustand, zielordner }
+// ---------- Aufträge für Aufrufer mit kurzer Zeitgrenze ----------
+//
+// Warum nicht einfach öfter nachsehen: Jeder Blick kostet eine Anfrage an die GitHub-API (manifest.json), eine neue
+// Version mehrere hundert (eine je Datei). Deshalb bleibt es beim Takt von 10 Minuten; ein Auftrag sieht nur bis zu
+// seiner Frist nach, höchstens alle AUFTRAG_TAKT_MS, und gibt nach AUFTRAG_FEHLVERSUCHE gescheiterten Versuchen auf.
+// Die Sperre aus sperren() (ein Abruf zur Zeit) gilt auch hier, weil alles über lade() läuft.
+
+const AUFTRAG_MINUTEN = 30
+const AUFTRAG_MINUTEN_MIN = 5
+const AUFTRAG_MINUTEN_MAX = 120
+const AUFTRAG_TAKT_MS = 2 * 60 * 1000
+// Der Minutentakt läuft zur vollen Minute, geprueft steht ein paar Millisekunden später: ohne Spielraum würde aus
+// 2 Minuten jedes Mal 3
+const AUFTRAG_SPIELRAUM_MS = 15 * 1000
+const AUFTRAG_FEHLVERSUCHE = 3
+const ARBEIT_SCHLUESSEL = "app_paket_arbeit"
+const ARBEIT_LIEGEN_GEBLIEBEN_MS = 15 * 60 * 1000
+
+const iso = (ms) => new Date(ms).toISOString()
+
+/** Ist Version a (erstellt) neuer als der Zeitpunkt b? Ein leeres b heißt: jede Version. */
+function neuerAls(a, b) {
+  const ta = Date.parse(a || "")
+  if (isNaN(ta)) return false
+  if (!b) return true
+  const tb = Date.parse(b)
+  return isNaN(tb) ? false : ta > tb
+}
+
+function aktiv(a) {
+  return !!(a && a.stand === "wartet")
+}
+
+/** Ändert den Auftrag nur, wenn er noch derselbe ist (in der Zwischenzeit kann ein neuer gekommen sein). */
+function aendereAuftrag(id, felder) {
+  const a = zustandRoh().auftrag
+  if (!a || a.id !== id) return false
+  merke({ auftrag: Object.assign({}, a, felder) })
+  return true
+}
+
+/** Einmal so bald wie möglich nachsehen (nächste volle Minute). Mehrfaches Anfordern bleibt eine Anforderung. */
+function fordereAn(jetzt) {
+  jetzt = jetzt || Date.now()
+  if (!zustandRoh().nachsehen_angefordert) merke({ nachsehen_angefordert: iso(jetzt) })
+  return zustand()
+}
+
+/**
+ * Auftrag „installieren, sobald eine Version neuer als neuer_als bereitliegt“, bis zur Frist (minuten).
+ * neuer_als: Zeitpunkt (ISO 8601), "jetzt" oder leer (= neuer als die installierte Version).
+ * Es gibt höchstens einen Auftrag; ein neuer ersetzt einen laufenden (Feld ersetzt).
+ */
+function beauftrage(eingabe, jetzt) {
+  jetzt = jetzt || Date.now()
+  eingabe = eingabe || {}
+  let grenze = String(eingabe.neuer_als == null ? "" : eingabe.neuer_als).trim()
+  if (grenze === "jetzt") grenze = iso(jetzt)
+  else if (!grenze) grenze = zustand().installiert
+  else {
+    const t = Date.parse(grenze)
+    if (isNaN(t)) throw new Error("neuer_als ist kein Zeitpunkt (ISO 8601, z. B. 2026-11-11T09:30:00Z), \"jetzt\" oder leer.")
+    grenze = iso(t)
+  }
+  const minuten = eingabe.minuten == null || eingabe.minuten === "" ? AUFTRAG_MINUTEN : Number(eingabe.minuten)
+  if (!isFinite(minuten) || minuten < AUFTRAG_MINUTEN_MIN || minuten > AUFTRAG_MINUTEN_MAX) throw new Error(`minuten: ${AUFTRAG_MINUTEN_MIN} bis ${AUFTRAG_MINUTEN_MAX}.`)
+  const z = zustandRoh()
+  const auftrag = {
+    id: `${jetzt}-${Math.random().toString(36).slice(2, 8)}`,
+    seit: iso(jetzt),
+    neuer_als: grenze,
+    bis: iso(jetzt + Math.round(minuten * 60 * 1000)),
+    stand: "wartet",
+    versuche: 0,
+    fehler: "",
+  }
+  if (aktiv(z.auftrag)) auftrag.ersetzt = z.auftrag.seit
+  // Gleich in der nächsten Minute nachsehen, nicht erst nach AUFTRAG_TAKT_MS
+  merke({ auftrag, nachsehen_angefordert: z.nachsehen_angefordert || iso(jetzt) })
+  return zustand()
+}
+
+/** Bricht einen laufenden Auftrag ab. */
+function brichAb(jetzt) {
+  const a = zustandRoh().auftrag
+  if (aktiv(a)) aendereAuftrag(a.id, { stand: "abgebrochen", ende: iso(jetzt || Date.now()) })
+  return zustand()
+}
+
+/** Nur ein arbeite() zur Zeit (Herunterladen und Installieren dauern länger als eine Minute). */
+const belege = () => belegeSpeicher(ARBEIT_SCHLUESSEL, ARBEIT_LIEGEN_GEBLIEBEN_MS)
+const gibFrei = () => gibSpeicherFrei(ARBEIT_SCHLUESSEL)
+
+/** Ein gescheiterter Versuch; nach AUFTRAG_FEHLVERSUCHE ist der Auftrag gescheitert (Stand "fehler"). */
+function fehlversuch(a, fehler, jetzt) {
+  const versuche = (Number(a.versuche) || 0) + 1
+  const felder = { versuche, fehler }
+  if (versuche >= AUFTRAG_FEHLVERSUCHE) Object.assign(felder, { stand: "fehler", ende: iso(jetzt) })
+  aendereAuftrag(a.id, felder)
+  return versuche >= AUFTRAG_FEHLVERSUCHE
+}
+
+/**
+ * Arbeitet Anforderung und Auftrag ab (jede Minute, cron "app_paket_auftrag"). Ohne beides passiert nichts weiter
+ * als das Lesen von zustand.json. Antwort zum Testen: was getan wurde.
+ */
+function arbeite(jetzt) {
+  jetzt = jetzt || Date.now()
+  let z = zustandRoh()
+  if (!z.nachsehen_angefordert && !aktiv(z.auftrag)) return { getan: "nichts" }
+  if (!belege()) return { getan: "laeuft_schon" }
+  const getan = []
+  try {
+    let a = aktiv(z.auftrag) ? z.auftrag : null
+    if (a && !(jetzt <= Date.parse(a.bis))) {
+      aendereAuftrag(a.id, { stand: "abgelaufen", ende: iso(jetzt) })
+      getan.push("abgelaufen")
+      a = null
+    }
+    if (a) {
+      const installiert = zustand().installiert
+      if (installiert && neuerAls(installiert, a.neuer_als)) {
+        aendereAuftrag(a.id, { stand: "erledigt", ende: iso(jetzt), installiert, fehler: "", hinweis: "Diese oder eine neuere Version war schon installiert." })
+        getan.push("schon_installiert")
+        a = null
+      }
+    }
+    const passt = (m) => !!(a && m && neuerAls(m.erstellt, a.neuer_als) && vollstaendig(m))
+    const angefordert = z.nachsehen_angefordert ? Date.parse(z.nachsehen_angefordert) : 0
+    const geprueft = Date.parse(z.geprueft || "") || 0
+    const auftragSiehtNach = !!a && !passt(bereitesManifest()) && jetzt - geprueft >= AUFTRAG_TAKT_MS - AUFTRAG_SPIELRAUM_MS
+    if (angefordert || auftragSiehtNach) {
+      const start = Date.now()
+      if (lade()) {
+        getan.push("nachgesehen")
+        z = zustandRoh()
+        // Anforderungen, die während des Abrufs kamen, bleiben stehen
+        if (z.nachsehen_angefordert && !(Date.parse(z.nachsehen_angefordert) > start)) merke({ nachsehen_angefordert: "" })
+        if (a && z.fehler && fehlversuch(a, z.fehler, jetzt)) a = null
+      } else getan.push("abruf_laeuft_schon")
+    }
+    // Während des Abrufs ersetzt oder abgebrochen? Dann nicht mehr für diesen Auftrag installieren
+    if (a) {
+      const jetztDa = zustandRoh().auftrag
+      if (!aktiv(jetztDa) || jetztDa.id !== a.id) a = null
+    }
+    const bereit = bereitesManifest()
+    if (a && passt(bereit)) {
+      // Derselbe Weg wie der Knopf in der App
+      const r = installiere()
+      if (r.fehler) {
+        fehlversuch(a, r.fehler, jetzt)
+        getan.push("installieren_gescheitert")
+      } else {
+        aendereAuftrag(a.id, { stand: "erledigt", ende: iso(Date.now()), installiert: bereit.erstellt, geschrieben: r.geschrieben, geloescht: r.geloescht, fehler: "" })
+        getan.push("installiert")
+      }
+    }
+  } catch (err) {
+    console.log("App-Paket, Auftrag: " + String(err && err.message ? err.message : err))
+    getan.push("fehler")
+  } finally {
+    gibFrei()
+  }
+  return { getan: getan.join(",") || "gewartet" }
+}
+
+/**
+ * Gemeinsame Rechte der schreibenden Routen: ohne Person 401, Fitness-Welt 403, sonst null. Gibt {status, body} zurück,
+ * die Route antwortet selbst mit return e.json(...): e.json() liefert in PocketBase nichts, woran man das Antworten
+ * erkennen könnte.
+ */
+function verweigert(e) {
+  const h = require(`${__hooks}/hilfen.js`)
+  const ich = h.benutzer(e)
+  if (!ich) return { status: 401, body: { fehler: "Keine Home-Assistant-Person übermittelt." } }
+  // Fitness-Welt (Papa) spielt keine Updates ein, das bleibt bei der vollen Lebenswelt
+  if (h.profilVon(ich) === "fitness") return { status: 403, body: { fehler: "Updates spielt nur die volle Lebenswelt ein." } }
+  return null
+}
+
+/** Nur für die Node-Tests: GitHub und Push ersetzen. */
+function _ersetzeAbruf(teile) {
+  Object.assign(abruf, teile)
+}
+
+module.exports = {
+  pruefe,
+  installiere,
+  zustand,
+  zielordner,
+  fordereAn,
+  beauftrage,
+  brichAb,
+  arbeite,
+  verweigert,
+  neuerAls,
+  _ersetzeAbruf,
+  AUFTRAG_TAKT_MS,
+  AUFTRAG_FEHLVERSUCHE,
+}

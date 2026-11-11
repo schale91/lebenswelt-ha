@@ -44,6 +44,8 @@ Damit es knapp und spannend bleibt, liegen die Bäume für die Katze unterschied
 
 ## Einsatzarten und Freischaltbaum
 
+**Freischaltung seit dem 11.11.2026 (Regel 3, Wunsch von Alex):** Nach einem 5-Sterne-Tag, also einem Tagesdurchschnitt von mindestens 4,9 Sternen (verfallene Einsätze zählen mit 0), wird um Mitternacht genau eine neue Einsatzart freigeschaltet. Erst dann, aber dann von selbst: Es braucht kein Level und keinen bestimmten Einsatz am selben Tag. Feuerwehr, Polizei und die weiteren Dienste stehen in einer gemeinsamen Reihe; dran ist jeweils die günstigste Einsatzart, deren Vorgänger schon freigeschaltet ist, deren Dienst es im Ort gibt und deren Gebäude steht (`freischaltKandidaten` in `simulation.js`). Der erste Einsatz eines neuen Dienstes reiht sich ein, sobald es den Dienst gibt. Gekauft wird wie bisher. Großlagen und Baustellen-Einsätze kommen weiter von selbst. Die Sterne-Angaben in Klammern unten und die Level-Angaben einzelner Einsatzarten in DORFDIENSTE.md sind damit für die Freischaltung überholt (frühere Regeln: erst Sterne je Einsatzart, dann Tagesdurchschnitt, dann „jeder Einsatz des Tages 5 Sterne“).
+
 Jede Einsatzart wird freigeschaltet, wenn die vorige gut genug lief (Sterne in Klammern), und danach gekauft. Folgeeinsätze wie „Verkehrsregelung“ entstehen von selbst, sobald die Polizei sie übernehmen kann.
 
 **Feuerwehr**

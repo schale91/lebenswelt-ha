@@ -65,7 +65,8 @@ test("Vor Level 16 gibt es keinen Rettungsdienst: Verkehrsunfall läuft wie bish
 
 test("Ab Level 16 ohne eigene Wache: RTW der Nachbarwache mit 14 Minuten, höchstens 3 Sterne", () => {
   const s = S.fortschreiben(stand(16), T0 + MIN, trocken, R)
-  assert.ok(s.freigeschaltet.includes("rd_krankentransport"))
+  assert.ok(!s.freigeschaltet.includes("rd_krankentransport"), "das Level schaltet nichts mehr frei")
+  assert.ok(S._intern.freischaltKandidaten(R, s).includes("rd_krankentransport"), "steht in der Reihe für den nächsten 5-Sterne-Tag")
   const { e } = einsatz(s, "rd_sturz", "marktplatz")
   assert.equal(e.status, "abgeschlossen")
   assert.equal(e.plan.extern, R.EXTERN.rettungsdienst.name)
@@ -189,6 +190,7 @@ test("Sportverletzung erst mit Sportplatz Stufe 3", () => {
 
 test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, mit Rettungsdienst", () => {
   let s = wache()
+  s.freigeschaltet.push("rd_krankentransport")
   s = kaufe(s, { art: "einsatzart", id: "rd_krankentransport" })
   s.freigeschaltet.push("rd_sturz")
   s = kaufe(s, { art: "einsatzart", id: "rd_sturz" })

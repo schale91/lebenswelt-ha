@@ -38,12 +38,11 @@ function einsatz(s, art, ort, t = T0 + MIN) {
   return { e: fertig.abgeschlossen.find((a) => a.id === e.id), stand: fertig }
 }
 
-test("Gemeinsame Einsätze sind erst ab Level 8 kaufbar", () => {
+test("Gemeinsame Einsätze brauchen kein Level mehr: freigeschaltet heißt kaufbar", () => {
   let s = dorf(false)
+  s.level = 0
+  assert.match(S.kaufe(s, { art: "einsatzart", id: "th_kind_auto" }, T0, R).fehler, /Noch nicht freigeschaltet/)
   s.freigeschaltet.push("th_kind_auto")
-  s.level = 7
-  assert.match(S.kaufe(s, { art: "einsatzart", id: "th_kind_auto" }, T0, R).fehler, /Erst ab Level 8/)
-  s.level = 8
   s = kaufe(s, { art: "einsatzart", id: "th_kind_auto" })
   assert.ok(s.einsatzarten.th_kind_auto)
 })
