@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.46.5
+
+- Einsatzspiel: Gutschrift für früher bezahlte Einsatzarten (Wunsch von Alex, 16.11.2026). Seit 0.46.4 kosten Einsatzarten nichts; was seit dem Neustart in Elbe Springs für noch aktive Einsatzarten bezahlt wurde, kommt einmal zurück (davor hat der Neustart schon alles erstattet). Die Simulation vermerkt die Gutschrift als negative Ausgabe `erstattung:einsatzarten` im Kaufbuch und in `einsatzarten_erstattet` (`zeit`, `betrag`). Auf dem Server schreibt das Kaufbuch sie beim nächsten Speichern des Spielstands gut, in der Fitness-Welt das Handy (App ab dem gleichen Tag).
+
 ## 0.46.4
 
 - Einsatzspiel: Einsatzarten kosten keine Münzen mehr (Wunsch von Alex, 16.11.2026). Nach einem 5-Sterne-Tag (Tagesdurchschnitt ab 4,9) wird um Mitternacht die nächste Einsatzart freigeschaltet und steht dann im Shop zum kostenlosen Übernehmen bereit. `kaufen` mit `art: "einsatzart"` liefert `preis: 0`. Der `preis` im Regelwerk bestimmt nur noch die Reihenfolge der Freischaltung. Schalter `EINSATZARTEN_KOSTENLOS` im Regelwerk. Geräte, Fahrzeuge, Gebäude und Personal kosten weiter Münzen. Schon gekaufte Einsatzarten bleiben, Münzen werden dafür nicht erstattet.

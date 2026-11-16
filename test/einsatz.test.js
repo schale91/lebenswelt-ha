@@ -577,3 +577,30 @@ test("Aufzug-Einsatz: nach der Türöffnung, im Rathaus oder in der Arztpraxis, 
   assert.deepEqual(a.mindestens.geraete[0].map((g) => Object.keys(g)[0]), ["aufzugschluessel", "tueroeffnung"])
   assert.equal(R.FAHRZEUGE.gw_l.norm, "DIN 14555-21")
 })
+
+test("Einsatzarten kostenlos: früher Bezahltes kommt einmal zurück (seit dem Neustart, nur aktive Arten)", () => {
+  const s = S.kaufe(S.neuerStand(R, T0, 6), { art: "einsatzart", id: "p_ruhestoerung" }, T0, R).stand
+  delete s.einsatzarten_erstattet
+  s.neustart = { zeit: T0 - 1000 }
+  s.ausgaben = [
+    { zeit: T0 - 5000, betrag: 10, text: "einsatzart:p_ruhestoerung" }, // vor dem Neustart, schon erstattet
+    { zeit: T0 - 500, betrag: 10, text: "einsatzart:p_ruhestoerung" },
+    { zeit: T0 - 400, betrag: 13, text: "einsatzart:gibt_es_nicht_mehr" },
+    { zeit: T0 - 300, betrag: 50, text: "geraet:klappleiter" },
+  ]
+  const a = S.fortschreiben(s, T0 + MIN, trocken, R)
+  assert.deepEqual(a.einsatzarten_erstattet, { zeit: T0 + 1, betrag: 10 })
+  const gut = a.ausgaben.filter((x) => x.text === "erstattung:einsatzarten")
+  assert.equal(gut.length, 1)
+  assert.equal(gut[0].betrag, -10)
+  // Nur einmal, auch beim nächsten Fortschreiben
+  const b = S.fortschreiben(a, T0 + 2 * MIN, trocken, R)
+  assert.equal(b.ausgaben.filter((x) => x.text === "erstattung:einsatzarten").length, 1)
+  // Das Kaufbuch schreibt die Münzen beim nächsten Speichern gut
+  const kb = require("../lebenswelt/pb_hooks/einsatz/kaufbuch.js")
+  const ab = kb.abgleich({ state: { muenzen: 5, einsatzAusgabenBekannt: T0 } }, b.ausgaben)
+  assert.equal(ab.daten.state.muenzen, 15)
+  // Ohne den Schalter nichts
+  const c = S.fortschreiben(s, T0 + MIN, trocken, { ...R, EINSATZARTEN_KOSTENLOS: false })
+  assert.equal(c.einsatzarten_erstattet, undefined)
+})
