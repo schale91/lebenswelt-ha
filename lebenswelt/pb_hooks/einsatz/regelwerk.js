@@ -20,6 +20,10 @@ const VERSION = 2
 const PREISFAKTOR = 0.05 // spielwert
 const PREIS_MINIMUM = 10 // spielwert: nichts kostet weniger (außer Kostenlosem)
 
+// Wunsch von Alex (16.11.2026): Einsatzarten kosten keine Münzen. Ein 5-Sterne-Tag schaltet die nächste frei, dann wird
+// sie kostenlos übernommen. Der `preis` einer Einsatzart bleibt nur als Reihenfolge der Freischaltung.
+const EINSATZARTEN_KOSTENLOS = true
+
 /** Quellen, auf die sich Einträge über `quelle` beziehen. Stand der Recherche: Oktober 2026. */
 const QUELLEN = {
   thwg: { titel: "§ 1 THW-Gesetz: Hilfe auf Anforderung der für die Gefahrenabwehr zuständigen Stellen", url: "https://www.gesetze-im-internet.de/thw-helfrg/__1.html" },
@@ -2742,6 +2746,7 @@ module.exports = {
   VERSION,
   PREISFAKTOR,
   PREIS_MINIMUM,
+  EINSATZARTEN_KOSTENLOS,
   QUELLEN,
   METER_JE_EINHEIT,
   STRASSEN,

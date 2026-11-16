@@ -2345,7 +2345,7 @@ function abschliessen(R, s, e) {
  * nächsten Einsatzart. Regel 3 (Wunsch vom 11.11.2026): Nach einem 5-Sterne-Tag, also einem Tagesdurchschnitt von
  * mindestens 4,9 (verfallene Einsätze zählen mit 0 Sternen), wird genau eine Einsatzart freigeschaltet, die nächste
  * aus freischaltKandidaten. Erst dann, aber dann von selbst: kein Level und kein bestimmter Einsatz am selben Tag
- * nötig. Kaufen muss man sie weiterhin.
+ * nötig. Übernommen wird sie danach mit einem Tipp, kostenlos (EINSATZARTEN_KOSTENLOS, 16.11.2026).
  */
 const FREISCHALT_SCHNITT = 4.9
 
@@ -2784,7 +2784,8 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (s.einsatzarten[id]) return fehler("Schon gekauft.")
     if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet. Das bringt der nächste 5-Sterne-Tag (Tagesdurchschnitt ab 4,9).")
     for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
-    roh = a.preis
+    // Kostenlos seit 16.11.2026: freigeschaltet heißt übernehmen, ohne Münzen
+    roh = R.EINSATZARTEN_KOSTENLOS ? 0 : a.preis
     aktiviereArt(R, s, id, jetzt)
   } else if (art === "gebiet") {
     const sperre = gebietSperre(R, s, id)

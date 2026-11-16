@@ -118,8 +118,13 @@ test("Preise: Faktor 0,05, Mindestpreis 10 Münzen", () => {
   const s = S.neuerStand(R, T0, 6)
   assert.equal(S.kaufe(s, { art: "bauplatz", id: "bp01" }, T0, R).preis, 90) // 1800 · 0,05
   assert.equal(S.kaufe(s, { art: "geraet", id: "klappleiter" }, T0, R).preis, 10) // 120 · 0,05 = 6 → 10
-  assert.equal(S.kaufe(s, { art: "einsatzart", id: "p_ruhestoerung" }, T0, R).preis, 10)
+  // Einsatzarten kosten seit dem 16.11.2026 nichts: freigeschaltet heißt kostenlos übernehmen
+  const k = S.kaufe(s, { art: "einsatzart", id: "p_ruhestoerung" }, T0, R)
+  assert.equal(k.preis, 0)
+  assert.ok(k.stand.einsatzarten.p_ruhestoerung, "übernommen")
   assert.ok(S.kaufe(s, { art: "einsatzart", id: "b_hecke" }, T0, R).fehler, "nicht freigeschaltet")
+  // Ohne den Schalter gilt wieder der alte Preis (Mindestpreis 10)
+  assert.equal(S.kaufe(s, { art: "einsatzart", id: "p_ruhestoerung" }, T0, { ...R, EINSATZARTEN_KOSTENLOS: false }).preis, 10)
 })
 
 /** Ein ausgebauter Stand für Dauer- und Lasttests. */

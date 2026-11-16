@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.46.4
+
+- Einsatzspiel: Einsatzarten kosten keine Münzen mehr (Wunsch von Alex, 16.11.2026). Nach einem 5-Sterne-Tag (Tagesdurchschnitt ab 4,9) wird um Mitternacht die nächste Einsatzart freigeschaltet und steht dann im Shop zum kostenlosen Übernehmen bereit. `kaufen` mit `art: "einsatzart"` liefert `preis: 0`. Der `preis` im Regelwerk bestimmt nur noch die Reihenfolge der Freischaltung. Schalter `EINSATZARTEN_KOSTENLOS` im Regelwerk. Geräte, Fahrzeuge, Gebäude und Personal kosten weiter Münzen. Schon gekaufte Einsatzarten bleiben, Münzen werden dafür nicht erstattet.
+
 ## 0.46.3
 
 - Garmin, Schlafdauer: Der Sensor `sleep_duration` der Integration Garmin Connect zählt nur den Schlaf ab Mitternacht. Wer werktags um 4:30 Uhr aufsteht, bekam deshalb immer etwa 4 h 30 min, egal wann er ins Bett ging (Meldung von Alex, 16.11.2026). `schlaf_min` ist jetzt die Summe der Schlafphasen (Tief-, Leicht- und REM-Schlaf), wie Garmin Connect die Schlafzeit zeigt. Der Wert des Sensors steht zum Vergleich in `schlaf_min_sensor`. Ohne Phasen bleibt der Sensor. Das wirkt auf die Anzeige in TrainMe, die Tagesform vor dem Training und die XP für „Schlafbedarf gedeckt“; schon gespeicherte Tage bleiben, wie sie sind.
