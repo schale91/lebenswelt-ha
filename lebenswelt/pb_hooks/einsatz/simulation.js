@@ -1060,6 +1060,24 @@ function freischaltKandidaten(R, s) {
   return aus.sort((x, y) => x.preis - y.preis || x.nr - y.nr).map((x) => x.id)
 }
 
+/**
+ * Einsatzarten kosten seit dem 16.11.2026 nichts. Was vorher für Einsatzarten bezahlt wurde, kommt einmal zurück
+ * (Wunsch von Alex): alle Käufe "einsatzart:<id>" im Kaufbuch seit dem Neustart in Elbe Springs (davor hat der Neustart
+ * schon alles erstattet), sofern die Einsatzart noch aktiv ist. Die Gutschrift steht als negative Ausgabe im Kaufbuch;
+ * auf dem Server rechnet das Kaufbuch sie beim nächsten Speichern des Spielstands an, auf dem Handy lokal.ts.
+ */
+function erstatteEinsatzarten(R, s, jetzt) {
+  if (!R.EINSATZARTEN_KOSTENLOS || s.einsatzarten_erstattet) return
+  const ab = s.neustart && s.neustart.zeit ? s.neustart.zeit : 0
+  let betrag = 0
+  for (const a of s.ausgaben || []) {
+    const m = /^einsatzart:(.+)$/.exec(String(a.text || ""))
+    if (m && a.betrag > 0 && a.zeit > ab && s.einsatzarten[m[1]]) betrag += a.betrag
+  }
+  s.einsatzarten_erstattet = { zeit: jetzt, betrag }
+  if (betrag) s.ausgaben.push({ zeit: jetzt, betrag: -betrag, text: "erstattung:einsatzarten" })
+}
+
 /** Merkt im Stand, was der nächste 5-Sterne-Tag freischaltet (für die Anzeige in der App); null, wenn nichts ansteht. */
 function naechsteFreischaltung(R, s) {
   s.naechste_freischaltung = freischaltKandidaten(R, s)[0] || null
@@ -2498,6 +2516,8 @@ function fortschreiben(stand, bis, umwelt, R) {
   startgeschenk(R, s)
   krankenhausVorLevel(R, s)
   naechsteFreischaltung(R, s)
+  // eine Millisekunde nach dem letzten Stand, damit das Kaufbuch sie auch direkt nach einem Kauf noch als neu sieht
+  erstatteEinsatzarten(R, s, s.bis + 1)
   if (bis <= s.bis) return s
   const roh = umwelt || ((t) => wetterBei(null, t))
   const wetter = (t) => wetterGestreut(s, roh(t), t)
@@ -3202,5 +3222,5 @@ module.exports = {
   muellautoPunkt,
   pegelReicht,
   // für Tests
-  _intern: { freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { erstatteEinsatzarten, freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

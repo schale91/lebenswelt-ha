@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.46.6
+
+- Einsatzspiel: Gutschrift für früher bezahlte Einsatzarten (Wunsch von Alex, 16.11.2026). Seit 0.46.4 kosten Einsatzarten nichts; was seit dem Neustart in Elbe Springs für noch aktive Einsatzarten bezahlt wurde, kommt einmal zurück (davor hat der Neustart schon alles erstattet). Die Simulation vermerkt die Gutschrift als negative Ausgabe `erstattung:einsatzarten` im Kaufbuch und in `einsatzarten_erstattet` (`zeit`, `betrag`). Auf dem Server schreibt das Kaufbuch sie beim nächsten Speichern des Spielstands gut, in der Fitness-Welt das Handy (App ab dem gleichen Tag).
+
 ## 0.46.5
 
 - App-Protokoll (Wunsch von Alex, 16.11.2026): Die Lebenswelt-App, auch Lebenswelt Fit, legt technische Ereignisse ab, damit Claude Abstürze, unerwartete Neustarts und den schwebenden Pausentimer nachvollziehen kann. Nur Technik (Art, kurzer Text, ein paar Kennzahlen), keine Inhalte.
