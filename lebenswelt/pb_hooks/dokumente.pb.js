@@ -16,8 +16,9 @@ routerAdd("GET", "/api/lebenswelt/dokumente", (e) => {
     filter += " && (" + typen.map((_, i) => "typ = {:t" + i + "}").join(" || ") + ")"
     typen.forEach((t, i) => (p["t" + i] = t))
   } else {
-    // Einsatzspiel (Stand ändert sich jede Minute, Protokoll wächst) nur über die eigenen Routen bzw. ausdrücklich per typ
-    filter += " && typ != 'einsatzwelt' && typ != 'einsatz'"
+    // Einsatzspiel (Stand ändert sich jede Minute, Protokoll wächst) und App-Protokoll nur über die eigenen Routen bzw.
+    // ausdrücklich per typ
+    filter += " && typ != 'einsatzwelt' && typ != 'einsatz' && typ != 'applog'"
   }
   if (seit) {
     filter += " && updated > {:seit}"
