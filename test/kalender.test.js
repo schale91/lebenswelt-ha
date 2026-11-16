@@ -64,6 +64,21 @@ test("Garmin: Tageswerte aus den Sensoren, unbekannte fehlen, Text bleibt Text",
   assert.equal(Object.keys(w).length, 5)
 })
 
+test("Garmin: Schlafdauer aus den Schlafphasen, nicht nur ab Mitternacht", () => {
+  const z = (id, state) => ({ entity_id: "sensor.garmin_connect_" + id, state })
+  // Nacht vom 15. auf den 16.11.2026: 22:21 bis 4:30 Uhr, der Sensor meldet nur die 269 min ab Mitternacht
+  const w = G.tageswerte([z("sleep_duration", "269"), z("deep_sleep", "57"), z("light_sleep", "248"), z("rem_sleep", "54"), z("awake_duration", "4")], "sensor.garmin_connect_last_activities")
+  assert.equal(w.schlaf_min, 359)
+  assert.equal(w.schlaf_min_sensor, 269)
+  // ohne REM (ältere Uhren): Tief- und Leichtschlaf
+  assert.equal(G.tageswerte([z("sleep_duration", "200"), z("deep_sleep", "60"), z("light_sleep", "240")], "sensor.garmin_connect_last_activities").schlaf_min, 300)
+  // ohne Phasen oder nachts noch leer: der Sensor bleibt
+  assert.equal(G.tageswerte([z("sleep_duration", "420")], "sensor.garmin_connect_last_activities").schlaf_min, 420)
+  const leer = G.tageswerte([z("sleep_duration", "0"), z("deep_sleep", "0"), z("light_sleep", "0"), z("rem_sleep", "0")], "sensor.garmin_connect_last_activities")
+  assert.equal(leer.schlaf_min, 0)
+  assert.equal(leer.schlaf_min_sensor, undefined)
+})
+
 test("Paperless: Kurzform ohne vollen Text, Eingang mit Verweis", () => {
   const n = { korrespondenten: { 3: "Stadtwerke" }, typen: { 2: "Rechnung" }, tags: { 1: "Posteingang", 5: "Haus" }, posteingang: [1] }
   const d = { id: 42, title: "Abschlag 2027", correspondent: 3, document_type: 2, tags: [1, 5], created: "2026-10-17", added: "2026-10-19T08:15:00.123456+02:00", content: "Sehr geehrter Herr  X,\n\nIhr Abschlag ... " + "x".repeat(1000) }

@@ -96,6 +96,17 @@ function tageswerte(zustaende, sensor) {
     const n = Number(z.state)
     aus[feld] = isFinite(n) && /^-?[\d.]+$/.test(String(z.state)) ? Math.round(n * 100) / 100 : String(z.state)
   }
+  // Schlafdauer: Der Sensor „sleep_duration“ zählt nur den Schlaf ab Mitternacht. Wer um 4:30 Uhr aufsteht, hat dort
+  // immer etwa 4 h 30 min, egal wann er ins Bett ging. Die Schlafphasen gelten für die ganze Nacht; ihre Summe ist die
+  // Schlafzeit, wie Garmin Connect sie zeigt (Wachphasen zählen nicht). Den Wert des Sensors behalten wir zum Vergleich.
+  const zahl = (x) => typeof x === "number" && isFinite(x) && x >= 0
+  if (zahl(aus.tiefschlaf_min) && zahl(aus.leichtschlaf_min)) {
+    const summe = aus.tiefschlaf_min + aus.leichtschlaf_min + (zahl(aus.rem_min) ? aus.rem_min : 0)
+    if (summe > 0) {
+      if (aus.schlaf_min !== undefined) aus.schlaf_min_sensor = aus.schlaf_min
+      aus.schlaf_min = Math.round(summe)
+    }
+  }
   return aus
 }
 
