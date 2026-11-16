@@ -1,8 +1,16 @@
 # Änderungen
 
-## 0.46.5
+## 0.46.6
 
 - Einsatzspiel: Gutschrift für früher bezahlte Einsatzarten (Wunsch von Alex, 16.11.2026). Seit 0.46.4 kosten Einsatzarten nichts; was seit dem Neustart in Elbe Springs für noch aktive Einsatzarten bezahlt wurde, kommt einmal zurück (davor hat der Neustart schon alles erstattet). Die Simulation vermerkt die Gutschrift als negative Ausgabe `erstattung:einsatzarten` im Kaufbuch und in `einsatzarten_erstattet` (`zeit`, `betrag`). Auf dem Server schreibt das Kaufbuch sie beim nächsten Speichern des Spielstands gut, in der Fitness-Welt das Handy (App ab dem gleichen Tag).
+
+## 0.46.5
+
+- App-Protokoll (Wunsch von Alex, 16.11.2026): Die Lebenswelt-App, auch Lebenswelt Fit, legt technische Ereignisse ab, damit Claude Abstürze, unerwartete Neustarts und den schwebenden Pausentimer nachvollziehen kann. Nur Technik (Art, kurzer Text, ein paar Kennzahlen), keine Inhalte.
+  - `POST /api/lebenswelt/app-protokoll` mit `{geraet, name?, tag, eintraege: [{i, z, a, t, d?}]}`: je Person, Gerät und Tag ein Dokument (`typ: applog`), ohne Doppelte, höchstens 600 Einträge je Tag. Tage älter als 14 Tage löscht dieselbe Anfrage.
+  - `GET /api/lebenswelt/app-protokoll?tage=3`: alle Protokolle der letzten Tage mit Person und Gerät, nur für die volle Lebenswelt (Fitness-Welt: 403).
+  - Die allgemeine Dokumentliste ohne `typ` lässt `applog` aus, damit der Abgleich der App nicht wächst.
+  - Startprobe um die neuen Routen erweitert.
 
 ## 0.46.4
 
