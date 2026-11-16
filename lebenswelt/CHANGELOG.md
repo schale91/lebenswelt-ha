@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.46.3
+
+- Garmin, Schlafdauer: Der Sensor `sleep_duration` der Integration Garmin Connect zählt nur den Schlaf ab Mitternacht. Wer werktags um 4:30 Uhr aufsteht, bekam deshalb immer etwa 4 h 30 min, egal wann er ins Bett ging (Meldung von Alex, 16.11.2026). `schlaf_min` ist jetzt die Summe der Schlafphasen (Tief-, Leicht- und REM-Schlaf), wie Garmin Connect die Schlafzeit zeigt. Der Wert des Sensors steht zum Vergleich in `schlaf_min_sensor`. Ohne Phasen bleibt der Sensor. Das wirkt auf die Anzeige in TrainMe, die Tagesform vor dem Training und die XP für „Schlafbedarf gedeckt“; schon gespeicherte Tage bleiben, wie sie sind.
+
 ## 0.46.2
 
 - Einsatzspiel, neue Regel für die Freischaltung (Wunsch von Alex, 11.11.2026): Nach einem 5-Sterne-Tag, also einem Tagesdurchschnitt von mindestens 4,9 Sternen, wird um Mitternacht genau eine neue Einsatzart freigeschaltet. Vorher musste jeder einzelne Einsatz des Tages 5 Sterne haben und der Vorgänger am selben Tag erfolgreich gewesen sein.
