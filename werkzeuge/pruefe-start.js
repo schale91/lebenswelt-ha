@@ -35,6 +35,11 @@ const ROUTEN = [
   ["POST", "/api/lebenswelt/app-paket/auftrag"],
   ["GET", "/api/lebenswelt/app-paket"],
   ["DELETE", "/api/lebenswelt/app-paket/auftrag"],
+  // App-Protokoll (ab 0.46.5): ohne Einträge abgewiesen (400), mit einem Eintrag abgelegt, dann gelesen
+  ["POST", "/api/lebenswelt/app-protokoll", { status: 400 }],
+  ["POST", "/api/lebenswelt/app-protokoll", { koerper: { geraet: "probe", tag: new Date().toISOString().slice(0, 10), eintraege: [{ i: "a1", z: Date.now(), a: "start", t: "Startprobe" }] }, pruefe: (j) => j.anzahl === 1 || "Eintrag nicht abgelegt" }],
+  ["GET", "/api/lebenswelt/app-protokoll", { pruefe: (j) => (j.protokolle?.length === 1 && j.protokolle[0].eintraege.length === 1) || "Eintrag nicht gelesen" }],
+  ["GET", "/api/lebenswelt/dokumente", { pruefe: (j) => !j.dokumente?.some((d) => d.typ === "applog") || "App-Protokoll in der allgemeinen Liste" }],
 ]
 // Fehler der JS-Laufzeit im Protokoll (ein Hook, der beim Laden oder in einer Route scheitert)
 const FEHLER = /(SyntaxError|ReferenceError|TypeError|RangeError|GoError|failed to (load|execute|apply)|panic:)/i
@@ -73,7 +78,7 @@ async function main() {
     }
     for (const [methode, pfad, erwartet = {}] of ROUTEN) {
       const kopf = { "Content-Type": "application/json", ...(erwartet.ohnePerson ? {} : { "X-Remote-User-Id": PERSON }) }
-      const r = await fetch(basis + pfad, { method: methode, headers: kopf, body: methode === "GET" ? undefined : "{}" })
+      const r = await fetch(basis + pfad, { method: methode, headers: kopf, body: methode === "GET" ? undefined : JSON.stringify(erwartet.koerper ?? {}) })
       const text = await r.text()
       let json = true
       let inhalt = null

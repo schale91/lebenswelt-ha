@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.46.5
+
+- App-Protokoll (Wunsch von Alex, 16.11.2026): Die Lebenswelt-App, auch Lebenswelt Fit, legt technische Ereignisse ab, damit Claude Abstürze, unerwartete Neustarts und den schwebenden Pausentimer nachvollziehen kann. Nur Technik (Art, kurzer Text, ein paar Kennzahlen), keine Inhalte.
+  - `POST /api/lebenswelt/app-protokoll` mit `{geraet, name?, tag, eintraege: [{i, z, a, t, d?}]}`: je Person, Gerät und Tag ein Dokument (`typ: applog`), ohne Doppelte, höchstens 600 Einträge je Tag. Tage älter als 14 Tage löscht dieselbe Anfrage.
+  - `GET /api/lebenswelt/app-protokoll?tage=3`: alle Protokolle der letzten Tage mit Person und Gerät, nur für die volle Lebenswelt (Fitness-Welt: 403).
+  - Die allgemeine Dokumentliste ohne `typ` lässt `applog` aus, damit der Abgleich der App nicht wächst.
+  - Startprobe um die neuen Routen erweitert.
+
 ## 0.46.4
 
 - Einsatzspiel: Einsatzarten kosten keine Münzen mehr (Wunsch von Alex, 16.11.2026). Nach einem 5-Sterne-Tag (Tagesdurchschnitt ab 4,9) wird um Mitternacht die nächste Einsatzart freigeschaltet und steht dann im Shop zum kostenlosen Übernehmen bereit. `kaufen` mit `art: "einsatzart"` liefert `preis: 0`. Der `preis` im Regelwerk bestimmt nur noch die Reihenfolge der Freischaltung. Schalter `EINSATZARTEN_KOSTENLOS` im Regelwerk. Geräte, Fahrzeuge, Gebäude und Personal kosten weiter Münzen. Schon gekaufte Einsatzarten bleiben, Münzen werden dafür nicht erstattet.
