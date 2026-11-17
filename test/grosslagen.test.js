@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen, schritt, grosslagenFrei } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const MIN = 60000
@@ -19,7 +20,8 @@ function kaufe(s, auftrag, t = T0) {
 /** Feuerwehr mit sechs Kräften und Motorsäge, Polizei, Rettungswache, DRK-Mitglied. */
 function dorf(level = 30) {
   let s = S.neuerStand(R, T0 - STD, 21)
-  s.level = level
+  if (level >= 30) grosslagenFrei(R, S, s)
+  else vorspulen(R, s, level)
   for (const bp of ["bp01", "bp02", "bp03", "bp04", "bp05", "bp06", "bp07", "bp08"]) s = kaufe(s, { art: "bauplatz", id: bp })
   s = kaufe(s, { art: "geraet", id: "motorsaege" })
   for (const p of s.personal) {
@@ -33,9 +35,28 @@ function dorf(level = 30) {
   return s
 }
 
-test("Großlagen werden nicht gekauft und kommen erst ab Level 30 von selbst", () => {
+test("Großlagen werden nicht gekauft und kommen am Ende der Reihe, je eine pro 5-Sterne-Tag", () => {
   const vorher = S.fortschreiben(dorf(29), T0, sturm, R)
   assert.ok(!Object.keys(vorher.einsatzarten).some((id) => R.EINSATZARTEN[id].grosslage))
+  // Das echte Level spielt keine Rolle mehr: Level 99 ohne Fortschritt in der Reihe bringt keine Großlage
+  const hoch = dorf(29)
+  hoch.level = 99
+  assert.ok(!Object.keys(S.fortschreiben(hoch, T0, sturm, R).einsatzarten).some((id) => R.EINSATZARTEN[id].grosslage))
+  // Zeiger auf der ersten Großlage: erst der nächste 5-Sterne-Tag aktiviert sie, eine pro Tag
+  let s = dorf(29)
+  s.reihe = schritt(R, "gl_dorffest")
+  s = S.fortschreiben(s, T0, sturm, R)
+  assert.equal(s.stufe, 30)
+  assert.ok(!s.einsatzarten.gl_dorffest)
+  assert.equal(s.naechster_schritt.typ, "grosslage")
+  for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e13
+  const tag = S._intern.tagVon(T0)
+  s.tage[tag] = { anzahl: 3, sterne: 15, erfolgreich: 3, fuenf: 3, arten: ["tier_katze"], abgerechnet: false }
+  s = S.fortschreiben(s, S._intern.tagesende(tag) + MIN, sturm, R)
+  assert.deepEqual(s.tage[tag].freigeschaltet, ["gl_dorffest"])
+  assert.ok(s.einsatzarten.gl_dorffest, "aktiv, ohne Kauf")
+  assert.ok(!s.einsatzarten.gl_sturm, "die nächste erst am nächsten guten Tag")
+  assert.equal(s.naechste_freischaltung, "gl_sturm")
   const ab = S.fortschreiben(dorf(30), T0, sturm, R)
   for (const [id, a] of Object.entries(R.EINSATZARTEN).filter(([, x]) => x.grosslage && !x.baustelle)) assert.ok(ab.einsatzarten[id], id)
   assert.match(S.kaufe(ab, { art: "einsatzart", id: "gl_sturm" }, T0, R).fehler, /nicht gekauft/)

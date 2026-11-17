@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 const M = require("../lebenswelt/pb_hooks/einsatz/muell.js")
 
 const MIN = 60000
@@ -195,9 +196,9 @@ test("Brand im Müllfahrzeug kommt nie nach Intervall, nur angemeldet", () => {
 
 test("Deponie im Store: Stufen mit Level, Arbeitgeber ab Stufe 1, Einsätze brauchen das Gebäude", () => {
   let s = dorf()
-  s.level = 2
-  assert.match(S.kaufe(s, { art: "gebaeude", id: "deponie" }, s.bis, R).fehler, /Level 3/)
-  s.level = 3
+  vorspulen(R, s, 2)
+  assert.match(S.kaufe(s, { art: "gebaeude", id: "deponie" }, s.bis, R).fehler, /Kommt in der Freischaltreihe nach/)
+  vorspulen(R, s, 3)
   const k = S.kaufe(s, { art: "gebaeude", id: "deponie" }, s.bis, R)
   assert.ok(!k.fehler, k.fehler)
   assert.equal(k.stand.baustellen[0].ziel, "deponie")

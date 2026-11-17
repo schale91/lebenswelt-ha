@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen, schritt } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 16) // Dienstag, 18 Uhr Ortszeit (nach Feierabend)
 const MIN = 60000
@@ -29,7 +30,7 @@ function fertig(s) {
 /** Dorf mit drei Feuerwehrleuten, zwei davon im DRK, und einem PKW Helfer vor Ort. */
 function dorf(level = 20) {
   let s = S.neuerStand(R, T0, 11)
-  s.level = level
+  vorspulen(R, s, level)
   for (const bp of ["bp01", "bp02", "bp03"]) s = kaufe(s, { art: "bauplatz", id: bp })
   const [a, b] = s.personal
   s = fertig(kaufe(s, { art: "mitgliedschaft", id: "drk", ziel: a.id }))
@@ -50,9 +51,9 @@ function einsatz(s, art, ort, t = T0 + MIN, dauer = 4 * STD) {
 
 test("Vor Level 20 gibt es keinen DRK-Ortsverein", () => {
   let s = S.neuerStand(R, T0, 11)
-  s.level = 19
+  vorspulen(R, s, 19)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
-  assert.match(S.kaufe(s, { art: "mitgliedschaft", id: "drk", ziel: s.personal[0].id }, T0, R).fehler, /Erst ab Level 20/)
+  assert.match(S.kaufe(s, { art: "mitgliedschaft", id: "drk", ziel: s.personal[0].id }, T0, R).fehler, /DRK-Ortsverein kommt in der Freischaltreihe nach „Reanimation am Sportplatz“/)
   s = S.fortschreiben(s, T0 + MIN, trocken, R)
   assert.ok(!s.freigeschaltet.includes("drk_hvo"))
 })
@@ -65,10 +66,15 @@ test("Feuerwehrleute treten ins DRK ein (zwei Organisationen, nicht mehr)", () =
 })
 
 test("Helfer vor Ort: von der Unterkunft im Gemeindehaus, danach Rettungsdienst mit Erster Hilfe", () => {
-  const s = S.fortschreiben(dorf(), T0, trocken, R)
-  // Seit Regel 3 schaltet das Level nichts mehr frei; der erste Einsatz des DRK steht in der Reihe für den nächsten 5-Sterne-Tag
+  const d = dorf()
+  d.reihe = schritt(R, "bau:drk_unterkunft:1")
+  const s = S.fortschreiben(d, T0, trocken, R)
+  // Seit 17.11.2026: Vor dem ersten DRK-Einsatz steht in der Reihe der Meilenstein „Unterkunft bauen“
   assert.ok(!s.freigeschaltet.includes("drk_hvo"))
-  assert.ok(S._intern.freischaltKandidaten(R, s).includes("drk_hvo"))
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), [])
+  assert.equal(s.naechster_schritt.typ, "bau")
+  assert.equal(s.naechster_schritt.gebaeude, "drk_unterkunft")
+  assert.equal(s.naechster_schritt.danach, "drk_hvo")
   assert.deepEqual(S._intern.standortVon(R, s, "drk"), R.ORTE.bibliothek)
   const { e, alle } = einsatz(s, "drk_hvo", "marktplatz")
   assert.equal(e.status, "abgeschlossen")
@@ -102,7 +108,7 @@ test("Verpflegung durch das DRK: lange Einsätze gehen danach schneller", () => 
   const RL = JSON.parse(JSON.stringify(R))
   RL.EINSATZARTEN.test_lang = { org: "feuerwehr", name: "Langer Einsatz", stichwort: "TH", preis: 0, orte: ["kreuzung"], intervall_min: 1e9, ablauf_min: 60, arbeit_min: 300, ziel_eintreffen_min: 30, mindestens: { personen: 1 } }
   let s = S.neuerStand(RL, T0, 11)
-  s.level = 20
+  vorspulen(R, s, 20)
   for (const bp of ["bp01", "bp02"]) {
     const r = S.kaufe(s, { art: "bauplatz", id: bp }, T0, RL)
     s = r.stand
@@ -122,7 +128,7 @@ test("Verpflegung durch das DRK: lange Einsätze gehen danach schneller", () => 
     s = r.stand
     for (const b of s.baustellen.slice()) S._intern.fertigstellen(RL, s, b, T0)
   }
-  s.level = Math.max(s.level || 0, R.FAHRZEUGE.mtw_drk.ab_level, R.FAHRZEUGE.feldkueche.ab_level)
+  vorspulen(R, s, Math.max(s.stufe || 0, R.FAHRZEUGE.mtw_drk.ab_level, R.FAHRZEUGE.feldkueche.ab_level))
   for (const typ of ["mtw_drk", "feldkueche"]) {
     const r = S.kaufe(s, { art: "fahrzeug", id: typ }, T0, RL)
     assert.ok(!r.fehler, r.fehler)

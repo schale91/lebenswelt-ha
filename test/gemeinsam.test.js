@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const MIN = 60000
@@ -19,7 +20,7 @@ function kaufe(s, auftrag, t = T0) {
 /** Feuerwehr mit zwei Kräften und Türöffnungswerkzeug, Polizei nach Wunsch. */
 function dorf(polizei) {
   let s = S.neuerStand(R, T0, 3)
-  s.level = 8
+  vorspulen(R, s, 8)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "bauplatz", id: "bp02" })
   s = kaufe(s, { art: "geraet", id: "tueroeffnung" })
@@ -40,7 +41,7 @@ function einsatz(s, art, ort, t = T0 + MIN) {
 
 test("Gemeinsame Einsätze brauchen kein Level mehr: freigeschaltet heißt kaufbar", () => {
   let s = dorf(false)
-  s.level = 0
+  vorspulen(R, s, 0)
   assert.match(S.kaufe(s, { art: "einsatzart", id: "th_kind_auto" }, T0, R).fehler, /Noch nicht freigeschaltet/)
   s.freigeschaltet.push("th_kind_auto")
   s = kaufe(s, { art: "einsatzart", id: "th_kind_auto" })

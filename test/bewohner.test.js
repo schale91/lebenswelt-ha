@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit (Arbeitszeit)
 const ABEND = Date.UTC(2026, 9, 13, 18) // Dienstag, 20 Uhr Ortszeit
@@ -159,10 +160,10 @@ test("Level: der Sportplatz ist erst ab Level 5 kaufbar, der Sportverein auch", 
   let s = S.neuerStand(R, T0, 1)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   const r = S.kaufe(s, { art: "gebaeude", id: "sportplatz" }, T0, R)
-  assert.match(r.fehler, /Erst ab Level 5/)
+  assert.match(r.fehler, /Kommt in der Freischaltreihe nach/)
   const v = S.kaufe(s, { art: "mitgliedschaft", id: "sportverein", ziel: s.personal[0].id }, T0, R)
-  assert.match(v.fehler, /Erst ab Level 5/)
-  s.level = 5
+  assert.match(v.fehler, /Kommt in der Freischaltreihe nach/)
+  vorspulen(R, s, 5)
   s = kaufe(s, { art: "gebaeude", id: "sportplatz" })
   assert.equal(s.gebaeude.sportplatz, 1)
   s = kaufe(s, { art: "gebaeude", id: "sportplatz" })
@@ -170,12 +171,12 @@ test("Level: der Sportplatz ist erst ab Level 5 kaufbar, der Sportverein auch", 
   s = kaufe(s, { art: "gebaeude", id: "sportplatz" })
   assert.equal(s.gebaeude.sportplatz, 4)
   const heim = S.kaufe(s, { art: "gebaeude", id: "sportplatz" }, T0, R)
-  assert.match(heim.fehler, /Erst ab Level 12/)
+  assert.match(heim.fehler, /Kommt in der Freischaltreihe nach/)
 })
 
 test("Rasenplatz: eigene Bauphasen, im Winter wächst der Rasen langsamer an", () => {
   let s = S.neuerStand(R, T0, 1)
-  s.level = 5
+  vorspulen(R, s, 5)
   for (let i = 0; i < 3; i++) s = kaufe(s, { art: "gebaeude", id: "sportplatz" })
   const sommer = S.kaufe(s, { art: "gebaeude", id: "sportplatz" }, Date.UTC(2026, 5, 2, 8), R).stand.baustellen[0]
   const winter = S.kaufe(s, { art: "gebaeude", id: "sportplatz" }, Date.UTC(2026, 11, 1, 8), R).stand.baustellen[0]
@@ -188,7 +189,7 @@ test("Rasenplatz: eigene Bauphasen, im Winter wächst der Rasen langsamer an", (
 
 test("Training: Verein auf der Bolzwiese +0,5, Trimm-dich-Pfad für alle, ohne Training sinkt die Fitness bis 50", () => {
   let s = S.neuerStand(R, T0, 1)
-  s.level = 5
+  vorspulen(R, s, 5)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "bauplatz", id: "bp02" })
   const [a, b] = s.personal.map((p) => p.id)
@@ -214,7 +215,7 @@ test("Training: Verein auf der Bolzwiese +0,5, Trimm-dich-Pfad für alle, ohne T
 
 test("Training im Winter ohne Flutlicht bringt nur so viel wie Joggen", () => {
   let s = S.neuerStand(R, Date.UTC(2026, 11, 1, 8), 1)
-  s.level = 5
+  vorspulen(R, s, 5)
   s = kaufe(s, { art: "bauplatz", id: "bp01" }, s.bis)
   s = kaufe(s, { art: "mitgliedschaft", id: "sportverein", ziel: s.personal[0].id }, s.bis)
   for (let i = 0; i < 4; i++) s = kaufe(s, { art: "gebaeude", id: "sportplatz" }, s.bis) // Rasenplatz
@@ -254,7 +255,7 @@ test("Alter Stand (Version 1) wird übernommen und ergibt dieselbe Bewertung", (
 
 test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, auch mit Training und Berufen", () => {
   let s = S.neuerStand(R, T0, 7)
-  s.level = 5
+  vorspulen(R, s, 5)
   s = kaufe(s, { art: "bauplatz", id: "bp01", bewohner: { org: "feuerwehr", beruf: "auswaerts" } })
   s = kaufe(s, { art: "bauplatz", id: "bp02", bewohner: { org: "feuerwehr", beruf: "dorf", arbeitgeber: "markt" } })
   s = kaufe(s, { art: "geraet", id: "klappleiter" })

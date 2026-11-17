@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 16) // Dienstag, 18 Uhr Ortszeit
 const MIN = 60000
@@ -19,7 +20,7 @@ function kaufe(s, auftrag, t = T0) {
 /** Feuerwehr mit vier Kräften (Motorsäge, Helm, Truppführer), auf Wunsch mit Gruppenführer; THW mit drei Mitgliedern. */
 function dorf({ level = 27, thw = true, gf = false } = {}) {
   let s = S.neuerStand(R, T0 - 24 * STD, 9)
-  s.level = level
+  vorspulen(R, s, level)
   for (const bp of ["bp01", "bp02", "bp03", "bp04", "bp05", "bp06", "bp07"]) s = kaufe(s, { art: "bauplatz", id: bp })
   s = kaufe(s, { art: "geraet", id: "motorsaege" })
   for (const p of s.personal.slice(0, 4)) {
@@ -58,7 +59,7 @@ function baumAufStrasse(s, t = T0 + MIN) {
 
 test("Vor Level 27 gibt es kein THW, der Baum auf der Straße läuft wie bisher", () => {
   const s = dorf({ level: 26, thw: false })
-  assert.match(S.kaufe(s, { art: "mitgliedschaft", id: "thw", ziel: s.personal[5].id }, T0, R).fehler, /Erst ab Level 27/)
+  assert.match(S.kaufe(s, { art: "mitgliedschaft", id: "thw", ziel: s.personal[5].id }, T0, R).fehler, /THW-Ortsverband kommt in der Freischaltreihe nach „LKW verliert Flüssigkeit \(Gefahrgut\)“/)
   const { alle } = baumAufStrasse(s)
   assert.ok(!alle.some((e) => R.EINSATZARTEN[e.art].org === "thw"))
 })

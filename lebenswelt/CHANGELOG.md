@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.46.7
+
+- Einsatzspiel ohne Level, mit fester Reihenfolge und Gebäuden als Hürden (Wunsch von Alex, 17.11.2026). Gilt genauso in der Fitness-Welt.
+  - Neue feste `FREISCHALTREIHE` im Regelwerk: 85 Schritte über alle Dienste im Wechsel (Feuerwehr, Polizei, Bauhof, Werkstatt, Rettungsdienst, DRK, DLRG, THW), Vorgänger immer vorher, Wasser-Einsätze der Feuerwehr erst nach der DLRG-Wachstation, Sport-Einsätze nach dem Sportplatz, Großlagen am Ende. Jeder 5-Sterne-Tag schaltet genau den nächsten Schritt frei, nichts wird übersprungen.
+  - Meilensteine: Bauhof, Werkstatt, Rettungswache, DRK-Unterkunft, DLRG-Wachstation, THW-Unterkunft, Wertstoffhof, Deponie und Sportplatz müssen gebaut werden, um weiterzukommen. Gute Tage davor werden als Guthaben gemerkt (höchstens 3) und eingelöst, sobald das Gebäude steht.
+  - Großlagen werden am Ende der Reihe je an einem 5-Sterne-Tag aktiv (früher ab Level 30 von selbst).
+  - Das Level der Lebenswelt ist im Einsatzspiel keine Sperre mehr. Alle `ab_level` (Organisationen, Fahrzeuge, Gebäudestufen, Ausbauten, Sirenen, Gebiete, Krankenhaus, Sportverein, Großlagen) meinen jetzt die Stufe der Reihe (`s.stufe`, 0 bis 30). Organisationen gibt es erst, wenn die Reihe ihren Meilenstein erreicht. Fehlermeldungen sagen „Kommt in der Freischaltreihe nach …“ statt „Erst ab Level N“. Die Höchstzahl der Einwohner in Elbe Springs bleibt am echten Level (Wirtschaft der Stadt).
+  - Neue Felder im Stand: `reihe`, `freischalt_guthaben`, `stufe`, `naechster_schritt`, `eingeloest`, `tage[tag].gemerkt`; `naechste_freischaltung` ist `null`, solange ein Meilenstein davor steht. Bestehende Stände werden ohne Verlust übernommen: Was freigeschaltet oder aktiv ist, bleibt und zählt als erledigt, schon gebaute Gebäude bleiben nutzbar.
+  - Doku: `docs/einsatzspiel/FREISCHALTREIHE.md`.
+
 ## 0.46.6
 
 - Einsatzspiel: Gutschrift für früher bezahlte Einsatzarten (Wunsch von Alex, 16.11.2026). Seit 0.46.4 kosten Einsatzarten nichts; was seit dem Neustart in Elbe Springs für noch aktive Einsatzarten bezahlt wurde, kommt einmal zurück (davor hat der Neustart schon alles erstattet). Die Simulation vermerkt die Gutschrift als negative Ausgabe `erstattung:einsatzarten` im Kaufbuch und in `einsatzarten_erstattet` (`zeit`, `betrag`). Auf dem Server schreibt das Kaufbuch sie beim nächsten Speichern des Spielstands gut, in der Fitness-Welt das Handy (App ab dem gleichen Tag).

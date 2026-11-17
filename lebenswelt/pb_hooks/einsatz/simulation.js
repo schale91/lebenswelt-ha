@@ -95,9 +95,97 @@ function levelAusXp(xp) {
   }
 }
 
-/** Ist etwas mit diesem Level schon freigeschaltet? */
-function levelReicht(s, ab) {
-  return !ab || (s.level || 0) >= ab
+// ---------- Freischaltreihe (Wunsch vom 17.11.2026) ----------
+
+/**
+ * Stufe des Einsatzspiels (0 bis 30): folgt nur aus dem Fortschritt in der Freischaltreihe (s.reihe = Index des
+ * nächsten Schritts). Sie ersetzt das Level der Lebenswelt bei allen Grenzen des Einsatzspiels (ab_level im Regelwerk).
+ */
+function stufeVon(R, s) {
+  const L = R.FREISCHALTREIHE
+  if (!L || !L.length) return 0
+  const i = Math.max(0, Math.floor(Number(s.reihe) || 0))
+  return i < L.length ? L[i].fortschritt : L[L.length - 1].fortschritt
+}
+
+/** Reicht der Fortschritt in der Reihe für diese alte Level-Grenze? Das echte Level zählt hier nicht mehr. */
+function stufeReicht(R, s, ab) {
+  return !ab || stufeVon(R, s) >= ab
+}
+
+/**
+ * Der Schritt, nach dem eine alte Level-Grenze erreicht ist: der letzte Schritt vor dem ersten mit fortschritt >= ab.
+ * null, wenn es von Anfang an frei ist.
+ */
+function schrittVorStufe(R, ab) {
+  const L = R.FREISCHALTREIHE || []
+  const i = L.findIndex((x) => x.fortschritt >= ab)
+  return i > 0 ? L[i - 1] : i < 0 && L.length ? L[L.length - 1] : null
+}
+
+/** Text für eine Sperre, die an der Reihe hängt (statt „Erst ab Level N“). */
+function reiheText(R, ab) {
+  const x = schrittVorStufe(R, ab)
+  return x ? "Kommt in der Freischaltreihe nach „" + schrittName(R, x) + "“." : "Noch nicht dran."
+}
+
+/** Name eines Reihen-Schritts: Einsatzart oder „Gebäude bauen“. */
+function schrittName(R, x) {
+  if (x.art) return x.name
+  return x.name + " bauen"
+}
+
+/** Warum es eine Organisation noch nicht gibt: Was in der Reihe vor ihrem Meilenstein noch kommt. */
+function orgText(R, org) {
+  const o = R.ORGANISATIONEN[org]
+  const L = R.FREISCHALTREIHE || []
+  const i = reiheIndex(R, "bau:" + o.gebaeude + ":1")
+  if (i > 0) return o.name + " kommt in der Freischaltreihe nach „" + schrittName(R, L[i - 1]) + "“."
+  return reiheText(R, o.ab_level)
+}
+
+/** Index eines Schritts in der Reihe (-1, wenn es ihn nicht gibt). */
+function reiheIndex(R, id) {
+  return (R.FREISCHALTREIHE || []).findIndex((x) => x.id === id)
+}
+
+/** Ist der Schritt erledigt? Einsatzart freigeschaltet oder aktiv, Gebäude steht in der Stufe. */
+function schrittErledigt(s, x) {
+  if (x.art) return s.einsatzarten[x.art] !== undefined || s.freigeschaltet.indexOf(x.art) >= 0
+  return ((s.gebaeude || {})[x.bau] || 0) >= x.stufe
+}
+
+/** Einen Einsatz-Schritt freischalten; Großlagen werden dabei gleich aktiv (sie werden nicht gekauft). */
+function schrittFreischalten(R, s, x, t) {
+  if (x.grosslage) aktiviereArt(R, s, x.art, t)
+  else s.freigeschaltet.push(x.art)
+}
+
+/**
+ * Zeiger der Reihe weiterschieben: erledigte Schritte überspringen (auch alte Stände, deren Freischaltungen und Gebäude
+ * zählen), Guthaben aus gemerkten 5-Sterne-Tagen einlösen, an einem offenen Meilenstein anhalten. Nichtzerstörend und
+ * idempotent: ohne Guthaben und ohne neues Gebäude ändert sich nichts. t: Zeitpunkt (für Großlagen).
+ */
+function reiheWeiter(R, s, t) {
+  const L = R.FREISCHALTREIHE
+  if (!L) return
+  if (!(s.reihe >= 0)) s.reihe = 0
+  s.reihe = Math.floor(s.reihe)
+  if (!(s.freischalt_guthaben >= 0)) s.freischalt_guthaben = 0
+  while (s.reihe < L.length) {
+    const x = L[s.reihe]
+    if (schrittErledigt(s, x)) {
+      s.reihe += 1
+      continue
+    }
+    if (x.bau || !s.freischalt_guthaben) break
+    s.freischalt_guthaben -= 1
+    schrittFreischalten(R, s, x, t)
+    s.eingeloest = (s.eingeloest || []).concat([{ id: x.art, zeit: t }]).slice(-10)
+    s.reihe += 1
+  }
+  if (s.reihe >= L.length) s.freischalt_guthaben = 0
+  s.stufe = stufeVon(R, s)
 }
 
 function preis(R, roh) {
@@ -444,7 +532,7 @@ function wetterMitWarnungen(R, warnungen, verlauf, t) {
 
 /**
  * Neue Warnungen, die begonnen haben, setzen passende Einsätze an: Die nächste Meldung der Einsatzart kommt dann
- * spätestens einige Minuten nach Beginn (nur gekaufte Einsatzarten; Level und Wetter prüft die Meldung selbst).
+ * spätestens einige Minuten nach Beginn (nur gekaufte Einsatzarten; Stufe und Wetter prüft die Meldung selbst).
  * Jede Warnung wirkt einmal (warnungen_gesehen). Vor dem Fortschreiben aufrufen.
  */
 function warnungenAusloesen(R, stand, warnungen, jetzt) {
@@ -497,6 +585,10 @@ function neuerStand(R, jetzt, saat) {
     // Freischaltung: je 5-Sterne-Tag (Tagesdurchschnitt ab 4,9) die nächste Einsatzart, ohne Level (Regel 3)
     freischaltregel: 3,
     level: 0,
+    // Freischaltreihe (17.11.2026): Index des nächsten Schritts, gemerkte 5-Sterne-Tage vor einem Meilenstein, Stufe
+    reihe: 0,
+    freischalt_guthaben: 0,
+    stufe: 0,
     bis: jetzt,
     zufall: saat === undefined ? jetzt % 100000 : saat,
     einsatzarten: {},
@@ -520,6 +612,7 @@ function neuerStand(R, jetzt, saat) {
     if (a.start || a.start_polizei) s.freigeschaltet.push(id)
     if (a.start) aktiviereArt(R, s, id, jetzt)
   }
+  reiheWeiter(R, s, jetzt)
   return s
 }
 
@@ -573,7 +666,7 @@ function gebietSperre(R, s, key) {
   const nachbarn = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([di, dj]) => gebietFrei(R, s, i + di + ":" + (j + dj)))
   if (!nachbarn) return "Erst ein angrenzendes Gebiet freischalten."
   const ring = G.ringe[Math.min(G.ringe.length - 1, gebietRing(R, key))]
-  if (!levelReicht(s, ring.ab_level)) return "Erst ab Level " + ring.ab_level + "."
+  if (!stufeReicht(R, s, ring.ab_level)) return reiheText(R, ring.ab_level)
   return null
 }
 
@@ -606,20 +699,21 @@ function imKrankenhaus(p, t) {
  * Regelwerk, höher bei Brand und technischer Hilfe. Niemand stirbt: Die Person liegt im Krankenhaus und ist danach
  * wieder da. Gibt die Verletzten zurück.
  */
-const verletzungenAn = (R, s) => Boolean(R.KRANKENHAUS) && (s.level || 0) >= R.KRANKENHAUS.ab_level
+const verletzungenAn = (R, s) => Boolean(R.KRANKENHAUS) && stufeReicht(R, s, R.KRANKENHAUS.ab_level)
 
-/** Vor dem Krankenhaus-Level liegt niemand im Krankenhaus: alte Aufenthalte enden sofort */
+/** Vor der Krankenhaus-Stufe der Reihe liegt niemand im Krankenhaus: alte Aufenthalte enden sofort */
 function krankenhausVorLevel(R, s) {
   if (verletzungenAn(R, s)) return
   for (const p of s.personal) if (p.krankenhaus) p.krankenhaus = null
 }
 function verletzungen(R, s, e, ende) {
   const K = R.KRANKENHAUS
-  // Verletzungen gibt es erst ab dem Level, ab dem es das Krankenhaus gibt (Entscheidung vom 19.10.2026)
+  // Verletzungen gibt es erst ab der Stufe, ab der es das Krankenhaus gibt (Entscheidung vom 19.10.2026, seit 17.11.2026
+  // an der Freischaltreihe statt am Level)
   if (!K || !e.plan || !verletzungenAn(R, s)) return []
   const faktor = Object.entries(K.chance_faktor || {}).reduce((f, [k, v]) => (String(e.art).indexOf(k) === 0 ? Math.max(f, v) : f), 1)
   const kh = R.GEBIETE && Object.entries(R.GEBIETE.besonders || {}).find(([, g]) => g.art === "krankenhaus")
-  const dorf = (s.level || 0) >= K.ab_level && (!kh || (s.gebiete || []).indexOf(kh[0]) >= 0)
+  const dorf = stufeReicht(R, s, K.ab_level) && (!kh || (s.gebiete || []).indexOf(kh[0]) >= 0)
   const aus = []
   for (const x of e.plan.personen) {
     const p = s.personal.find((q) => q.id === x.id)
@@ -682,7 +776,7 @@ function inSchicht(R, p, t) {
 function wachdienstAktiv(R, s, t) {
   const W = R.WACHDIENST
   const st = W && R.GEBAEUDE.wachstation && R.GEBAEUDE.wachstation[s.gebaeude.wachstation || 0]
-  if (!st || !st.wachdienst || !levelReicht(s, R.ORGANISATIONEN.dlrg.ab_level)) return false
+  if (!st || !st.wachdienst || !orgFrei(R, s, "dlrg")) return false
   const z = ortszeit(t)
   return W.tage.indexOf(z.wochentag) >= 0 && W.monate.indexOf(z.monat) >= 0 && z.stunde >= W.von && z.stunde < W.bis
 }
@@ -1018,14 +1112,20 @@ function gebaeudeVon(R, org) {
   return (R.ORGANISATIONEN && R.ORGANISATIONEN[org] && R.ORGANISATIONEN[org].gebaeude) || (org === "polizei" ? "dienststelle" : "geraetehaus")
 }
 
-/** Ist die Organisation mit dem aktuellen Level schon im Spiel? */
+/**
+ * Ist die Organisation schon im Spiel? Seit 17.11.2026: wenn die Freischaltreihe ihren Meilenstein (ihr Gebäude bauen)
+ * erreicht hat, oder wenn ihr Gebäude schon steht (ältere Stände behalten, was sie gebaut haben). Das Level zählt nicht.
+ */
 function orgFrei(R, s, org) {
   const o = R.ORGANISATIONEN && R.ORGANISATIONEN[org]
-  return !o || levelReicht(s, o.ab_level)
+  if (!o || !o.ab_level) return true
+  if (((s.gebaeude || {})[o.gebaeude] || 0) >= 1) return true
+  const i = reiheIndex(R, "bau:" + o.gebaeude + ":1")
+  return i >= 0 ? (Number(s.reihe) || 0) >= i : stufeReicht(R, s, o.ab_level)
 }
 
 /**
- * Gibt es die Organisation in dieser Welt schon? Ihr Level ist erreicht und ihr Gebäude gehört zur Welt (in Elbe
+ * Gibt es die Organisation in dieser Welt schon? Sie ist frei (orgFrei) und ihr Gebäude gehört zur Welt (in Elbe
  * Springs gibt es zum Beispiel noch keine Wachstation der DLRG).
  */
 function orgDa(R, s, org) {
@@ -1033,31 +1133,21 @@ function orgDa(R, s, org) {
   return !o || (orgFrei(R, s, org) && (!o.gebaeude || (s.gebaeude || {})[o.gebaeude] !== undefined))
 }
 
-/** Einsatzarten, die man kauft (keine Folgeeinsätze, Großlagen oder Baustellen-Einsätze): Für sie zählt kein Level. */
+/** Einsatzarten, die man kauft (keine Folgeeinsätze, Großlagen oder Baustellen-Einsätze): Für sie zählt keine Grenze. */
 const kaufArt = (a) => Boolean(a) && !a.folge_nur && !a.grosslage && !a.baustelle
-/** Level-Grenze einer Einsatzart: nur noch für Großlagen und Baustellen-Einsätze, die von selbst kommen. */
-const artLevelReicht = (s, a) => kaufArt(a) || levelReicht(s, a.ab_level)
+/** Grenze einer Einsatzart: nur noch für Großlagen und Baustellen-Einsätze, die von selbst kommen (Stufe der Reihe). */
+const artLevelReicht = (R, s, a) => kaufArt(a) || stufeReicht(R, s, a.ab_level)
 
 /**
- * Was als Nächstes freigeschaltet wird (Regel 3, Wunsch vom 11.11.2026), in dieser Reihenfolge: alle Einsatzarten,
- * deren Vorgänger schon freigeschaltet ist, deren Organisation es in der Welt gibt und deren Gebäude steht, die
- * günstigste zuerst. Feuerwehr, Polizei und die weiteren Dienste stehen in einer gemeinsamen Reihe; das Level spielt
- * keine Rolle. Der erste Einsatz einer neuen Organisation (start_level) reiht sich ein, sobald es die Organisation gibt.
+ * Was der nächste 5-Sterne-Tag freischaltet: die Einsatzart des nächsten Schritts der Freischaltreihe, oder nichts,
+ * wenn davor ein Meilenstein (Gebäude bauen) steht oder die Reihe zu Ende ist. Als Liste wie früher (für Tests).
  */
 function freischaltKandidaten(R, s) {
-  const frei = (id) => s.freigeschaltet.indexOf(id) >= 0
-  const aus = []
-  let nr = 0
-  for (const [id, a] of Object.entries(R.EINSATZARTEN)) {
-    nr += 1
-    if (!kaufArt(a) || !(a.preis > 0) || frei(id) || s.einsatzarten[id]) continue
-    if (!a.freischaltung && !a.start_level) continue
-    if (a.freischaltung && !frei(a.freischaltung.nach)) continue
-    if (!orgDa(R, s, a.org)) continue
-    if (Object.entries(a.braucht_gebaeude || {}).some(([g, st]) => ((s.gebaeude || {})[g] || 0) < st)) continue
-    aus.push({ id, preis: a.preis, nr })
-  }
-  return aus.sort((x, y) => x.preis - y.preis || x.nr - y.nr).map((x) => x.id)
+  const L = R.FREISCHALTREIHE || []
+  let i = Math.max(0, Math.floor(Number(s.reihe) || 0))
+  while (i < L.length && schrittErledigt(s, L[i])) i++
+  const x = L[i]
+  return x && x.art ? [x.art] : []
 }
 
 /**
@@ -1078,15 +1168,39 @@ function erstatteEinsatzarten(R, s, jetzt) {
   if (betrag) s.ausgaben.push({ zeit: jetzt, betrag: -betrag, text: "erstattung:einsatzarten" })
 }
 
-/** Merkt im Stand, was der nächste 5-Sterne-Tag freischaltet (für die Anzeige in der App); null, wenn nichts ansteht. */
+/**
+ * Merkt im Stand, was als Nächstes kommt (für die App). naechste_freischaltung: Einsatzart, die der nächste 5-Sterne-Tag
+ * freischaltet (null, wenn ein Meilenstein davor steht; so zeigen ältere Apps nichts Falsches). naechster_schritt: der
+ * nächste Schritt der Reihe mit Nummer, Art (einsatz, grosslage, bau), Guthaben und bei einem Meilenstein der Einsatz danach.
+ */
 function naechsteFreischaltung(R, s) {
   s.naechste_freischaltung = freischaltKandidaten(R, s)[0] || null
+  const L = R.FREISCHALTREIHE
+  if (!L) return
+  s.stufe = stufeVon(R, s)
+  const x = L[s.reihe]
+  if (!x) {
+    s.naechster_schritt = null
+    return
+  }
+  const n = { nr: x.nr, von: L.length, id: x.id, typ: x.bau ? "bau" : x.grosslage ? "grosslage" : "einsatz", name: x.name, guthaben: s.freischalt_guthaben || 0 }
+  if (x.org) n.org = x.org
+  if (x.art) n.art = x.art
+  if (x.bau) {
+    n.gebaeude = x.bau
+    n.stufe = x.stufe
+    const danach = L.slice(s.reihe + 1).find((y) => y.art && !schrittErledigt(s, y))
+    if (danach) n.danach = danach.art
+  }
+  s.naechster_schritt = n
 }
 
-/** Großlagen kommen ab ihrem Level von selbst. Einsatzarten zum Kaufen schaltet nur noch ein 5-Sterne-Tag frei. */
+/**
+ * Früher kamen Großlagen ab Level 30 von selbst. Seit 17.11.2026 stehen sie am Ende der Freischaltreihe und werden dort
+ * an 5-Sterne-Tagen freigeschaltet (reiheWeiter, tagesabschluss). Was schon aktiv ist, bleibt aktiv.
+ */
 function levelFreischalten(R, s, jetzt) {
-  // Großlagen werden nicht gekauft: ab ihrem Level kommen sie von selbst (die an Baustellen hängen mit der Baustelle)
-  if (jetzt) for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.grosslage && !a.baustelle && levelReicht(s, a.ab_level) && !s.einsatzarten[id]) aktiviereArt(R, s, id, jetzt)
+  reiheWeiter(R, s, jetzt || s.bis)
 }
 
 /** Standort einer Organisation: Ort der aktuellen Gebäudestufe (z. B. RTW-Stellplatz am Feuerwehrhaus) oder GEBAEUDE_ORT. */
@@ -1303,7 +1417,7 @@ function beginneBau(R, s, jetzt, b) {
   delete neu.bauzeit_h
   s.baustellen.push(neu)
   // Baustellen-Einsätze werden mit der ersten Baustelle aktiv
-  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.baustelle && !s.einsatzarten[id] && levelReicht(s, a.ab_level)) aktiviereArt(R, s, id, start)
+  for (const [id, a] of Object.entries(R.EINSATZARTEN)) if (a.baustelle && !s.einsatzarten[id] && stufeReicht(R, s, a.ab_level)) aktiviereArt(R, s, id, start)
   return neu
 }
 
@@ -1857,12 +1971,12 @@ function plane(R, s, e, alarm, umwelt) {
 
 /**
  * Grundversorgung von außen (EXTERN): Kann im Dorf niemand ausrücken, übernimmt die Einheit von außerhalb mit fester
- * Anfahrt. Ohne Personen und Fahrzeuge im Dorf, höchstens max_sterne. Nur für Organisationen mit EXTERN-Eintrag ab ihrem Level.
+ * Anfahrt. Ohne Personen und Fahrzeuge im Dorf, höchstens max_sterne. Nur für Organisationen mit EXTERN-Eintrag, sobald es sie gibt (orgFrei).
  */
 function externerPlan(R, s, e, alarm) {
   const art = R.EINSATZARTEN[e.art]
   const x = R.EXTERN && R.EXTERN[art.org]
-  if (!x || !levelReicht(s, x.ab_level)) return null
+  if (!x || !orgFrei(R, s, art.org)) return null
   const eintreffen = alarm + x.anfahrt_min * MIN
   const arbeitEnde = eintreffen + Math.round((art.arbeit_min || 0) * MIN)
   return {
@@ -2239,9 +2353,9 @@ function teil(R, s, e, id, t, umwelt) {
   const art = R.EINSATZARTEN[e.art]
   const fa = R.EINSATZARTEN[id]
   if (!fa) return null
-  // Organisationen, die erst mit einem Level kommen (Werkstatt, Bauhof, ...), gibt es vorher nicht
+  // Organisationen, die erst mit der Freischaltreihe kommen (Werkstatt, Bauhof, ...), gibt es vorher nicht
   if (!orgFrei(R, s, fa.org)) return null
-  const extern = R.EXTERN && R.EXTERN[fa.org] && levelReicht(s, R.EXTERN[fa.org].ab_level)
+  const extern = R.EXTERN && R.EXTERN[fa.org] && orgFrei(R, s, fa.org)
   const partner = art.gemeinsam && fa.org === "polizei" && !(e.gemeinsam && e.gemeinsam.partner)
   // Nur, wenn die andere Organisation jemanden hat oder von außen kommt (sonst entsteht der Folgeeinsatz nicht)
   if (!extern && !s.personal.some((p) => istMitglied(p, fa.org))) {
@@ -2364,6 +2478,8 @@ function abschliessen(R, s, e) {
  * mindestens 4,9 (verfallene Einsätze zählen mit 0 Sternen), wird genau eine Einsatzart freigeschaltet, die nächste
  * aus freischaltKandidaten. Erst dann, aber dann von selbst: kein Level und kein bestimmter Einsatz am selben Tag
  * nötig. Übernommen wird sie danach mit einem Tipp, kostenlos (EINSATZARTEN_KOSTENLOS, 16.11.2026).
+ * Seit 17.11.2026 kommt die Einsatzart aus der festen FREISCHALTREIHE. Steht dort als Nächstes ein Meilenstein (Gebäude
+ * bauen), wird der Tag als Guthaben gemerkt und eingelöst, sobald das Gebäude steht (reiheWeiter).
  */
 const FREISCHALT_SCHNITT = 4.9
 
@@ -2397,10 +2513,19 @@ function tagesabschluss(R, s, tag) {
   d.xp = d.anzahl ? Math.min(TAG_XP_MAX, Math.round(d.durchschnitt * 10 * Math.sqrt(d.anzahl))) : 0
   d.freigeschaltet = []
   if (fuenfSterneTag(d)) {
-    const id = freischaltKandidaten(R, s)[0]
-    if (id) {
-      s.freigeschaltet.push(id)
-      d.freigeschaltet.push(id)
+    const t = tagesende(tag)
+    const L = R.FREISCHALTREIHE || []
+    reiheWeiter(R, s, t)
+    const x = L[s.reihe]
+    if (x && x.bau) {
+      // Vor dem Meilenstein: Der gute Tag verfällt nicht, er wird gemerkt und eingelöst, sobald das Gebäude steht
+      s.freischalt_guthaben = Math.min(R.REIHE_GUTHABEN_MAX || 3, (s.freischalt_guthaben || 0) + 1)
+      d.gemerkt = true
+    } else if (x) {
+      schrittFreischalten(R, s, x, t)
+      d.freigeschaltet.push(x.art)
+      s.reihe += 1
+      reiheWeiter(R, s, t)
     }
   }
   d.abgerechnet = true
@@ -2514,6 +2639,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   rueckkehrerEinziehen(R, s, s.bis)
   einwohnerStart(R, s, s.bis)
   startgeschenk(R, s)
+  reiheWeiter(R, s, s.bis)
   krankenhausVorLevel(R, s)
   naechsteFreischaltung(R, s)
   // eine Millisekunde nach dem letzten Stand, damit das Kaufbuch sie auch direkt nach einem Kauf noch als neu sieht
@@ -2538,7 +2664,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const r = zufall(s.zufall + ":" + ev.id + ":" + st.nr)
       // Mit echten Pegeldaten kommen Hochwasser-Einsätze nur in einer passenden Lage, dann ohne Monatsbedingung
       const pegelF = art.pegel_min && R.PEGEL && s.pegel ? (pegelReicht(R, s, art.pegel_min) ? 1 : 0) : null
-      let f = artLevelReicht(s, art) && !pausiert(s, art) && !art.muellabfuhr ? (pegelF !== null ? pegelF : bedingungFaktor(art, ev.t, wetter(ev.t))) : 0
+      let f = artLevelReicht(R, s, art) && !pausiert(s, art) && !art.muellabfuhr ? (pegelF !== null ? pegelF : bedingungFaktor(art, ev.t, wetter(ev.t))) : 0
       // Großlagen kommen öfter, wenn die Zusammenarbeit gut ist
       if (art.grosslage && R.GROSSLAGE) {
         const z = s.zusammenarbeit || []
@@ -2555,7 +2681,7 @@ function fortschreiben(stand, bis, umwelt, R) {
       const a = s.angemeldet.find((x) => x.id === ev.id)
       s.angemeldet = s.angemeldet.filter((x) => x !== a)
       const art = R.EINSATZARTEN[a.art]
-      if (art && s.einsatzarten[a.art] && artLevelReicht(s, art) && !pausiert(s, art)) erzeuge(R, s, a.art, ev.t, wetter, null, "punkt:" + Math.round(a.x * 10) / 10 + ":" + Math.round(a.z * 10) / 10)
+      if (art && s.einsatzarten[a.art] && artLevelReicht(R, s, art) && !pausiert(s, art)) erzeuge(R, s, a.art, ev.t, wetter, null, "punkt:" + Math.round(a.x * 10) / 10 + ":" + Math.round(a.z * 10) / 10)
     } else if (ev.typ === "warten") {
       versucheWartende(R, s, ev.t, wetter)
     } else if (ev.typ === "verfall") {
@@ -2581,6 +2707,8 @@ function fortschreiben(stand, bis, umwelt, R) {
         }
       }
       fertigstellen(R, s, b, ev.t)
+      // Ein fertiges Gebäude kann ein Meilenstein der Reihe sein: Guthaben gleich einlösen
+      reiheWeiter(R, s, ev.t)
     } else {
       const e = s.laufend.find((x) => x.id === ev.id)
       if (ev.typ === "eintreffen") folgen(R, s, e, wetter)
@@ -2589,6 +2717,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   }
   aufraeumen(s, bis)
   s.bis = bis
+  reiheWeiter(R, s, bis)
   naechsteFreischaltung(R, s)
   return s
 }
@@ -2641,7 +2770,7 @@ function einwohnerZahl(s) {
   return s.personal.length + (s.baustellen || []).filter((b) => b.bewohner).length
 }
 
-/** Wie viele Einwohner das Level erlaubt (Elbe Springs); Figuren aus Geschichten zählen mit, dürfen aber immer kommen. */
+/** Wie viele Einwohner das Level erlaubt (Elbe Springs; bewusst das echte Level: Wirtschaft der Stadt, keine Sperre des Einsatzspiels); Figuren aus Geschichten zählen mit, dürfen aber immer kommen. */
 function einwohnerMax(R, s) {
   const E = R.EINWOHNER
   return E ? E.grund + E.je_level * (s.level || 0) : Infinity
@@ -2757,7 +2886,7 @@ function pruefeBewohner(R, s, roh) {
 function pruefeRolle(R, s, roh) {
   if (!roh) return { bewohner: { org: "feuerwehr", beruf: s.welt === "elbe" ? "ohne" : "frei" } }
   if (roh.org === "rettungsdienst") {
-    if (!orgFrei(R, s, "rettungsdienst")) return { fehler: "Erst ab Level " + R.ORGANISATIONEN.rettungsdienst.ab_level + "." }
+    if (!orgFrei(R, s, "rettungsdienst")) return { fehler: orgText(R, "rettungsdienst") }
     const st = R.GEBAEUDE.rettungswache[s.gebaeude.rettungswache || 0]
     if (orgZahl(s, "rettungsdienst") >= (st.personal_max || 0)) return { fehler: st.personal_max ? "An der Rettungswache sind alle Stellen besetzt. Erst ausbauen." : "Erst die Rettungswache bauen." }
     return { bewohner: { org: "rettungsdienst", beruf: "rettungswache" } }
@@ -2800,7 +2929,7 @@ function kaufe(stand, auftrag, jetzt, R) {
   if (art === "einsatzart") {
     const a = R.EINSATZARTEN[id]
     if (!a || a.folge_nur) return fehler("Diese Einsatzart gibt es nicht zu kaufen.")
-    if (a.grosslage) return fehler("Großlagen werden nicht gekauft, sie kommen ab Level " + a.ab_level + " von selbst.")
+    if (a.grosslage) return fehler("Großlagen werden nicht gekauft, sie kommen am Ende der Freischaltreihe an 5-Sterne-Tagen von selbst.")
     if (s.einsatzarten[id]) return fehler("Schon gekauft.")
     if (s.freigeschaltet.indexOf(id) < 0) return fehler("Noch nicht freigeschaltet. Das bringt der nächste 5-Sterne-Tag (Tagesdurchschnitt ab 4,9).")
     for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) if ((s.gebaeude[g] || 0) < st) return fehler("Dafür braucht es " + R.GEBAEUDE[g][st].name + ".")
@@ -2891,7 +3020,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     const g = R.GERAETE[id]
     const org = auftrag.org || (g && g.org !== "beide" ? g.org : "feuerwehr")
     if (!g || (g.org !== "beide" && g.org !== org)) return fehler("Unbekanntes Gerät.")
-    if (!orgFrei(R, s, org)) return fehler("Erst ab Level " + R.ORGANISATIONEN[org].ab_level + ".")
+    if (!orgFrei(R, s, org)) return fehler(orgText(R, org))
     if (!s.lager[org]) s.lager[org] = {}
     const gl = gebaeudeVon(R, org)
     const max = R.GEBAEUDE[gl][s.gebaeude[gl] || 0].lager_slots
@@ -2901,7 +3030,7 @@ function kaufe(stand, auftrag, jetzt, R) {
   } else if (art === "fahrzeug") {
     const f = R.FAHRZEUGE[id]
     if (!f) return fehler("Unbekanntes Fahrzeug.")
-    if (!orgFrei(R, s, f.org)) return fehler("Erst ab Level " + R.ORGANISATIONEN[f.org].ab_level + ".")
+    if (!orgFrei(R, s, f.org)) return fehler(orgText(R, f.org))
     const sperre = fahrzeugSperre(R, s, id, jetzt)
     if (sperre) return fehler(sperre)
     const geb = gebaeudeVon(R, f.org)
@@ -2917,7 +3046,10 @@ function kaufe(stand, auftrag, jetzt, R) {
     const neu = (s.gebaeude[id] || 0) + 1
     const st = stufen[neu]
     if (!st) return fehler("Schon die höchste Stufe.")
-    if (!levelReicht(s, st.ab_level)) return fehler("Erst ab Level " + st.ab_level + ".")
+    // Das Gebäude einer Organisation gibt es erst, wenn die Reihe ihren Meilenstein erreicht hat
+    const gOrg = Object.keys(R.ORGANISATIONEN).find((o) => R.ORGANISATIONEN[o].gebaeude === id && R.ORGANISATIONEN[o].ab_level)
+    if (gOrg && !orgFrei(R, s, gOrg)) return fehler(orgText(R, gOrg))
+    if (!stufeReicht(R, s, st.ab_level)) return fehler(reiheText(R, st.ab_level))
     const ortId = st.ort || (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[id]) || "feuerwehrhaus"
     const ortP = R.ORTE[ortId]
     if (ortP && !gebietFrei(R, s, gebietAn(R, ortP.x, ortP.z))) return fehler("Das Gelände liegt noch im Nebel. Erst das Gebiet freischalten.")
@@ -2931,7 +3063,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (!a) return fehler("Unbekannter Ausbau.")
     if (s.ausbau.indexOf(id) >= 0) return fehler("Schon vorhanden.")
     if (imBau(s, "ausbau", id)) return fehler("Wird schon gebaut.")
-    if (!levelReicht(s, a.ab_level)) return fehler("Erst ab Level " + a.ab_level + ".")
+    if (!stufeReicht(R, s, a.ab_level)) return fehler(reiheText(R, a.ab_level))
     if (a.gebaeude !== "ort" && (s.gebaeude[a.gebaeude] || 0) < a.ab_stufe) return fehler("Das Gebäude ist dafür noch zu klein.")
     if (a.voraussetzung && s.ausbau.indexOf(a.voraussetzung) < 0) return fehler("Zuerst " + R.AUSBAU[a.voraussetzung].name + ".")
     roh = a.preis
@@ -2956,7 +3088,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     const p = person()
     const m = R.MITGLIEDSCHAFTEN[id]
     if (!p || !m) return fehler("Unbekannte Person oder Mitgliedschaft.")
-    if (!levelReicht(s, m.ab_level)) return fehler("Erst ab Level " + m.ab_level + ".")
+    if (R.ORGANISATIONEN[id] ? !orgFrei(R, s, id) : !stufeReicht(R, s, m.ab_level)) return fehler(R.ORGANISATIONEN[id] ? orgText(R, id) : reiheText(R, m.ab_level))
     if (id === "sportverein") {
       if (p.sportverein) return fehler("Schon im Sportverein.")
       p.sportverein = true
@@ -2988,7 +3120,7 @@ function kaufe(stand, auftrag, jetzt, R) {
     const P = R.PERSONAL[id]
     if (!P) return fehler("Unbekannt.")
     const porg = P.org || "polizei"
-    if (!orgFrei(R, s, porg)) return fehler("Erst ab Level " + R.ORGANISATIONEN[porg].ab_level + ".")
+    if (!orgFrei(R, s, porg)) return fehler(orgText(R, porg))
     const pg = gebaeudeVon(R, porg)
     const max = R.GEBAEUDE[pg][s.gebaeude[pg] || 0].personal_max || 0
     const zahl = porg === "polizei" ? polizeiZahl(s) : orgZahl(s, porg)
@@ -3011,6 +3143,7 @@ function kaufe(stand, auftrag, jetzt, R) {
 
   // Vielleicht kann ein wartender Einsatz jetzt alarmiert werden
   versucheWartende(R, s, jetzt, (t) => wetterBei(null, t))
+  reiheWeiter(R, s, jetzt)
   naechsteFreischaltung(R, s)
   return buchung ? { stand: s, preis: preis(R, roh), buchung } : { stand: s, preis: preis(R, roh) }
 }
@@ -3064,14 +3197,14 @@ function fahrzeugeDurchEinsatz(R, s) {
 }
 
 /**
- * Warum ein Fahrzeug (noch) nicht gekauft werden kann, oder null. Reihenfolge: Freischaltung (Level oder passender
+ * Warum ein Fahrzeug (noch) nicht gekauft werden kann, oder null. Reihenfolge: Freischaltung (Stufe der Reihe oder passender
  * Einsatz; ein schon vorhandener Typ gilt als frei), Fahrerin oder Fahrer mit Lehrgang, Zugfahrzeug für Anhänger.
  */
 function fahrzeugSperre(R, s, id, t) {
   const f = R.FAHRZEUGE[id]
   if (!f) return "Unbekanntes Fahrzeug."
   const vorhanden = s.fahrzeuge.some((x) => x.typ === id)
-  if (!vorhanden && !levelReicht(s, f.ab_level) && !fahrzeugeDurchEinsatz(R, s).has(id)) return "Erst ab Level " + f.ab_level + " oder mit einem passenden Einsatz."
+  if (!vorhanden && !stufeReicht(R, s, f.ab_level) && !fahrzeugeDurchEinsatz(R, s).has(id)) return reiheText(R, f.ab_level).replace(/\.$/, "") + " oder früher mit einem passenden Einsatz."
   if (f.fahrer && R.LEHRGAENGE[f.fahrer] && !s.personal.some((p) => istMitglied(p, f.org) && hatLehrgang(p, f.fahrer, t))) return "Niemand darf es fahren: Es fehlt der Lehrgang " + R.LEHRGAENGE[f.fahrer].name + "."
   if (f.voraussetzung_fahrzeug && !s.fahrzeuge.some((x) => f.voraussetzung_fahrzeug.indexOf(x.typ) >= 0)) return "Braucht ein Zugfahrzeug."
   return null
@@ -3219,8 +3352,10 @@ module.exports = {
   ortszeit,
   preis,
   levelAusXp,
+  stufeVon,
+  schrittVorStufe,
   muellautoPunkt,
   pegelReicht,
   // für Tests
-  _intern: { erstatteEinsatzarten, freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { reiheWeiter, schrittErledigt, orgFrei, reiheText, erstatteEinsatzarten, freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

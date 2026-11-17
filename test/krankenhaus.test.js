@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8)
 const STD = 3600000
@@ -22,7 +23,7 @@ const einsatz = (s, id, art) => ({ id, art, plan: { personen: s.personal.map((p)
 
 test("Mit Chance 1 liegt jeder Beteiligte im Kreiskrankenhaus und fällt aus, danach ist er wieder da", () => {
   const s = stand()
-  s.level = R.KRANKENHAUS.ab_level
+  vorspulen(R, s, R.KRANKENHAUS.ab_level)
   const K = { ...R.KRANKENHAUS, chance: 1 }
   const R2 = { ...R, KRANKENHAUS: K }
   const verletzt = S._intern.verletzungen(R2, s, einsatz(s, "e1", "b_hecke"), T0 + STD)
@@ -40,7 +41,7 @@ test("Mit Chance 1 liegt jeder Beteiligte im Kreiskrankenhaus und fällt aus, da
 
 test("Mit eigenem Krankenhaus im Dorf (ab Level) geht es schneller; ohne Glück passiert nichts", () => {
   const s = stand()
-  s.level = R.KRANKENHAUS.ab_level
+  vorspulen(R, s, R.KRANKENHAUS.ab_level)
   // Krankenhaus im Dorf: Level und das Krankenhausgelände (Gebiet im Nebel)
   s.gebiete.push(Object.entries(R.GEBIETE.besonders).find(([, g]) => g.art === "krankenhaus")[0])
   const R2 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 1 } }
@@ -48,14 +49,14 @@ test("Mit eigenem Krankenhaus im Dorf (ab Level) geht es schneller; ohne Glück 
   assert.equal(s.personal[0].krankenhaus.ort, R.KRANKENHAUS.name_dorf)
   assert.equal(s.personal[0].krankenhaus.bis, T0 + R.KRANKENHAUS.dauer_h.dorf * STD)
   const s2 = stand()
-  s2.level = R.KRANKENHAUS.ab_level
+  vorspulen(R, s2, R.KRANKENHAUS.ab_level)
   const R3 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 0 } }
   assert.deepEqual(S._intern.verletzungen(R3, s2, einsatz(s2, "e3", "b_hecke"), T0), [])
 })
 
 test("Die Chance ist klein: über viele Einsätze nur wenige Verletzte", () => {
   const s = stand()
-  s.level = R.KRANKENHAUS.ab_level
+  vorspulen(R, s, R.KRANKENHAUS.ab_level)
   let n = 0
   for (let i = 0; i < 400; i++) {
     for (const p of s.personal) p.krankenhaus = null
@@ -66,7 +67,7 @@ test("Die Chance ist klein: über viele Einsätze nur wenige Verletzte", () => {
 
 test("Vor dem Krankenhaus-Level verletzt sich niemand, und wer noch im Krankenhaus liegt, ist sofort wieder da", () => {
   const s = stand()
-  s.level = R.KRANKENHAUS.ab_level - 1
+  vorspulen(R, s, R.KRANKENHAUS.ab_level - 1)
   const R2 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 1 } }
   assert.deepEqual(S._intern.verletzungen(R2, s, einsatz(s, "e9", "b_hecke"), T0), [])
   s.personal[0].krankenhaus = { bis: T0 + 48 * STD, grund: "Rücken verhoben", ort: R.KRANKENHAUS.name_stadt, seit: T0 }

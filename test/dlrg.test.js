@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 6, 11, 10) // Samstag, 11. Juli, 12 Uhr Ortszeit
 const WERKTAG = Date.UTC(2026, 6, 14, 16) // Dienstag, 18 Uhr Ortszeit
@@ -29,7 +30,7 @@ function fertig(s) {
 /** Drei Feuerwehrleute, zwei davon in der DLRG, Wachturm und Rettungsbrett. */
 function dorf(level = 24, turm = true) {
   let s = S.neuerStand(R, T0 - 24 * STD, 5)
-  s.level = level
+  vorspulen(R, s, level)
   for (const bp of ["bp01", "bp02", "bp03"]) s = kaufe(s, { art: "bauplatz", id: bp })
   const [a, b] = s.personal
   s = fertig(kaufe(s, { art: "mitgliedschaft", id: "dlrg", ziel: a.id }))
@@ -50,15 +51,15 @@ function erzeugeAllein(s, art, ort, t) {
 
 test("Vor Level 24 gibt es keine DLRG", () => {
   let s = S.neuerStand(R, T0, 5)
-  s.level = 23
+  vorspulen(R, s, 23)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
-  assert.match(S.kaufe(s, { art: "mitgliedschaft", id: "dlrg", ziel: s.personal[0].id }, T0, R).fehler, /Erst ab Level 24/)
+  assert.match(S.kaufe(s, { art: "mitgliedschaft", id: "dlrg", ziel: s.personal[0].id }, T0, R).fehler, /DLRG-Ortsgruppe kommt in der Freischaltreihe nach „Scheunenbrand“/)
   assert.ok(!S._intern.wachdienstAktiv(R, s, T0))
 })
 
 test("Rettungsschwimmen braucht Fitness: Bronze ab 40, Silber ab 55", () => {
   let s = S.neuerStand(R, T0, 5)
-  s.level = 24
+  vorspulen(R, s, 24)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   const p = s.personal[0]
   p.fitness = 35

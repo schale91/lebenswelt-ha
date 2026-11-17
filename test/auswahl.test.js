@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 10, 16) // Samstag, 18 Uhr Ortszeit
 const MIN = 60000
@@ -12,7 +13,7 @@ const trocken = () => "trocken"
 /** Ausgebaute Wehr: großes Gerätehaus, zwölf Kräfte mit allen Lehrgängen, LF 10, TLF, ELW, Löscher im Lager. */
 function wehr() {
   let s = S.neuerStand(R, T0 - 2 * STD, 31)
-  s.level = 30
+  vorspulen(R, s, 30)
   const kaufe = (a) => {
     const r = S.kaufe(s, a, T0 - STD, R)
     if (r.fehler) return false

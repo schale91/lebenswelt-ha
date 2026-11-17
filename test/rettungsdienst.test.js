@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen, schritt } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const NACHT = Date.UTC(2026, 9, 13, 22) // Mittwoch, 0 Uhr Ortszeit
@@ -19,7 +20,7 @@ function kaufe(s, auftrag, t = T0) {
 
 function stand(level = 16) {
   const s = S.neuerStand(R, T0, 7)
-  s.level = level
+  vorspulen(R, s, level)
   return s
 }
 
@@ -54,8 +55,8 @@ test("Vor Level 16 gibt es keinen Rettungsdienst: Verkehrsunfall läuft wie bish
   let s = stand(15)
   s = S.fortschreiben(s, T0 + MIN, trocken, R)
   assert.ok(!s.freigeschaltet.includes("rd_krankentransport"))
-  assert.match(S.kaufe(s, { art: "gebaeude", id: "rettungswache" }, T0, R).fehler, /Erst ab Level 16/)
-  assert.match(S.kaufe(s, { art: "ausbau", id: "notrufabfrage" }, T0, R).fehler, /Erst ab Level 16/)
+  assert.match(S.kaufe(s, { art: "gebaeude", id: "rettungswache" }, T0, R).fehler, /Rettungsdienst kommt in der Freischaltreihe nach „Gasgeruch im Gebäude“/)
+  assert.match(S.kaufe(s, { art: "ausbau", id: "notrufabfrage" }, T0, R).fehler, /Kommt in der Freischaltreihe nach „Gasgeruch im Gebäude“/)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "bauplatz", id: "bp02" })
   s = kaufe(s, { art: "geraet", id: "tueroeffnung" })
@@ -64,9 +65,12 @@ test("Vor Level 16 gibt es keinen Rettungsdienst: Verkehrsunfall läuft wie bish
 })
 
 test("Ab Level 16 ohne eigene Wache: RTW der Nachbarwache mit 14 Minuten, höchstens 3 Sterne", () => {
-  const s = S.fortschreiben(stand(16), T0 + MIN, trocken, R)
-  assert.ok(!s.freigeschaltet.includes("rd_krankentransport"), "das Level schaltet nichts mehr frei")
-  assert.ok(S._intern.freischaltKandidaten(R, s).includes("rd_krankentransport"), "steht in der Reihe für den nächsten 5-Sterne-Tag")
+  const st = stand(16)
+  st.reihe = schritt(R, "bau:rettungswache:1")
+  const s = S.fortschreiben(st, T0 + MIN, trocken, R)
+  assert.ok(!s.freigeschaltet.includes("rd_krankentransport"), "der Fortschritt allein schaltet nichts frei")
+  assert.equal(s.naechster_schritt.gebaeude, "rettungswache", "erst die Rettungswache bauen")
+  assert.equal(s.naechster_schritt.danach, "rd_krankentransport", "danach kommt der Krankentransport")
   const { e } = einsatz(s, "rd_sturz", "marktplatz")
   assert.equal(e.status, "abgeschlossen")
   assert.equal(e.plan.extern, R.EXTERN.rettungsdienst.name)
@@ -179,7 +183,7 @@ test("Notfallsanitäter ausbilden geht nur an der Lehrrettungswache, die erst ab
   s = kaufe(s, { art: "gebaeude", id: "rettungswache" })
   assert.ok(kaufe(s, { art: "lehrgang", id: "nfs", ziel: p.id }))
   const frueh = kaufe(wache(26), { art: "gebaeude", id: "rettungswache" })
-  assert.match(S.kaufe(frueh, { art: "gebaeude", id: "rettungswache" }, T0, R).fehler, /Erst ab Level 27/)
+  assert.match(S.kaufe(frueh, { art: "gebaeude", id: "rettungswache" }, T0, R).fehler, /Kommt in der Freischaltreihe nach/)
 })
 
 test("Sportverletzung erst mit Sportplatz Stufe 3", () => {
@@ -194,7 +198,7 @@ test("Fortschreiben in Teilen ergibt dasselbe wie am Stück, mit Rettungsdienst"
   s = kaufe(s, { art: "einsatzart", id: "rd_krankentransport" })
   s.freigeschaltet.push("rd_sturz")
   s = kaufe(s, { art: "einsatzart", id: "rd_sturz" })
-  s.level = R.FAHRZEUGE.ktw.ab_level
+  vorspulen(R, s, R.FAHRZEUGE.ktw.ab_level)
   s = kaufe(s, { art: "fahrzeug", id: "ktw" })
   const ende = T0 + 4 * 24 * STD
   const ganz = S.fortschreiben(s, ende, trocken, R)

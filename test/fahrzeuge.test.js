@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8)
 
@@ -30,14 +31,14 @@ test("Teure Fahrzeuge erst ab ihrem Level; der Starteinsatz schaltet das günsti
   // Katze auf Baum braucht eine Leiter: das TSF bringt sie mit und ist damit frei, das LF 10 nicht
   assert.ok(S.fahrzeugeDurchEinsatz(R, s).has("tsf"))
   assert.equal(S.fahrzeugSperre(R, s, "tsf", T0), null)
-  assert.match(S.fahrzeugSperre(R, s, "lf10", T0), /Erst ab Level/)
-  s.level = R.FAHRZEUGE.lf10.ab_level
+  assert.match(S.fahrzeugSperre(R, s, "lf10", T0), /Kommt in der Freischaltreihe nach/)
+  vorspulen(R, s, R.FAHRZEUGE.lf10.ab_level)
   assert.match(S.fahrzeugSperre(R, s, "lf10", T0) || "", /^$|Klasse C/)
 })
 
 test("Ohne passende Fahrerlaubnis kein Kauf, Anhänger nur mit Zugfahrzeug", () => {
   const s = mitHaeusern(2)
-  s.level = 30
+  vorspulen(R, s, 30)
   assert.match(S.fahrzeugSperre(R, s, "tsf", T0), /Niemand darf es fahren/)
   assert.match(S.kaufe(s, { art: "fahrzeug", id: "tsf" }, T0, R).fehler, /Fahrberechtigung/)
   s.personal[0].lehrgaenge.fahrberechtigung = T0 - 1
@@ -47,7 +48,7 @@ test("Ohne passende Fahrerlaubnis kein Kauf, Anhänger nur mit Zugfahrzeug", () 
   // Anhänger ohne Zugfahrzeug
   assert.match(S.fahrzeugSperre(R, s, "tsa", T0), /Zugfahrzeug/)
   // Ein schon vorhandener Typ darf ein zweites Mal gekauft werden, auch unter dem Level
-  s.level = 0
+  vorspulen(R, s, 0)
   s.fahrzeuge.push({ id: "fx", typ: "lf10", beladung: {}, belegt_bis: 0 })
   s.personal[0].lehrgaenge.fuehrerschein_c = T0 - 1
   assert.equal(S.fahrzeugSperre(R, s, "lf10", T0), null)
