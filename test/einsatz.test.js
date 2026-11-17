@@ -77,8 +77,6 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "bauplatz", id: "bp02" })
   s = kaufe(s, { art: "bauplatz", id: "bp03" })
-  // Pflicht der Freischaltreihe vor dem nächsten Schritt: eine Kraft an der Dienststelle
-  s = mitPolizei(S, R, s, 1, T0)
   s = kaufe(s, { art: "haus_ausbau", ziel: s.haeuser[1].id, id: "fahrrad" })
   s = kaufe(s, { art: "haus_ausbau", ziel: s.haeuser[2].id, id: "fahrrad" })
   s = kaufe(s, { art: "fahrzeug", id: "handzugwagen" })
@@ -90,6 +88,8 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
     s = kaufe(s, { art: "psa", ziel: p.id, id: "stiefel", stufe: 2 })
     s = kaufe(s, { art: "psa", ziel: p.id, id: "helm", stufe: 1 })
   }
+  // Pflicht der Freischaltreihe vor dem nächsten Schritt: eine Kraft an der Dienststelle
+  s = mitPolizei(S, R, s, 1, T0)
   const { e, stand } = katze(s)
   assert.equal(e.status, "abgeschlossen", e.grund)
   assert.equal(e.bewertung.sterne, 5, JSON.stringify(e.bewertung.abzuege))
@@ -504,10 +504,11 @@ test("Freischaltung (Regel 3): Tagesdurchschnitt ab 4,9 schaltet genau die näch
 
 test("Freischaltung (Regel 3): eine gemeinsame Reihe über Feuerwehr und Polizei, ohne Level und ohne bestimmten Einsatz am Tag", () => {
   // Der Tag enthielt nur Katzeneinsätze; freigeschaltet wird trotzdem auch ein Polizeieinsatz, sobald er dran ist
-  let s = S.neuerStand(R, T0, 31)
+  // Mit zwei Polizeikräften an der Polizeistation sind die beiden Polizei-Meilensteine am Anfang erledigt
+  let s = mitPolizei(S, R, S.neuerStand(R, T0, 31), 2, T0)
   vorspulen(R, s, 0)
   const reihe = []
-  // Die ersten elf Schritte nach den Starteinsätzen sind Einsätze (danach kommt der Wertstoffhof als Meilenstein)
+  // Danach sind die nächsten elf Schritte Einsätze (dann kommt der Wertstoffhof als Meilenstein)
   for (let i = 0; i < 11; i++) {
     for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e13
     const tag = S._intern.tagVon(s.bis + 1)
@@ -522,7 +523,7 @@ test("Freischaltung (Regel 3): eine gemeinsame Reihe über Feuerwehr und Polizei
   const orgs = new Set(reihe.map((id) => R.EINSATZARTEN[id].org))
   assert.ok(orgs.has("feuerwehr") && orgs.has("polizei"), reihe.join(", "))
   // Die Reihe folgt der festen FREISCHALTREIHE, und jeder Vorgänger war schon freigeschaltet
-  assert.deepEqual(reihe, R.FREISCHALTREIHE.slice(2, 13).map((x) => x.art))
+  assert.deepEqual(reihe, R.FREISCHALTREIHE.slice(3, 15).filter((x) => x.art).map((x) => x.art))
   for (let i = 1; i < reihe.length; i++) {
     const vor = R.EINSATZARTEN[reihe[i]].freischaltung.nach
     assert.ok(vor === "tier_katze" || vor === "p_ruhestoerung" || reihe.indexOf(vor) < i, reihe[i] + " nach " + vor)
@@ -539,7 +540,11 @@ test("Freischaltung (Regel 3): eine gemeinsame Reihe über Feuerwehr und Polizei
 test("Freischaltung: Elbe Springs folgt derselben Reihe, Gebäude-Voraussetzungen stehen als Meilenstein davor", () => {
   const elbe = S.neustart(S.neuerStand(R, T0, 31), T0, R)
   let s = S.fortschreiben(elbe.stand, T0 + MIN, trocken, R)
-  assert.equal(s.reihe, 2, "Katze und Ruhestörung sind von Anfang an da")
+  assert.equal(s.reihe, 1, "Katze ist da, als Nächstes eine Kraft an der Dienststelle")
+  assert.equal(s.naechster_schritt.typ, "kraefte")
+  assert.deepEqual([s.naechster_schritt.org, s.naechster_schritt.kraefte, s.naechster_schritt.danach], ["polizei", 1, "b_muelltonne"])
+  s = mitPolizei(S, R, s, 1, T0 + MIN)
+  assert.equal(s.reihe, 3, "Ruhestörung gibt es von Anfang an")
   assert.equal(s.naechste_freischaltung, "b_muelltonne")
   // Mit der Reihe am Deponiebrand: ohne Deponie Stufe 4 ist der Meilenstein davor offen, nichts wird übersprungen
   s.reihe = R.FREISCHALTREIHE.findIndex((x) => x.id === "bau:deponie:4")

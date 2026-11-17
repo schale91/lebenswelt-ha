@@ -186,7 +186,8 @@ function viertelSperre(R, s, id) {
 /** Einwohner, die die Reihe bis zum nächsten Schritt verlangt (Hauptorganisationen; DRK, DLRG und THW sind Ehrenamt). */
 function reiheEinwohner(R, s) {
   const L = R.FREISCHALTREIHE || []
-  const je = {}
+  // Die drei Feuerwehrleute vom Start zählen immer mit
+  const je = { feuerwehr: (R.EINWOHNER && R.EINWOHNER.start_feuerwehr) || 0 }
   for (const x of L.slice(0, Math.min(L.length, (Number(s.reihe) || 0) + 1))) if (x.kraefte && ["drk", "dlrg", "thw"].indexOf(x.org) < 0) je[x.org] = Math.max(je[x.org] || 0, x.kraefte)
   return Object.values(je).reduce((n, k) => n + k, 0)
 }
