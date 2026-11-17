@@ -33,4 +33,19 @@ function grosslagenFrei(R, S, s, t = s.bis) {
   return s
 }
 
-module.exports = { vorspulen, schritt, grosslagenFrei }
+/**
+ * Pflicht der Reihe für Polizeieinsätze (17.11.2026): n Beamtinnen oder Beamte an die Dienststelle versetzen, ab zwei mit
+ * der Polizeistation (Stufe 1). Wie ein Kauf im Shop; t ist der Kaufzeitpunkt.
+ */
+function mitPolizei(S, R, s, n = 1, t = s.bis) {
+  if (n > 1 && (s.gebaeude.dienststelle || 0) < 1) s.gebaeude.dienststelle = 1
+  let st = s
+  while (st.personal.filter((p) => p.org === "polizei").length < n) {
+    const r = S.kaufe(st, { art: "personal", id: "polizei" }, t, R)
+    if (r.fehler) throw new Error(r.fehler)
+    st = r.stand
+  }
+  return st
+}
+
+module.exports = { vorspulen, schritt, grosslagenFrei, mitPolizei }

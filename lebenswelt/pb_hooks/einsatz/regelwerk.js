@@ -2726,40 +2726,71 @@ const ABFALL = {
  * Regeln (test/reihe.test.js): Vorgänger vor Nachfolger, Meilenstein vor den Einsätzen seiner Organisation und vor
  * Einsätzen mit braucht_gebaeude, nie mehr als zwei gleiche Dienste hintereinander, Großlagen zuletzt. Baustellen-
  * Einsätze und Folgeeinsätze stehen nicht in der Reihe (sie kommen wie bisher von selbst).
- * Einträge: "einsatzart" oder { bau: gebaeude, stufe } (Organisation des Gebäudes, falls eine dazu gehört).
+ * Einträge: "einsatzart", { bau: gebaeude, stufe, kraefte? } (Gebäude in der Stufe, dazu optional so viele Kräfte
+ * seiner Organisation), { kraefte: org, anzahl } (so viele Mitglieder der Organisation, also Wohnhäuser bzw. Personal)
+ * oder { viertel } (Viertel von Elbe Springs erschließen). Kräfte: mindestens.personen der folgenden Einsätze und ihrer
+ * Folgeeinsätze, damit sie mit eigenen Leuten (nicht nur von außen, höchstens 3 Sterne) zu 4,9 abschließbar sind.
  */
 const REIHE_GUTHABEN_MAX = 3
+
+/**
+ * Viertel von Elbe Springs, die erst erschlossen werden (Wunsch von Alex, 17.11.2026: „blockausbau ... die müssen pflicht
+ * sein“). Die Lage steht in der App (app/src/stadt/raster.ts, VIERTEL). Erschlossen wird mit Münzen im Einsatz-Shop;
+ * wo ein Einsatz oder eine Wache daran hängt, ist das Viertel ein Meilenstein der Reihe. orte: Orte des Regelwerks, die
+ * im Viertel liegen (dort entsteht vorher kein Einsatz, dort wird vorher nicht gebaut); wohnhaeuser: zusätzliche Plätze
+ * für Wohnhäuser. ab: Stufe der Reihe, ab der man es auch ohne Meilenstein erschließen darf (früher das Level, ab dem
+ * die App das Viertel zeigte; alt_ab bleibt für die Übernahme alter Stände). Preise wie die Ringe der Gebiete im Nebel.
+ */
+const VIERTEL = {
+  kirche: { name: "Kirchweg", text: "Kirche, Arztpraxis und der Deichkrug", preis: 6000, ab: 7, alt_ab: 7, orte: ["arbeit_kirche", "arbeit_arztpraxis", "arbeit_diner"] },
+  gewerbe: { name: "Gewerbe", text: "Tankstelle, Werkstatt und Bauhof", preis: 6000, ab: 7, alt_ab: 7, orte: ["arbeit_tankstelle", "werkstatt_dorf", "bauhof", "thw_unterkunft"] },
+  wohnen2: { name: "Wohnviertel 2", text: "sechs weitere Wohnhäuser an der Mittelstraße", preis: 12000, ab: 8, alt_ab: 8, orte: [], wohnhaeuser: 6 },
+  freizeit: { name: "Freizeit und Land", text: "Freibad, Bowlingbahn und Bauernhof", preis: 20000, ab: 24, alt_ab: 24, orte: ["arbeit_freibad", "arbeit_bowling", "arbeit_bauernhof"] },
+}
+/** Wohnhäuser im ersten Wohnviertel (app/src/stadt/raster.ts, WOHN_PLAETZE) */
+const WOHNHAEUSER_START = 9
+
+/** Namen für Meilensteine „n Einsatzkräfte“ */
+const KRAEFTE_NAMEN = { feuerwehr: "Feuerwehr", polizei: "Polizei", werkstatt: "Werkstatt", bauhof: "Bauhof", rettungsdienst: "Rettungsdienst", drk: "DRK", dlrg: "DLRG", thw: "THW" }
 const FREISCHALTREIHE_ROH = [
-  // 1. Einstieg mit Feuerwehr und Polizei: kleine Lagen, jeder Dienst lernt seine Grundlagen. Die Polizei kommt jeden
-  //    dritten Schritt dran, damit es nicht nur Feuer gibt.
-  "tier_katze", "p_ruhestoerung", "b_muelltonne", "th_oelspur", "p_falschparker", "b_hecke", "p_hilflos",
-  "th_baum_strasse", "b_muellfahrzeug", "p_vu_sachschaden", "th_wasser_keller", "b_brandserie", "p_wild",
-  // 2. Wertstoffhof: Erst mit der Anlage der Stadt kann es dort brennen. Danach Türöffnung (nach der hilflosen Person
-  //    der Polizei), Wasser und Fahrzeugbrände.
-  { bau: "deponie", stufe: 1 }, "b_wertstoffhof", "th_tuer", "p_ladendiebstahl", "b_flaeche", "th_graben",
-  "p_trunkenheit", "b_pkw", "th_unfallflucht", "p_einbruch", "th_aufzug", "rwm",
-  // 3. Bauhof und Werkstatt (früher Level 12): Gebäude bauen, dann Verkehrssicherung, Winterdienst und Abschleppen im
-  //    Wechsel mit der Feuerwehr (Brandmeldeanlage, Verkehrsunfall, First Responder, Gas).
-  { bau: "bauhof", stufe: 1 }, "bh_ast", "th_kind_auto", "bh_streuen", "silvester",
-  { bau: "werkstatt", stufe: 1 }, "ab_panne", "bma", "ab_graben", "th_vu", "p_schlaegerei", "fr_reanimation", "ab_lkw", "abc_gas",
-  // 4. Rettungsdienst (früher Level 16): Rettungswache bauen, vom Krankentransport bis zum Brustschmerz, dazwischen
-  //    Feuerwehr und der letzte Polizeieinsatz. Sport-Einsätze erst mit dem Trimm-dich-Pfad am Sportplatz.
-  { bau: "rettungswache", stufe: 1 }, "rd_krankentransport", "th_pferd", "rd_sturz", "rd_wespenstich", "th_motorrad",
-  "rd_hitze", "p_vermisst", "rd_atemnot", "rd_infektion", "b_wohnung", "rd_fieberkrampf", "rd_brustschmerz", "th_trunkenheit",
-  { bau: "sportplatz", stufe: 3 }, "rd_sportverletzung", "fr_reanimation_sport",
-  // 5. DRK (früher Level 20): Unterkunft bauen, Helfer vor Ort, Sanitätswachdienst; das Sportfest braucht Flutlicht.
-  //    Die Deponie (Stufe 4) kommt vor dem Deponiebrand.
-  { bau: "drk_unterkunft", stufe: 1 }, "drk_hvo", "rd_reanimation", "drk_sanwache", "abc_raeumung", "th_vu_mehrere",
-  { bau: "sportplatz", stufe: 6 }, "drk_sanwache_sport", "b_leerstand", "th_rinder",
-  { bau: "deponie", stufe: 4 }, "b_deponie", "b_scheune",
-  // 6. DLRG (früher Level 24): Wachstation an der Elbe. Erst jetzt die Wasser-Einsätze der Feuerwehr (Eis, Person in
-  //    der Elbe), weil die Wasserretter dazukommen.
-  { bau: "wachstation", stufe: 1 }, "dlrg_badeunfall", "th_eis", "dlrg_boot", "th_person_wasser", "th_stalldach",
+  // 1. Einstieg mit Feuerwehr und Polizei: kleine Lagen. Die Polizei braucht dafür erst eine Kraft an der Dienststelle,
+  //    für die hilflose Person (zwei Beamte) die Polizeistation. Die Polizei kommt etwa jeden dritten Schritt dran.
+  "tier_katze", { kraefte: "polizei", anzahl: 1 }, "p_ruhestoerung", "b_muelltonne", "th_oelspur", "p_falschparker", "b_hecke",
+  { bau: "dienststelle", stufe: 1, kraefte: 2 }, "p_hilflos", "th_baum_strasse", "b_muellfahrzeug", "p_vu_sachschaden",
+  "th_wasser_keller", "b_brandserie", "p_wild",
+  // 2. Wertstoffhof: Erst mit der Anlage der Stadt kann es dort brennen, und ein Löschangriff braucht vier
+  //    Feuerwehrleute (Wohnhäuser bauen). Danach Türöffnung (nach der hilflosen Person der Polizei), Wasser, Fahrzeuge.
+  { bau: "deponie", stufe: 1 }, { kraefte: "feuerwehr", anzahl: 4 }, "b_wertstoffhof", "p_ladendiebstahl", "th_tuer",
+  "b_flaeche", "p_trunkenheit", "th_graben", "b_pkw", "p_einbruch", "th_unfallflucht",
+  // 3. Kirchweg erschließen: Die Arztpraxis dort hat den Aufzug, in dem jemand stecken bleibt.
+  { viertel: "kirche" }, "th_aufzug", "rwm",
+  // 4. Gewerbe erschließen (dort stehen Bauhof und Werkstatt), dann Bauhof und Werkstatt (früher Level 12) mit je einer
+  //    Kraft: Verkehrssicherung, Winterdienst und Abschleppen im Wechsel mit der Feuerwehr. Für den Verkehrsunfall
+  //    sechs Feuerwehrleute, für die Schlägerei vier Beamte, für den festgefahrenen LKW eine größere Werkstatt.
+  { viertel: "gewerbe" }, { bau: "bauhof", stufe: 1, kraefte: 1 }, "bh_ast", "th_kind_auto", "bh_streuen", "silvester",
+  { bau: "werkstatt", stufe: 1, kraefte: 1 }, "ab_panne", "bma", "ab_graben", { kraefte: "feuerwehr", anzahl: 6 }, "th_vu",
+  { kraefte: "polizei", anzahl: 4 }, "p_schlaegerei", "fr_reanimation", { bau: "werkstatt", stufe: 2, kraefte: 2 }, "ab_lkw", "abc_gas",
+  // 5. Rettungsdienst (früher Level 16): Rettungswache bauen und zwei Kräfte einstellen, vom Krankentransport bis zum
+  //    Brustschmerz, dazwischen Feuerwehr und der letzte Polizeieinsatz. Der Zimmerbrand braucht neun Feuerwehrleute.
+  //    Sport-Einsätze erst mit dem Trimm-dich-Pfad am Sportplatz.
+  { bau: "rettungswache", stufe: 1, kraefte: 2 }, "rd_krankentransport", "th_pferd", "rd_sturz", "rd_wespenstich", "th_motorrad",
+  "rd_hitze", "p_vermisst", "rd_atemnot", "rd_infektion", { kraefte: "feuerwehr", anzahl: 9 }, "b_wohnung", "rd_fieberkrampf",
+  "rd_brustschmerz", "th_trunkenheit", { bau: "sportplatz", stufe: 3 }, "rd_sportverletzung", "fr_reanimation_sport",
+  // 6. DRK (früher Level 20): Unterkunft bauen, zwei Mitglieder, Helfer vor Ort, Sanitätswachdienst; das Sportfest braucht
+  //    Flutlicht. Die Deponie (Stufe 4) kommt vor dem Deponiebrand. Für den Scheunenbrand (Zug, 18 Kräfte) und später
+  //    den Deich (20) reicht das erste Wohnviertel nicht: Wohnviertel 2 erschließen und 20 Feuerwehrleute.
+  { bau: "drk_unterkunft", stufe: 1, kraefte: 2 }, "drk_hvo", "rd_reanimation", "drk_sanwache", "abc_raeumung", "th_vu_mehrere",
+  { bau: "sportplatz", stufe: 6 }, "drk_sanwache_sport", "b_leerstand", "th_rinder", { bau: "deponie", stufe: 4 }, "b_deponie",
+  { viertel: "wohnen2" }, { kraefte: "feuerwehr", anzahl: 20 }, "b_scheune",
+  // 7. DLRG (früher Level 24): Wachstation an der Elbe und vier Mitglieder. Erst jetzt die Wasser-Einsätze der Feuerwehr
+  //    (Eis, Person in der Elbe), weil die Wasserretter dazukommen.
+  { bau: "wachstation", stufe: 1, kraefte: 4 }, "dlrg_badeunfall", "th_eis", "dlrg_boot", "th_person_wasser", "th_stalldach",
   "dlrg_hochwasser", "abc_lkw",
-  // 7. THW (früher Level 27, nur auf Anforderung): Unterkunft bauen, dann Deichverteidigung und Stromausfall, bei
-  //    denen das THW pumpt und Strom einspeist.
-  { bau: "thw_unterkunft", stufe: 1 }, "th_deich", "th_stromausfall",
-  // 8. Großlagen am Ende (früher Level 30), je eine pro 5-Sterne-Tag, von der leichtesten zur schwersten. Alle Dienste
+  // 8. THW (früher Level 27, nur auf Anforderung): Unterkunft bauen und vier Helfer, dann Deichverteidigung und
+  //    Stromausfall, bei denen das THW pumpt und Strom einspeist. Für den Behandlungsplatz bei vielen Verletzten vier
+  //    DRK-Mitglieder.
+  { bau: "thw_unterkunft", stufe: 1, kraefte: 4 }, "th_deich", "th_stromausfall", { kraefte: "drk", anzahl: 4 },
+  // 9. Großlagen am Ende (früher Level 30), je eine pro 5-Sterne-Tag, von der leichtesten zur schwersten. Alle Dienste
   //    sind dann da. Sie werden nicht gekauft, das Freischalten aktiviert sie. Der Bombenfund hängt an Baustellen.
   "gl_dorffest", "gl_sturm", "gl_grossbrand", "gl_busunfall", "gl_hochwasser",
 ]
@@ -2782,14 +2813,18 @@ const FREISCHALTREIHE = (function reihe() {
       }
       return s
     }
+    if (x.viertel) return { nr: i + 1, id: "viertel:" + x.viertel, viertel: x.viertel, name: VIERTEL[x.viertel].name }
+    if (!x.bau) return { nr: i + 1, id: "kraefte:" + x.kraefte + ":" + x.anzahl, org: x.kraefte, kraefte: x.anzahl, name: KRAEFTE_NAMEN[x.kraefte] + ": " + x.anzahl + (x.anzahl === 1 ? " Einsatzkraft" : " Einsatzkräfte") }
     const s = { nr: i + 1, id: "bau:" + x.bau + ":" + x.stufe, bau: x.bau, stufe: x.stufe, name: GEBAEUDE[x.bau][x.stufe].name }
-    if (orgVonBau[x.bau]) s.org = orgVonBau[x.bau]
+    const org = orgVonBau[x.bau] || (x.bau === "dienststelle" ? "polizei" : null)
+    if (org) s.org = org
+    if (x.kraefte) s.kraefte = x.kraefte
     return s
   })
   // Anker: Start 0, Meilenstein einer Organisation = deren ab_level, erste Großlage = alle
   const anker = [[0, 0]]
   schritte.forEach((s, i) => {
-    if (s.bau && s.org) anker.push([i, ORGANISATIONEN[s.org].ab_level])
+    if (s.bau && s.org && s.stufe === 1 && ORGANISATIONEN[s.org].ab_level && ORGANISATIONEN[s.org].gebaeude === s.bau) anker.push([i, ORGANISATIONEN[s.org].ab_level])
     else if (s.grosslage && !schritte.slice(0, i).some((x) => x.grosslage)) anker.push([i, FREISCHALTUNG_LEVEL.alle])
   })
   schritte.forEach((s, i) => {
@@ -2856,6 +2891,8 @@ module.exports = {
   FREISCHALTUNG_LEVEL,
   FREISCHALTREIHE,
   REIHE_GUTHABEN_MAX,
+  VIERTEL,
+  WOHNHAEUSER_START,
   RETTUNG,
   WACHDIENST,
   NACHFORDERUNG,

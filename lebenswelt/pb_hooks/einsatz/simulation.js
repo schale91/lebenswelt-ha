@@ -131,8 +131,64 @@ function reiheText(R, ab) {
 
 /** Name eines Reihen-Schritts: Einsatzart oder „Gebäude bauen“. */
 function schrittName(R, x) {
-  if (x.art) return x.name
-  return x.name + " bauen"
+  if (x.art || (x.kraefte && !x.bau)) return x.name
+  if (x.viertel) return x.name + " erschließen"
+  return x.name + " bauen" + (x.kraefte ? " und " + x.kraefte + (x.kraefte === 1 ? " Kraft" : " Kräfte") + " dort" : "")
+}
+
+// ---------- Viertel von Elbe Springs (17.11.2026) ----------
+
+/** Mitglieder einer Organisation (Hauptorganisation oder zusätzliche Mitgliedschaft). */
+function mitglieder(s, org) {
+  return (s.personal || []).filter((p) => istMitglied(p, org)).length
+}
+
+/** Ist das Viertel erschlossen? Außerhalb von Elbe Springs gibt es keine Viertel, dort zählt alles als offen. */
+function viertelOffen(R, s, id) {
+  if (s.welt !== "elbe" || !R.VIERTEL || !R.VIERTEL[id]) return true
+  return (s.viertel || []).indexOf(id) >= 0
+}
+
+/** Viertel, in dem ein Ort des Regelwerks liegt (nur Viertel, die erst erschlossen werden), oder null. */
+function viertelVonOrt(R, ort) {
+  for (const [id, v] of Object.entries(R.VIERTEL || {})) if ((v.orte || []).indexOf(ort) >= 0) return id
+  return null
+}
+
+/**
+ * Ältere Stände kennen s.viertel nicht. Übernahme (einmal, nichtzerstörend): offen ist, was die App bisher nach dem
+ * Level gezeigt hat (alt_ab), dazu jedes Viertel, in dem schon etwas steht (Werkstatt, Bauhof oder THW im Gewerbe, mehr
+ * Wohnhäuser als im ersten Wohnviertel). Danach hängt nichts mehr am Level.
+ */
+function viertelFelder(R, s) {
+  if (Array.isArray(s.viertel) || !R.VIERTEL) return
+  const offen = []
+  for (const [id, v] of Object.entries(R.VIERTEL)) {
+    const gebaut = (v.orte || []).some((o) => Object.entries(R.GEBAEUDE_ORT || {}).some(([g, ort]) => ort === o && ((s.gebaeude || {})[g] || 0) >= 1))
+    const wohnen = v.wohnhaeuser && (s.haeuser || []).length > (R.WOHNHAEUSER_START || 0)
+    if ((v.alt_ab !== undefined && (s.level || 0) >= v.alt_ab) || gebaut || wohnen) offen.push(id)
+  }
+  s.viertel = offen
+}
+
+/** Grund, warum ein Viertel (noch) nicht erschlossen werden kann, oder null. */
+function viertelSperre(R, s, id) {
+  const v = R.VIERTEL && R.VIERTEL[id]
+  if (!v) return "Dieses Viertel gibt es nicht."
+  if (s.welt !== "elbe") return "Viertel gibt es nur in Elbe Springs."
+  if (viertelOffen(R, s, id)) return "Schon erschlossen."
+  const i = reiheIndex(R, "viertel:" + id)
+  if (i >= 0 && (Number(s.reihe) || 0) >= i) return null
+  if (!stufeReicht(R, s, v.ab)) return reiheText(R, v.ab)
+  return null
+}
+
+/** Einwohner, die die Reihe bis zum nächsten Schritt verlangt (Hauptorganisationen; DRK, DLRG und THW sind Ehrenamt). */
+function reiheEinwohner(R, s) {
+  const L = R.FREISCHALTREIHE || []
+  const je = {}
+  for (const x of L.slice(0, Math.min(L.length, (Number(s.reihe) || 0) + 1))) if (x.kraefte && ["drk", "dlrg", "thw"].indexOf(x.org) < 0) je[x.org] = Math.max(je[x.org] || 0, x.kraefte)
+  return Object.values(je).reduce((n, k) => n + k, 0)
 }
 
 /** Warum es eine Organisation noch nicht gibt: Was in der Reihe vor ihrem Meilenstein noch kommt. */
@@ -150,9 +206,11 @@ function reiheIndex(R, id) {
 }
 
 /** Ist der Schritt erledigt? Einsatzart freigeschaltet oder aktiv, Gebäude steht in der Stufe. */
-function schrittErledigt(s, x) {
+function schrittErledigt(s, x, R) {
   if (x.art) return s.einsatzarten[x.art] !== undefined || s.freigeschaltet.indexOf(x.art) >= 0
-  return ((s.gebaeude || {})[x.bau] || 0) >= x.stufe
+  if (x.viertel) return s.welt !== "elbe" || (s.viertel || []).indexOf(x.viertel) >= 0
+  if (x.bau && ((s.gebaeude || {})[x.bau] || 0) < x.stufe) return false
+  return !x.kraefte || mitglieder(s, x.org) >= x.kraefte
 }
 
 /** Einen Einsatz-Schritt freischalten; Großlagen werden dabei gleich aktiv (sie werden nicht gekauft). */
@@ -174,11 +232,11 @@ function reiheWeiter(R, s, t) {
   if (!(s.freischalt_guthaben >= 0)) s.freischalt_guthaben = 0
   while (s.reihe < L.length) {
     const x = L[s.reihe]
-    if (schrittErledigt(s, x)) {
+    if (schrittErledigt(s, x, R)) {
       s.reihe += 1
       continue
     }
-    if (x.bau || !s.freischalt_guthaben) break
+    if (!x.art || !s.freischalt_guthaben) break
     s.freischalt_guthaben -= 1
     schrittFreischalten(R, s, x, t)
     s.eingeloest = (s.eingeloest || []).concat([{ id: x.art, zeit: t }]).slice(-10)
@@ -589,6 +647,8 @@ function neuerStand(R, jetzt, saat) {
     reihe: 0,
     freischalt_guthaben: 0,
     stufe: 0,
+    // Erschlossene Viertel von Elbe Springs (ohne die, die es von Anfang an gibt)
+    viertel: [],
     bis: jetzt,
     zufall: saat === undefined ? jetzt % 100000 : saat,
     einsatzarten: {},
@@ -626,6 +686,9 @@ function aktiviereArt(R, s, id, jetzt) {
 
 /** Liegt ein Ort in einem freien Gebiet? Orte ohne bekannte Lage zählen als frei. */
 function ortImFreien(R, s, ort) {
+  // Elbe Springs: In Vierteln, die noch nicht erschlossen sind, entsteht nichts
+  const v = viertelVonOrt(R, ort)
+  if (v && !viertelOffen(R, s, v)) return false
   if (!R.GEBIETE) return true
   const p = punktVon(R, s, ort)
   return !p || gebietFrei(R, s, gebietAn(R, p.x, p.z))
@@ -1145,7 +1208,7 @@ const artLevelReicht = (R, s, a) => kaufArt(a) || stufeReicht(R, s, a.ab_level)
 function freischaltKandidaten(R, s) {
   const L = R.FREISCHALTREIHE || []
   let i = Math.max(0, Math.floor(Number(s.reihe) || 0))
-  while (i < L.length && schrittErledigt(s, L[i])) i++
+  while (i < L.length && schrittErledigt(s, L[i], R)) i++
   const x = L[i]
   return x && x.art ? [x.art] : []
 }
@@ -1183,13 +1246,24 @@ function naechsteFreischaltung(R, s) {
     s.naechster_schritt = null
     return
   }
-  const n = { nr: x.nr, von: L.length, id: x.id, typ: x.bau ? "bau" : x.grosslage ? "grosslage" : "einsatz", name: x.name, guthaben: s.freischalt_guthaben || 0 }
+  const typ = x.art ? (x.grosslage ? "grosslage" : "einsatz") : x.viertel ? "viertel" : x.bau ? "bau" : "kraefte"
+  const n = { nr: x.nr, von: L.length, id: x.id, typ, name: x.name, guthaben: s.freischalt_guthaben || 0 }
   if (x.org) n.org = x.org
   if (x.art) n.art = x.art
   if (x.bau) {
     n.gebaeude = x.bau
     n.stufe = x.stufe
-    const danach = L.slice(s.reihe + 1).find((y) => y.art && !schrittErledigt(s, y))
+  }
+  if (x.kraefte) {
+    n.kraefte = x.kraefte
+    n.kraefte_jetzt = mitglieder(s, x.org)
+  }
+  if (x.viertel) {
+    n.viertel = x.viertel
+    n.preis = preis(R, R.VIERTEL[x.viertel].preis)
+  }
+  if (!x.art) {
+    const danach = L.slice(s.reihe + 1).find((y) => y.art && !schrittErledigt(s, y, R))
     if (danach) n.danach = danach.art
   }
   s.naechster_schritt = n
@@ -1200,6 +1274,7 @@ function naechsteFreischaltung(R, s) {
  * an 5-Sterne-Tagen freigeschaltet (reiheWeiter, tagesabschluss). Was schon aktiv ist, bleibt aktiv.
  */
 function levelFreischalten(R, s, jetzt) {
+  viertelFelder(R, s)
   reiheWeiter(R, s, jetzt || s.bis)
 }
 
@@ -2517,7 +2592,7 @@ function tagesabschluss(R, s, tag) {
     const L = R.FREISCHALTREIHE || []
     reiheWeiter(R, s, t)
     const x = L[s.reihe]
-    if (x && x.bau) {
+    if (x && !x.art) {
       // Vor dem Meilenstein: Der gute Tag verfällt nicht, er wird gemerkt und eingelöst, sobald das Gebäude steht
       s.freischalt_guthaben = Math.min(R.REIHE_GUTHABEN_MAX || 3, (s.freischalt_guthaben || 0) + 1)
       d.gemerkt = true
@@ -2639,6 +2714,7 @@ function fortschreiben(stand, bis, umwelt, R) {
   rueckkehrerEinziehen(R, s, s.bis)
   einwohnerStart(R, s, s.bis)
   startgeschenk(R, s)
+  viertelFelder(R, s)
   reiheWeiter(R, s, s.bis)
   krankenhausVorLevel(R, s)
   naechsteFreischaltung(R, s)
@@ -2773,7 +2849,8 @@ function einwohnerZahl(s) {
 /** Wie viele Einwohner das Level erlaubt (Elbe Springs; bewusst das echte Level: Wirtschaft der Stadt, keine Sperre des Einsatzspiels); Figuren aus Geschichten zählen mit, dürfen aber immer kommen. */
 function einwohnerMax(R, s) {
   const E = R.EINWOHNER
-  return E ? E.grund + E.je_level * (s.level || 0) : Infinity
+  // Wirtschaft der Stadt am echten Level; was die Freischaltreihe als Pflicht verlangt, geht aber immer
+  return E ? Math.max(E.grund + E.je_level * (s.level || 0), reiheEinwohner(R, s)) : Infinity
 }
 
 /** Einzugsgebühr (roh, vor PREISFAKTOR): steigt mit jedem Einwohner. */
@@ -2936,6 +3013,12 @@ function kaufe(stand, auftrag, jetzt, R) {
     // Kostenlos seit 16.11.2026: freigeschaltet heißt übernehmen, ohne Münzen
     roh = R.EINSATZARTEN_KOSTENLOS ? 0 : a.preis
     aktiviereArt(R, s, id, jetzt)
+  } else if (art === "erschliessung") {
+    // Viertel von Elbe Springs erschließen (sofort, die Straßen legt die App)
+    const sperre = viertelSperre(R, s, id)
+    if (sperre) return fehler(sperre)
+    roh = R.VIERTEL[id].preis
+    s.viertel = (s.viertel || []).concat([id])
   } else if (art === "gebiet") {
     const sperre = gebietSperre(R, s, id)
     if (sperre) return fehler(sperre)
@@ -3051,6 +3134,8 @@ function kaufe(stand, auftrag, jetzt, R) {
     if (gOrg && !orgFrei(R, s, gOrg)) return fehler(orgText(R, gOrg))
     if (!stufeReicht(R, s, st.ab_level)) return fehler(reiheText(R, st.ab_level))
     const ortId = st.ort || (R.GEBAEUDE_ORT && R.GEBAEUDE_ORT[id]) || "feuerwehrhaus"
+    const imViertel = viertelVonOrt(R, ortId)
+    if (imViertel && !viertelOffen(R, s, imViertel)) return fehler("Das steht im Viertel " + R.VIERTEL[imViertel].name + ". Erst das Viertel erschließen.")
     const ortP = R.ORTE[ortId]
     if (ortP && !gebietFrei(R, s, gebietAn(R, ortP.x, ortP.z))) return fehler("Das Gelände liegt noch im Nebel. Erst das Gebiet freischalten.")
     roh = st.preis
@@ -3238,6 +3323,8 @@ function neustart(stand, jetzt, R) {
   const s = neuerStand(R, jetzt, stand.zufall)
   s.welt = "elbe"
   s.level = stand.level || 0
+  // Viertel wie bisher nach dem Level übernehmen (viertelFelder beim nächsten Fortschreiben)
+  delete s.viertel
   s.tage = stand.tage || {}
   s.zaehler = stand.zaehler || 0
   s.rueckkehrer = (stand.personal || []).filter((p) => p.name).map((p) => ({ name: p.name, anrede: p.anrede || "", org: p.org, beruf: p.beruf, arbeitgeber: p.arbeitgeber }))
@@ -3354,8 +3441,9 @@ module.exports = {
   levelAusXp,
   stufeVon,
   schrittVorStufe,
+  viertelSperre,
   muellautoPunkt,
   pegelReicht,
   // für Tests
-  _intern: { reiheWeiter, schrittErledigt, orgFrei, reiheText, erstatteEinsatzarten, freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
+  _intern: { viertelFelder, viertelOffen, viertelSperre, mitglieder, reiheEinwohner, reiheWeiter, schrittErledigt, orgFrei, reiheText, erstatteEinsatzarten, freischaltKandidaten, fuenfSterneTag, orgDa, ortsversatz, punktAufLinie, linienLaenge, luftlinie, punktVon, unwetterBereitschaft, bauplatz, verletzungen, imKrankenhaus, ortBewohnt, waehleOrt, sireneStufe, sirenenVon, sirenenReaktion, sirenenAbdeckung, nachtruhe, aufDemHeimweg, heimweg, fussroute, strassenroute, hindernisseAmWeg, verfallVon, teil, levelFreischalten, verzoegere, wachdienstAktiv, aufWache, drkVerpflegung, notarztPlan, patientErgebnis, standortVon, aedInDerNaehe, externerPlan, sperrungenAmWeg, wetterGestreut, levelFreischalten, bewerteZusammenarbeit, bedingungFaktor, einsatzbereitFuer, inSchicht, inArbeitszeit, training, naechstesTraining, fitnessTempo, freieStellen, ortErlaubt, wasserversorgung, hydrantenVon, tagVon, tagesende, tagesabschluss, plane, bewerte, erzeuge, feuerwehrBereit, zufall, psaEffekt, dunkel, zielEnde, bauPhase, behelfAktiv, fertigstellen, baustellenAmWeg },
 }

@@ -3,7 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
-const { vorspulen } = require("./reihe_hilfe.js")
+const { vorspulen, mitPolizei } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const MIN = 60000
@@ -77,6 +77,8 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "bauplatz", id: "bp02" })
   s = kaufe(s, { art: "bauplatz", id: "bp03" })
+  // Pflicht der Freischaltreihe vor dem nächsten Schritt: eine Kraft an der Dienststelle
+  s = mitPolizei(S, R, s, 1, T0)
   s = kaufe(s, { art: "haus_ausbau", ziel: s.haeuser[1].id, id: "fahrrad" })
   s = kaufe(s, { art: "haus_ausbau", ziel: s.haeuser[2].id, id: "fahrrad" })
   s = kaufe(s, { art: "fahrzeug", id: "handzugwagen" })
@@ -472,7 +474,8 @@ test("Löschwasser: gekaufte Hydranten stehen an den Hydrantenplätzen", () => {
 
 /** Stand mit einem Tag voller erfolgreicher Katzeneinsätze; `fuenf` davon mit 5 Sternen */
 function tagMit(anzahl, fuenf, extra) {
-  const s = S.neuerStand(R, T0, 31)
+  // Mit einer Polizeikraft (Pflicht der Reihe vor dem ersten freigeschalteten Schritt)
+  const s = mitPolizei(S, R, S.neuerStand(R, T0, 31), 1, T0)
   for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
   const tag = S._intern.tagVon(T0)
   s.tage = { [tag]: Object.assign({ anzahl, sterne: fuenf * 5 + (anzahl - fuenf) * 4, erfolgreich: anzahl, fuenf, arten: ["tier_katze"], abgerechnet: false }, extra) }
