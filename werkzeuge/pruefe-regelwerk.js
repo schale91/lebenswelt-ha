@@ -275,6 +275,29 @@ while (neu) {
 }
 for (const k of kaufbar) if (!erreichbar.has(k)) f(`EINSATZARTEN.${k}: vom Start aus nicht erreichbar`)
 
+// Freischaltreihe (17.11.2026): jede Einsatzart, die nicht von selbst kommt, genau einmal; Vorgänger vorher
+{
+  const L = R.FREISCHALTREIHE || []
+  const pos = {}
+  L.forEach((x, i) => {
+    if (x.art) {
+      if (!arten[x.art]) f(`FREISCHALTREIHE[${i}]: unbekannte Einsatzart "${x.art}"`)
+      else if (pos[x.art] !== undefined) f(`FREISCHALTREIHE: ${x.art} doppelt`)
+      pos[x.art] = i
+    } else if (x.viertel) {
+      if (!R.VIERTEL || !R.VIERTEL[x.viertel]) f(`FREISCHALTREIHE[${i}]: unbekanntes Viertel ${x.viertel}`)
+    } else if (x.bau) {
+      if (!R.GEBAEUDE[x.bau] || !R.GEBAEUDE[x.bau][x.stufe]) f(`FREISCHALTREIHE[${i}]: unbekanntes Gebäude ${x.bau} Stufe ${x.stufe}`)
+    } else if (!x.kraefte || !x.org) f(`FREISCHALTREIHE[${i}]: Meilenstein ohne Gebäude, Viertel oder Kräfte`)
+  })
+  for (const [id, v] of Object.entries(R.VIERTEL || {})) for (const o of v.orte || []) if (!R.ORTE[o]) f(`VIERTEL.${id}: unbekannter Ort ${o}`)
+  for (const [k, e] of Object.entries(arten)) {
+    if (e.folge_nur || e.baustelle) continue
+    if (pos[k] === undefined) f(`${k}: fehlt in der FREISCHALTREIHE`)
+    else if (e.freischaltung && !(pos[e.freischaltung.nach] < pos[k])) f(`FREISCHALTREIHE: ${k} vor seinem Vorgänger ${e.freischaltung.nach}`)
+  }
+}
+
 // Ergebnis
 if (hinweise.length) console.log("Hinweise:\n  " + hinweise.join("\n  "))
 console.log(`Regelwerk v${R.VERSION}: ${kaufbar.length} Einsatzarten (+${Object.keys(arten).length - kaufbar.length} Folgeeinsätze), ${Object.keys(R.GERAETE).length} Geräte, ${Object.keys(R.FAHRZEUGE).length} Fahrzeuge, ${Object.keys(R.LEHRGAENGE).length} Lehrgänge, ${plaetze.length} Bauplätze`)

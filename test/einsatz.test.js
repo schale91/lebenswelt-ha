@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen, mitPolizei } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const MIN = 60000
@@ -87,6 +88,8 @@ test("Einstieg 6: drei Häuser, Fahrrad, Handzugwagen, Handschuhe, Box und gute 
     s = kaufe(s, { art: "psa", ziel: p.id, id: "stiefel", stufe: 2 })
     s = kaufe(s, { art: "psa", ziel: p.id, id: "helm", stufe: 1 })
   }
+  // Pflicht der Freischaltreihe vor dem nächsten Schritt: eine Kraft an der Dienststelle
+  s = mitPolizei(S, R, s, 1, T0)
   const { e, stand } = katze(s)
   assert.equal(e.status, "abgeschlossen", e.grund)
   assert.equal(e.bewertung.sterne, 5, JSON.stringify(e.bewertung.abzuege))
@@ -137,7 +140,7 @@ function ausgebaut(saat) {
   for (let i = 0; i < 3; i++) s = kaufe(s, { art: "personal", id: "polizei" })
   const fw = s.personal.filter((p) => p.org === "feuerwehr")
   for (const p of fw.slice(0, 3)) p.lehrgaenge.fahrberechtigung = T0
-  s.level = Math.max(s.level || 0, R.FAHRZEUGE.tsf_w.ab_level, R.FAHRZEUGE.fustw.ab_level)
+  vorspulen(R, s, Math.max(s.stufe || 0, R.FAHRZEUGE.tsf_w.ab_level, R.FAHRZEUGE.fustw.ab_level))
   s = kaufe(s, { art: "fahrzeug", id: "handzugwagen" })
   s = kaufe(s, { art: "fahrzeug", id: "tsf_w" })
   s = kaufe(s, { art: "fahrzeug", id: "fustw" })
@@ -273,7 +276,7 @@ test("Ohne Verteiler wird mit nur einem Strahlrohr gelöscht", () => {
     let s = S.neuerStand(R, T0, 23)
     for (const bp of ["bp01", "bp02", "bp03", "bp04"]) s = kaufe(s, { art: "bauplatz", id: bp })
     for (const p of s.personal) p.lehrgaenge.fahrberechtigung = T0 - 1
-    s.level = R.FAHRZEUGE.tsf_w.ab_level
+    vorspulen(R, s, R.FAHRZEUGE.tsf_w.ab_level)
     s = kaufe(s, { art: "fahrzeug", id: "tsf_w" })
     if (!mitVerteiler) s = S.einraeumen(s, { fahrzeug: s.fahrzeuge[0].id, geraet: "verteiler", richtung: "aus" }, R).stand
     s.freigeschaltet.push("b_hecke")
@@ -471,7 +474,8 @@ test("Löschwasser: gekaufte Hydranten stehen an den Hydrantenplätzen", () => {
 
 /** Stand mit einem Tag voller erfolgreicher Katzeneinsätze; `fuenf` davon mit 5 Sternen */
 function tagMit(anzahl, fuenf, extra) {
-  const s = S.neuerStand(R, T0, 31)
+  // Mit einer Polizeikraft (Pflicht der Reihe vor dem ersten freigeschalteten Schritt)
+  const s = mitPolizei(S, R, S.neuerStand(R, T0, 31), 1, T0)
   for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e12
   const tag = S._intern.tagVon(T0)
   s.tage = { [tag]: Object.assign({ anzahl, sterne: fuenf * 5 + (anzahl - fuenf) * 4, erfolgreich: anzahl, fuenf, arten: ["tier_katze"], abgerechnet: false }, extra) }
@@ -500,10 +504,12 @@ test("Freischaltung (Regel 3): Tagesdurchschnitt ab 4,9 schaltet genau die näch
 
 test("Freischaltung (Regel 3): eine gemeinsame Reihe über Feuerwehr und Polizei, ohne Level und ohne bestimmten Einsatz am Tag", () => {
   // Der Tag enthielt nur Katzeneinsätze; freigeschaltet wird trotzdem auch ein Polizeieinsatz, sobald er dran ist
-  let s = S.neuerStand(R, T0, 31)
-  s.level = 0
+  // Mit zwei Polizeikräften an der Polizeistation sind die beiden Polizei-Meilensteine am Anfang erledigt
+  let s = mitPolizei(S, R, S.neuerStand(R, T0, 31), 2, T0)
+  vorspulen(R, s, 0)
   const reihe = []
-  for (let i = 0; i < 12; i++) {
+  // Danach sind die nächsten elf Schritte Einsätze (dann kommt der Wertstoffhof als Meilenstein)
+  for (let i = 0; i < 11; i++) {
     for (const a of Object.values(s.einsatzarten)) a.naechster = T0 + 1e13
     const tag = S._intern.tagVon(s.bis + 1)
     const erwartet = S._intern.freischaltKandidaten(R, s)[0]
@@ -516,29 +522,41 @@ test("Freischaltung (Regel 3): eine gemeinsame Reihe über Feuerwehr und Polizei
   }
   const orgs = new Set(reihe.map((id) => R.EINSATZARTEN[id].org))
   assert.ok(orgs.has("feuerwehr") && orgs.has("polizei"), reihe.join(", "))
-  // Die Reihe folgt dem Preis, und jeder Vorgänger war schon freigeschaltet
+  // Die Reihe folgt der festen FREISCHALTREIHE, und jeder Vorgänger war schon freigeschaltet
+  assert.deepEqual(reihe, R.FREISCHALTREIHE.slice(3, 15).filter((x) => x.art).map((x) => x.art))
   for (let i = 1; i < reihe.length; i++) {
     const vor = R.EINSATZARTEN[reihe[i]].freischaltung.nach
     assert.ok(vor === "tier_katze" || vor === "p_ruhestoerung" || reihe.indexOf(vor) < i, reihe[i] + " nach " + vor)
   }
-  // Einsatzarten mit Level-Angabe (gemeinsame Einsätze ab 8) kommen auf Level 0 genauso dran
+  // Einsatzarten mit alter Level-Angabe (b_brandserie ab 8) kommen auf Level 0 genauso dran
   assert.equal(s.level, 0)
-  assert.equal(s.naechste_freischaltung, S._intern.freischaltKandidaten(R, s)[0])
-  // Dienste, die es noch nicht gibt (Werkstatt ab Level 12, DLRG ab 24), stehen nicht in der Reihe
-  for (const id of S._intern.freischaltKandidaten(R, s)) assert.ok(["feuerwehr", "polizei"].includes(R.EINSATZARTEN[id].org), id)
+  assert.ok(reihe.includes("b_brandserie"))
+  // Jetzt steht der Wertstoffhof als Meilenstein an: kein Einsatz für den nächsten Tag, der Stand sagt, was zu bauen ist
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), [])
+  assert.equal(s.naechste_freischaltung, null)
+  assert.deepEqual([s.naechster_schritt.typ, s.naechster_schritt.gebaeude, s.naechster_schritt.stufe, s.naechster_schritt.danach], ["bau", "deponie", 1, "b_wertstoffhof"])
 })
 
-test("Freischaltung (Regel 3): Elbe Springs kennt nur seine eigenen Dienste, Gebäude-Voraussetzungen zählen", () => {
+test("Freischaltung: Elbe Springs folgt derselben Reihe, Gebäude-Voraussetzungen stehen als Meilenstein davor", () => {
   const elbe = S.neustart(S.neuerStand(R, T0, 31), T0, R)
-  const s = elbe.stand || elbe
-  s.level = 30
-  const k = S._intern.freischaltKandidaten(R, s)
-  for (const id of k) {
-    const a = R.EINSATZARTEN[id]
-    assert.ok(S._intern.orgDa(R, s, a.org), id)
-    for (const [g, st] of Object.entries(a.braucht_gebaeude || {})) assert.ok((s.gebaeude[g] || 0) >= st, id)
+  let s = S.fortschreiben(elbe.stand, T0 + MIN, trocken, R)
+  assert.equal(s.reihe, 1, "Katze ist da, als Nächstes eine Kraft an der Dienststelle")
+  assert.equal(s.naechster_schritt.typ, "kraefte")
+  assert.deepEqual([s.naechster_schritt.org, s.naechster_schritt.kraefte, s.naechster_schritt.danach], ["polizei", 1, "b_muelltonne"])
+  s = mitPolizei(S, R, s, 1, T0 + MIN)
+  assert.equal(s.reihe, 3, "Ruhestörung gibt es von Anfang an")
+  assert.equal(s.naechste_freischaltung, "b_muelltonne")
+  // Mit der Reihe am Deponiebrand: ohne Deponie Stufe 4 ist der Meilenstein davor offen, nichts wird übersprungen
+  s.reihe = R.FREISCHALTREIHE.findIndex((x) => x.id === "bau:deponie:4")
+  s = S.fortschreiben(s, T0 + 2 * MIN, trocken, R)
+  assert.equal(s.naechster_schritt.gebaeude, "deponie")
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), [])
+  for (const x of R.FREISCHALTREIHE.filter((y) => y.art && R.EINSATZARTEN[y.art].braucht_gebaeude)) {
+    for (const [g, st] of Object.entries(R.EINSATZARTEN[x.art].braucht_gebaeude)) {
+      const m = R.FREISCHALTREIHE.findIndex((y) => y.bau === g && y.stufe >= st)
+      assert.ok(m >= 0 && m < x.nr - 1, x.art + " braucht " + g + " " + st)
+    }
   }
-  assert.ok(!k.some((id) => ["dlrg", "drk", "rettungsdienst"].includes(R.EINSATZARTEN[id].org)), "keine Wachstation, keine Rettungswache in Elbe Springs")
 })
 
 test("Umstellung von der ersten Regel: damals freigeschaltete, nicht gekaufte Arten müssen neu verdient werden", () => {

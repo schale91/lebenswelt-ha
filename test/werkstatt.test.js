@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen, schritt } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8) // Dienstag, 10 Uhr Ortszeit
 const MIN = 60000
@@ -19,7 +20,7 @@ function kaufe(s, auftrag, t = T0) {
 
 function stand(level = 12) {
   const s = S.neuerStand(R, T0, 5)
-  s.level = level
+  vorspulen(R, s, level)
   return s
 }
 
@@ -34,12 +35,14 @@ function einsatz(s, art, ort, wetter = trocken, t = T0 + MIN) {
   return { e: fertig.abgeschlossen.find((a) => a.id === e.id), stand: fertig, alle: fertig.abgeschlossen }
 }
 
-test("Vor Level 12 gibt es weder Werkstatt noch Bauhof, auch keine Folgeeinsätze mit ihnen", () => {
-  let s = stand(11)
+test("Vor ihrem Meilenstein gibt es weder Werkstatt noch Bauhof, auch keine Folgeeinsätze mit ihnen", () => {
+  let s = stand(0)
+  s.reihe = schritt(R, "th_aufzug")
   s = S.fortschreiben(s, T0 + MIN, trocken, R)
+  assert.equal(s.reihe, schritt(R, "th_aufzug"))
   assert.ok(!s.freigeschaltet.includes("ab_panne"))
-  assert.match(S.kaufe(s, { art: "gebaeude", id: "werkstatt" }, T0, R).fehler, /Erst ab Level 12/)
-  assert.match(S.kaufe(s, { art: "personal", id: "bauhof" }, T0, R).fehler, /Erst ab Level 12/)
+  assert.match(S.kaufe(s, { art: "gebaeude", id: "werkstatt" }, T0, R).fehler, /Werkstatt und Abschleppdienst kommt in der Freischaltreihe nach „Silvesternacht: Kleinbrände“/)
+  assert.match(S.kaufe(s, { art: "personal", id: "bauhof" }, T0, R).fehler, /Bauhof kommt in der Freischaltreihe nach „Gewerbe erschließen“/)
   s = kaufe(s, { art: "bauplatz", id: "bp01" })
   s = kaufe(s, { art: "geraet", id: "oelbinder", anzahl: 2 })
   s = kaufe(s, { art: "geraet", id: "besen_schaufel" })
@@ -47,14 +50,26 @@ test("Vor Level 12 gibt es weder Werkstatt noch Bauhof, auch keine Folgeeinsätz
   assert.ok(!alle.some((e) => e.art === "bh_oel"), "keine Reinigung durch den Bauhof vor Level 12")
 })
 
-test("Ab Level 12 stehen Panne, Streuen und Ast in der Reihe: Jeder 5-Sterne-Tag schaltet eine davon frei", () => {
+test("Bauhof und Werkstatt: erst das Gebäude bauen, dann kommen Ast, Streuen und Panne in der Reihe dran", () => {
   const vorher = S.fortschreiben(stand(11), T0 + MIN, trocken, R)
-  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) assert.ok(!S._intern.freischaltKandidaten(R, vorher).includes(id), id + " vor Level 12")
-  let s = S.fortschreiben(stand(12), T0 + MIN, trocken, R)
-  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) {
-    assert.ok(!s.freigeschaltet.includes(id), id + " nicht mehr durch das Level allein")
-    assert.ok(S._intern.freischaltKandidaten(R, s).includes(id), id + " steht in der Reihe")
-  }
+  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) assert.ok(!S._intern.freischaltKandidaten(R, vorher).includes(id), id + " vor dem Bauhof")
+  let s = stand(0)
+  s.reihe = schritt(R, "bau:bauhof:1")
+  s = S.fortschreiben(s, T0 + MIN, trocken, R)
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), [], "vor dem Meilenstein schaltet kein Tag frei")
+  assert.equal(s.naechster_schritt.gebaeude, "bauhof")
+  s = kaufe(s, { art: "gebaeude", id: "bauhof" }, T0 + MIN)
+  s = S.fortschreiben(s, T0 + 2 * MIN, trocken, R)
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), [], "das Gebäude allein reicht nicht, es braucht eine Kraft")
+  assert.deepEqual([s.naechster_schritt.kraefte, s.naechster_schritt.kraefte_jetzt], [1, 0])
+  s = kaufe(s, { art: "personal", id: "bauhof" }, T0 + 2 * MIN)
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), ["bh_ast"], "mit Bauhof und Gemeindearbeiter geht es weiter")
+  for (const id of ["ab_panne", "bh_streuen", "bh_ast"]) assert.ok(!s.freigeschaltet.includes(id), id + " nicht durch den Fortschritt allein")
+  // Werkstatt: Meilenstein, dann die Panne
+  s.reihe = schritt(R, "bau:werkstatt:1")
+  s = kaufe(s, { art: "gebaeude", id: "werkstatt" }, T0 + 2 * MIN)
+  s = kaufe(s, { art: "personal", id: "werkstatt" }, T0 + 2 * MIN)
+  assert.deepEqual(S._intern.freischaltKandidaten(R, s), ["ab_panne"])
   s.freigeschaltet.push("ab_panne")
   assert.ok(kaufe(s, { art: "einsatzart", id: "ab_panne" }).einsatzarten.ab_panne)
 })

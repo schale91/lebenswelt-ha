@@ -571,6 +571,8 @@ Die Gebäudestufe ist das Level der Organisation. Sie bestimmt Stellplätze, Lag
 
 ### 14.3 Freischaltung nach Level
 
+> **Überholt seit dem 17.11.2026:** Die Dienste kommen nicht mehr nach dem Level, sondern in der festen Freischaltreihe, ihr Gebäude ist dort ein Meilenstein. Die Level-Zahlen unten leben als Stufe der Reihe weiter (Meilenstein Rettungswache = Stufe 16 usw.), siehe [FREISCHALTREIHE.md](FREISCHALTREIHE.md).
+
 Die Dienste hängen am **Level der Lebenswelt** (XP aus dem Alltag, Kurve `100 · n^1,4`, siehe Konzept der App). XP gehen nie verloren, ein freigeschalteter Dienst bleibt also für immer. Alles ist in knapp anderthalb Jahren erreichbar, und alle drei bis vier Monate kommt etwas Neues. Zeiten bei rund 300 XP am Tag (bei 250 XP etwa ein Fünftel länger):
 
 | Level | ungefähr nach | Freigeschaltet | Gemeinsame Einsätze |

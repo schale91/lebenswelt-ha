@@ -433,7 +433,7 @@ const SIRENEN = {
 /**
  * Echte Wetterwarnungen des Deutschen Wetterdienstes (Integration „DWD Weather Warnings“ in Home Assistant, Warnzelle
  * der Gemeinde). Eine Warnung setzt für ihre Dauer das Spielwetter und setzt beim Beginn passende Einsätze an (nach
- * min Minuten, zufällig im Bereich), sofern die Einsatzart gekauft ist und ihr Level erreicht ist. Erkannt wird am
+ * min Minuten, zufällig im Bereich), sofern die Einsatzart gekauft ist (Großlagen: über die Freischaltreihe aktiv). Erkannt wird am
  * Namen des DWD-Ereignisses (Großbuchstaben, z. B. STURMBÖEN, GLATTEIS). Die erste passende Regel gilt.
  * stufe: Warnstufe des DWD (1 Wetterwarnung, 2 markantes Wetter, 3 Unwetter, 4 extremes Unwetter).
  */
@@ -499,7 +499,7 @@ const PEGEL = {
     { id: "schwer", name: "schwere Sturmflut", ueber_mthw: 250, quelle: "bsh" },
     { id: "sehr_schwer", name: "sehr schwere Sturmflut", ueber_mthw: 350, quelle: "bsh" },
   ],
-  // Beginnt eine Lage, kommen diese Einsätze (nur gekaufte bzw. Großlagen ab ihrem Level), jede Lage einmal
+  // Beginnt eine Lage, kommen diese Einsätze (nur gekaufte bzw. über die Reihe aktive Großlagen), jede Lage einmal
   ausloesen: {
     sturmflut: [{ art: "th_deich", min: [30, 120] }, { art: "dlrg_hochwasser", min: [60, 180] }],
     schwer: [{ art: "gl_hochwasser", min: [30, 90] }],
@@ -518,9 +518,10 @@ const HAUS_AUSBAU = {
 }
 
 /**
- * Freischaltung nach dem Level der Lebenswelt (XP aus dem Alltag, gleiche Kurve wie in der App: der Schritt von Level n
- * auf n + 1 kostet round(100 · (n + 1)^1,4) XP, Start bei Level 0). Vor seinem Level gibt es einen Dienst nicht, auch
- * keine gemeinsamen Einsätze mit ihm. Konzept: docs/einsatzspiel/DORFDIENSTE.md, Abschnitt 14.3.
+ * Stufen der Freischaltung. Früher das Level der Lebenswelt (XP aus dem Alltag); seit 17.11.2026 die Stufe der
+ * Freischaltreihe (FREISCHALTREIHE, 0 bis 30), die nur aus dem Fortschritt im Einsatzspiel folgt. Alle ab_level im
+ * Regelwerk meinen diese Stufe. Vor seinem Meilenstein in der Reihe gibt es einen Dienst nicht, auch keine gemeinsamen
+ * Einsätze mit ihm. Konzept: docs/einsatzspiel/DORFDIENSTE.md, Abschnitt 14.3, und docs/einsatzspiel/FREISCHALTREIHE.md.
  */
 const FREISCHALTUNG_LEVEL = {
   sportverein: 5,
@@ -535,7 +536,8 @@ const FREISCHALTUNG_LEVEL = {
 }
 
 /**
- * Organisationen mit ihrem Gebäude. Werkstatt und Bauhof kommen ab Level 12 (FREISCHALTUNG_LEVEL).
+ * Organisationen mit ihrem Gebäude. Wer ab_level hat, kommt erst mit seinem Meilenstein in der FREISCHALTREIHE (Gebäude
+ * bauen); ab_level ist die Stufe an diesem Meilenstein (Werkstatt und Bauhof 12, Rettungsdienst 16 usw.).
  */
 const ORGANISATIONEN = {
   feuerwehr: { name: "Feuerwehr", gebaeude: "geraetehaus" },
@@ -549,7 +551,7 @@ const ORGANISATIONEN = {
 }
 
 /**
- * Grundversorgung von außen: Ab ihrem Level ist eine Organisation sofort da, aber von außerhalb und langsam. Sie
+ * Grundversorgung von außen: Sobald die Reihe den Meilenstein einer Organisation erreicht, ist sie da, aber von außerhalb und langsam. Sie
  * übernimmt, wenn im Dorf niemand ausrücken kann. Höchstens max_sterne. Konzept DORFDIENSTE.md, Abschnitt 2.
  */
 const EXTERN = {
@@ -617,7 +619,7 @@ const ARBEITGEBER = {
  * Einwohner von Elbe Springs (Entscheidung vom 19.10.2026): Es wohnt nur, wer eingeladen wurde. Zum Start du und drei
  * Feuerwehrleute. Wer keine Organisation hat, ist "buerger": rückt nicht aus, kann aber der Freiwilligen Feuerwehr
  * beitreten. Jeder bekommt von dir einen Job, ohne Job bleibt man zu Hause. Einladen braucht Wohnraum (Wohnhaus oder
- * Einliegerwohnung) und kostet eine Einzugsgebühr, die mit jedem Einwohner steigt; höchstens grund + Level Einwohner.
+ * Einliegerwohnung) und kostet eine Einzugsgebühr, die mit jedem Einwohner steigt; höchstens grund + Level Einwohner (das echte Level der Lebenswelt: Wirtschaft der Stadt, keine Sperre im Einsatzspiel).
  * Figuren aus den Geschichten ziehen kostenlos in eine Dienstwohnung ein.
  */
 const EINWOHNER = { grund: 3, je_level: 1, einzug_roh_je: 400, start_feuerwehr: 3, org: "buerger" } // spielwert
@@ -1065,7 +1067,7 @@ const FAHRZEUGE = {
   kehrmaschine: { org: "bauhof", name: "Kehrmaschine", besatzung: [0, 1], slots: 3, preis: 9000, tempo_kmh: 25, stellplatz: 1, fahrer: "gemeindearbeit", ohne_sonderrechte: true, grundbeladung: { kehrbesen: 1 } },
   // Rettungsdienst (DIN EN 1789, DIN 75079). Das NEF bringt den Notarzt, wenn es einen Notarztvertrag gibt.
   ktw: { org: "rettungsdienst", name: "Krankentransportwagen (KTW, Typ A2)", besatzung: [0, 2], slots: 5, preis: 7000, tempo_kmh: 60, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { tragestuhl: 1 } },
-  // Der RTW ist das Grundfahrzeug jeder Rettungswache: frei ab dem Level des Rettungsdienstes
+  // Der RTW ist das Grundfahrzeug jeder Rettungswache: frei ab der Stufe des Rettungsdienstes
   rtw: { ab_level: 16, org: "rettungsdienst", name: "Rettungswagen (RTW, Typ C)", besatzung: [0, 2], slots: 9, preis: 14000, tempo_kmh: 65, stellplatz: 1, fahrer: "rs", quelle: "din_en_1789", grundbeladung: { notfallrucksack: 1, sauerstoff: 1 } },
   nef: { org: "rettungsdienst", name: "Notarzteinsatzfahrzeug (NEF)", besatzung: [0, 1], slots: 4, preis: 6500, tempo_kmh: 75, stellplatz: 1, fahrer: "rs", quelle: "din_75079", nef: true, grundbeladung: { defi_monitor: 1 }, hinweis: "bringt den Notarzt, wenn es einen Notarztvertrag gibt" },
   // DRK-Ortsverein (Katastrophenschutz, ohne Logo und ohne Kreuz in der Darstellung)
@@ -1164,7 +1166,7 @@ const GEBAEUDE = {
     { name: "Rettungswache", bauzeit_h: 72, stellplaetze: 3, preis: 35000, lager_slots: 22, personal_max: 8, ab_level: 16 },
     { name: "Rettungswache mit Lehrrettungswache", bauzeit_h: 96, stellplaetze: 4, preis: 60000, lager_slots: 30, personal_max: 10, ab_level: 27, hinweis: "Ausbildung zur Notfallsanitäterin und zum Notfallsanitäter im Dorf" },
   ],
-  // DRK-Unterkunft (Abschnitt 6). Stufe 0: Gruppenraum im Gemeindehaus (an der Bibliothek), ab Level 20 sofort da.
+  // DRK-Unterkunft (Abschnitt 6). Stufe 0: Gruppenraum im Gemeindehaus (an der Bibliothek), mit dem DRK-Meilenstein der Reihe da.
   drk_unterkunft: [
     { name: "Gruppenraum im Gemeindehaus", bauzeit_h: 0, stellplaetze: 1, preis: 0, lager_slots: 6, ort: "bibliothek" },
     { name: "Unterkunft mit Garage", bauzeit_h: 24, stellplaetze: 2, preis: 6000, lager_slots: 12, ab_level: 20 },
@@ -1239,7 +1241,7 @@ const AUSBAU = {
   notarztvertrag: { gebaeude: "rettungswache", name: "Notarztvertrag mit der Klinik", preis: 8000, effekt: { notarzt: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 2, hinweis: "mit NEF kommt der Notarzt aus dem Dorf" },
   desinfektionsraum: { gebaeude: "rettungswache", name: "Desinfektionsraum", preis: 6000, effekt: { wiederherstellung_faktor: 0.5 }, bauzeit_h: 12, ab_stufe: 3, hinweis: "Fahrzeug nach dem Transport schneller wieder einsatzbereit" },
   fahrzeughalle_warm: { gebaeude: "rettungswache", name: "Beheizte Fahrzeughalle", preis: 9000, effekt: { rd_ausruecken_s: -20 }, bauzeit_h: 24, ab_stufe: 3, hinweis: "schneller ausrücken" },
-  // Leitstelle und Ersthelfer (kein Gebäude im Dorf, ab Level 16)
+  // Leitstelle und Ersthelfer (kein Gebäude im Dorf, ab Stufe 16 der Reihe)
   notrufabfrage: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Strukturierte Notrufabfrage in der Leitstelle", preis: 3000, effekt: { notrufabfrage: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 0, hinweis: "der Rettungsdienst wird gleich mit alarmiert, nicht erst nachgefordert" },
   telefonreanimation: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Telefonreanimation", preis: 2000, effekt: { telefonreanimation: 1 }, bauzeit_h: 1, klein: true, ab_stufe: 0, quelle: "reanimation", hinweis: "Anrufende drücken bis zum Eintreffen" },
   aed_markt: { gebaeude: "ort", bereich: "rettungsdienst", ab_level: 16, name: "Öffentlicher Defibrillator am Markt", preis: 1500, effekt: { aed_ort: "marktplatz" }, bauzeit_h: 1, klein: true, ab_stufe: 0 },
@@ -1743,7 +1745,7 @@ const EINSATZARTEN = {
     verfallen_text: "Das Kind wurde von Anwohnern im Schilf gefunden, unterkühlt.",
   },
   // Folgeeinsätze (werden nicht gekauft, sondern von anderen ausgelöst)
-  // ---------- Werkstatt und Abschleppdienst (ab Level 12, Konzept DORFDIENSTE.md Abschnitt 9) ----------
+  // ---------- Werkstatt und Abschleppdienst (Stufe 12 der Reihe, Konzept DORFDIENSTE.md Abschnitt 9) ----------
   // sperrt: solange der Einsatz offen ist, kostet die Stelle Einsatzfahrten in der Nähe Zeit (wie eine Baustelle)
   ab_panne: {
     ort_gruppen: ["strasse"],
@@ -1789,7 +1791,7 @@ const EINSATZARTEN = {
     optimal: { personen: 1, geraete: [[{ plateau: 1 }]] },
     text: "Die Polizei lässt das Auto aus der Feuerwehrzufahrt umsetzen.",
   },
-  // ---------- Bauhof (ab Level 12, Abschnitt 10) ----------
+  // ---------- Bauhof (Stufe 12 der Reihe, Abschnitt 10) ----------
   // wirkung.gestreut_h: so lange gilt auf den Straßen nach dem Streuen bei Glätte und Schnee der Reibwert für "nass"
   bh_streuen: {
     ort_gruppen: ["strasse"],
@@ -1825,7 +1827,7 @@ const EINSATZARTEN = {
     optimal: { personen: 2, geraete: [[{ absperrschranke: 4 }]] },
     text: "Die Straße muss abgesperrt werden, bis der Baum weg ist.",
   },
-  // ---------- Rettungsdienst (ab Level 16, Konzept DORFDIENSTE.md Abschnitt 5) ----------
+  // ---------- Rettungsdienst (Stufe 16 der Reihe, Konzept DORFDIENSTE.md Abschnitt 5) ----------
   // patient: Dringlichkeit rot, gelb oder grün; danach Transport ins Krankenhaus (RETTUNG). notarzt: Notarzt-Indikation.
   // Hilfsfrist im Spiel 8 Minuten (BedarfVO-RettD: 15 Minuten in 95 % der Notfälle, auf die Karte heruntergerechnet).
   rd_krankentransport: {
@@ -1919,7 +1921,7 @@ const EINSATZARTEN = {
     text: "Ein Patient mit ansteckender Erkrankung muss in die Klinik. Danach wird das Fahrzeug gründlich desinfiziert.",
     verfallen_text: "Die Nachbarwache hat den Transport übernommen.",
   },
-  // Rettungsdienst-Teil in bestehenden Einsätzen (Folgeeinsätze, erst ab Level 16)
+  // Rettungsdienst-Teil in bestehenden Einsätzen (Folgeeinsätze, erst ab Stufe 16 der Reihe)
   rd_versorgung: {
     org: "rettungsdienst", name: "Patient versorgen", stichwort: "RD 1", folge_nur: true, patient: "gelb",
     ablauf_min: 40, arbeit_min: 15, ziel_eintreffen_min: 8,
@@ -1934,8 +1936,9 @@ const EINSATZARTEN = {
     optimal: { personen: 2, qualifikation: { nfs: 1 }, geraete: [[{ defi_monitor: 1 }], [{ vakuummatratze: 1 }, { spineboard: 1 }]] },
     text: "Eine schwer verletzte oder lebensbedrohlich erkrankte Person braucht Rettungsdienst und Notarzt.",
   },
-  // ---------- Alle zusammen: Großlagen (ab Level 30, Konzept DORFDIENSTE.md 13.7) ----------
-  // grosslage: wird nicht gekauft, kommt ab dem Level von selbst, selten. Die Leitstelle alarmiert alle Teile zugleich
+  // ---------- Alle zusammen: Großlagen (am Ende der FREISCHALTREIHE, Stufe 30, Konzept DORFDIENSTE.md 13.7) ----------
+  // grosslage: wird nicht gekauft, ein 5-Sterne-Tag am Ende der Reihe aktiviert sie (der Bombenfund kommt mit Baustellen
+  // ab Stufe 30), selten. Die Leitstelle alarmiert alle Teile zugleich
   // (außer Nachforderungen wie das THW). Wie oft, hängt an der Zusammenarbeit der letzten gemeinsamen Einsätze.
   gl_hochwasser: {
     org: "feuerwehr", name: "Großlage Elbhochwasser", stichwort: "Großlage Hochwasser", preis: 0, ab_level: 30, grosslage: true, warnung: true, pegel_min: "schwer", hochwasser: true,
@@ -2015,7 +2018,7 @@ const EINSATZARTEN = {
     optimal: { personen: 8, qualifikation: { drk_gruppenfuehrer: 1 }, geraete: [[{ notfallrucksack: 2 }], [{ betreuungsset: 1 }]] },
     text: "Das DRK baut einen Behandlungsplatz auf, sichtet die Verletzten und versorgt sie bis zum Transport.",
   },
-  // ---------- THW (ab Level 27, Konzept DORFDIENSTE.md Abschnitt 8) ----------
+  // ---------- THW (Stufe 27 der Reihe, Konzept DORFDIENSTE.md Abschnitt 8) ----------
   // Nur auf Anforderung (nachforderung): Ohne Gruppen- oder Zugführer der Feuerwehr vor Ort dauert die Anforderung länger.
   thw_abstuetzen: {
     org: "thw", name: "Gebäude abstützen", stichwort: "THW Bergung", folge_nur: true, nachforderung: true, quelle: "thwg",
@@ -2063,7 +2066,7 @@ const EINSATZARTEN = {
     text: "Nach einem Kabelschaden ist der halbe Ort ohne Strom. Die Feuerwehr versorgt die wichtigsten Stellen, für mehr braucht es das THW.",
     verfallen_text: "Der Netzbetreiber hat nach Stunden repariert.",
   },
-  // ---------- DLRG-Ortsgruppe (ab Level 24, Konzept DORFDIENSTE.md Abschnitt 7) ----------
+  // ---------- DLRG-Ortsgruppe (Stufe 24 der Reihe, Konzept DORFDIENSTE.md Abschnitt 7) ----------
   dlrg_badeunfall: {
     org: "dlrg", name: "Badeunfall an der Elbe", stichwort: "Wasser", preis: 800, start_level: 24, quelle: "rettungsschwimmen",
     orte: ["elbe_ufer"], intervall_min: 2880, ablauf_min: 15, arbeit_min: 15, ziel_eintreffen_min: 8,
@@ -2109,7 +2112,7 @@ const EINSATZARTEN = {
     optimal: { personen: 4, geraete: [[{ schlauchboot: 1 }]] },
     text: "Die Polizei bittet die DLRG, das Ufer und die Buhnenfelder abzusuchen.",
   },
-  // ---------- DRK-Ortsverein (ab Level 20, Konzept DORFDIENSTE.md Abschnitt 6) ----------
+  // ---------- DRK-Ortsverein (Stufe 20 der Reihe, Konzept DORFDIENSTE.md Abschnitt 6) ----------
   drk_hvo: {
     org: "drk", name: "Helfer vor Ort: Person kollabiert", stichwort: "HvO", preis: 300, start_level: 20, quelle: "nkatsg_mitwirkung",
     orte: ["marktplatz", "bibliothek", "schule", "hauptstrasse_ost"], intervall_min: 1440, ablauf_min: 20, arbeit_min: 15, ziel_eintreffen_min: 6,
@@ -2160,7 +2163,7 @@ const EINSATZARTEN = {
     optimal: { personen: 3, geraete: [[{ feldkueche_fahrzeug: 1 }]] },
     text: "Lange Einsätze zehren an den Kräften. Die Feldküche versorgt alle mit Essen und Getränken.",
   },
-  // ---------- Feuerwehr, Polizei und Rettungsdienst (ab Level 16, Konzept DORFDIENSTE.md 13.6) ----------
+  // ---------- Feuerwehr, Polizei und Rettungsdienst (Stufe 16 der Reihe, Konzept DORFDIENSTE.md 13.6) ----------
   th_vu_mehrere: {
     ort_gruppen: ["strasse"],
     org: "feuerwehr", name: "Verkehrsunfall mit mehreren Verletzten", stichwort: "TH VU 2", preis: 2500, ab_level: 16,
@@ -2219,7 +2222,7 @@ const EINSATZARTEN = {
     text: "Beim Fußball ist ein Spieler zusammengebrochen. Die Polizei hält die Zufahrt für Rettungswagen und Hubschrauber frei.",
     verfallen_text: "Der Rettungsdienst war allein da, die ersten Minuten fehlten.",
   },
-  // ---------- Gemeinsame Einsätze von Feuerwehr und Polizei (ab Level 8, Konzept DORFDIENSTE.md 13.5) ----------
+  // ---------- Gemeinsame Einsätze von Feuerwehr und Polizei (Stufe 8 der Reihe, Konzept DORFDIENSTE.md 13.5) ----------
   // gemeinsam.ziel_min: so viele Minuten nach dem Eintreffen der Feuerwehr soll die Polizei da sein (Zusammenarbeit)
   th_kind_auto: {
     org: "feuerwehr", name: "Kind im Auto eingeschlossen", stichwort: "TH Kind Pkw", preis: 1500, ab_level: 8,
@@ -2515,13 +2518,13 @@ const VERFALL = {
  * oder aus der Stadt. Patient: Minuten bis zur Versorgung je Dringlichkeit [stabil bis, verzögert bis].
  */
 /**
- * Krankenhaus: Ab ab_level kann sich bei jedem Einsatz eine Einsatzkraft leicht verletzen (Chance je Person), vorher nie. Niemand stirbt;
+ * Krankenhaus: Ab der Stufe ab_level der Freischaltreihe kann sich bei jedem Einsatz eine Einsatzkraft leicht verletzen (Chance je Person), vorher nie. Niemand stirbt;
  * sie liegt eine Weile im Krankenhaus und fällt so lange aus. Bis das Dorf ein eigenes Krankenhaus hat (ab_level,
  * später im Erweiterungsgebiet), geht es ins Kreiskrankenhaus in der Stadt, und das dauert länger.
  */
 /**
  * Gebiete im Nebel: Die Karte ist in Quadrate geteilt (raster Welteinheiten, ab ursprung). Das Startgebiet ist frei,
- * alles andere liegt im Nebel. Ein Quadrat lässt sich kaufen, wenn es an ein freies grenzt; Preis und Level steigen mit
+ * alles andere liegt im Nebel. Ein Quadrat lässt sich kaufen, wenn es an ein freies grenzt; Preis und Stufe steigen mit
  * dem Abstand (Ring) zum Startgebiet. Besondere Quadrate tragen ein Gelände (THW, Krankenhaus). Hier die Werte der
  * erfundenen Karte; die private Karte der Person ersetzt ursprung, start, grenze und besonders.
  */
@@ -2532,7 +2535,7 @@ const GEBIETE = {
   start: { i0: 0, i1: 4, j0: 0, j1: 3 },
   /** äußerste Quadrate, die es gibt (nördlich liegt die Elbe) */
   grenze: { i0: -3, i1: 8, j0: 0, j1: 6 },
-  /** je Ring: Preis (roh) und Level */
+  /** je Ring: Preis (roh) und Stufe der Freischaltreihe */
   ringe: [
     { preis: 0, ab_level: 0 },
     { preis: 6000, ab_level: 4 },
@@ -2711,8 +2714,131 @@ const ABFALL = {
   abfahren_tage: 7, // Haufen auf der Deponie werden so oft abgefahren (Papier, Gelb, Kompost); Restmüll geht gleich weiter
 }
 
-// Fahrzeuge werden je Organisation nach Preis gestaffelt freigeschaltet: das günstigste ab dem Level der
-// Organisation, jedes teurere ein Level später (gleich teure gemeinsam). Ein passender Einsatz schaltet früher frei
+/**
+ * Freischaltreihe (Wunsch von Alex, 17.11.2026: „einsatz nach einsatz in einer logischen, abwechslungsreichen
+ * reihenfolge die auch stück für stück andere gebäude einbezieht ... die man dann kaufen muss um weiter zu kommen“).
+ * Eine feste Reihe über alle Dienste. Jeder 5-Sterne-Tag (Tagesdurchschnitt ab 4,9) schaltet den nächsten Einsatz frei.
+ * Ein Meilenstein ({bau, stufe}) ist eine Hürde: Erst wenn das Gebäude in dieser Stufe steht, geht es weiter. Gute Tage
+ * davor werden als Guthaben gemerkt (höchstens REIHE_GUTHABEN_MAX) und eingelöst, sobald es steht. Das Level der
+ * Lebenswelt spielt im Einsatzspiel keine Rolle mehr; frühere Level-Grenzen hängen an der Stufe (0 bis 30), die nur aus
+ * dem Fortschritt in dieser Reihe folgt (FREISCHALTREIHE[i].stufe, berechnet unten). Am Meilenstein einer Organisation
+ * ist die Stufe genau deren ab_level, am Beginn der Großlagen FREISCHALTUNG_LEVEL.alle.
+ * Regeln (test/reihe.test.js): Vorgänger vor Nachfolger, Meilenstein vor den Einsätzen seiner Organisation und vor
+ * Einsätzen mit braucht_gebaeude, nie mehr als zwei gleiche Dienste hintereinander, Großlagen zuletzt. Baustellen-
+ * Einsätze und Folgeeinsätze stehen nicht in der Reihe (sie kommen wie bisher von selbst).
+ * Einträge: "einsatzart", { bau: gebaeude, stufe, kraefte? } (Gebäude in der Stufe, dazu optional so viele Kräfte
+ * seiner Organisation), { kraefte: org, anzahl } (so viele Mitglieder der Organisation, also Wohnhäuser bzw. Personal)
+ * oder { viertel } (Viertel von Elbe Springs erschließen). Kräfte: mindestens.personen der folgenden Einsätze und ihrer
+ * Folgeeinsätze, damit sie mit eigenen Leuten (nicht nur von außen, höchstens 3 Sterne) zu 4,9 abschließbar sind.
+ */
+const REIHE_GUTHABEN_MAX = 3
+
+/**
+ * Viertel von Elbe Springs, die erst erschlossen werden (Wunsch von Alex, 17.11.2026: „blockausbau ... die müssen pflicht
+ * sein“). Die Lage steht in der App (app/src/stadt/raster.ts, VIERTEL). Erschlossen wird mit Münzen im Einsatz-Shop;
+ * wo ein Einsatz oder eine Wache daran hängt, ist das Viertel ein Meilenstein der Reihe. orte: Orte des Regelwerks, die
+ * im Viertel liegen (dort entsteht vorher kein Einsatz, dort wird vorher nicht gebaut); wohnhaeuser: zusätzliche Plätze
+ * für Wohnhäuser. ab: Stufe der Reihe, ab der man es auch ohne Meilenstein erschließen darf (früher das Level, ab dem
+ * die App das Viertel zeigte; alt_ab bleibt für die Übernahme alter Stände). Preise wie die Ringe der Gebiete im Nebel.
+ */
+const VIERTEL = {
+  kirche: { name: "Kirchweg", text: "Kirche, Arztpraxis und der Deichkrug", preis: 6000, ab: 7, alt_ab: 7, orte: ["arbeit_kirche", "arbeit_arztpraxis", "arbeit_diner"] },
+  gewerbe: { name: "Gewerbe", text: "Tankstelle, Werkstatt und Bauhof", preis: 6000, ab: 7, alt_ab: 7, orte: ["arbeit_tankstelle", "werkstatt_dorf", "bauhof", "thw_unterkunft"] },
+  wohnen2: { name: "Wohnviertel 2", text: "sechs weitere Wohnhäuser an der Mittelstraße", preis: 12000, ab: 8, alt_ab: 8, orte: [], wohnhaeuser: 6 },
+  freizeit: { name: "Freizeit und Land", text: "Freibad, Bowlingbahn und Bauernhof", preis: 20000, ab: 24, alt_ab: 24, orte: ["arbeit_freibad", "arbeit_bowling", "arbeit_bauernhof"] },
+}
+/** Wohnhäuser im ersten Wohnviertel (app/src/stadt/raster.ts, WOHN_PLAETZE) */
+const WOHNHAEUSER_START = 9
+
+/** Namen für Meilensteine „n Einsatzkräfte“ */
+const KRAEFTE_NAMEN = { feuerwehr: "Feuerwehr", polizei: "Polizei", werkstatt: "Werkstatt", bauhof: "Bauhof", rettungsdienst: "Rettungsdienst", drk: "DRK", dlrg: "DLRG", thw: "THW" }
+const FREISCHALTREIHE_ROH = [
+  // 1. Einstieg mit Feuerwehr und Polizei: kleine Lagen. Die Polizei braucht dafür erst eine Kraft an der Dienststelle,
+  //    für die hilflose Person (zwei Beamte) die Polizeistation. Die Polizei kommt etwa jeden dritten Schritt dran.
+  "tier_katze", { kraefte: "polizei", anzahl: 1 }, "p_ruhestoerung", "b_muelltonne", "th_oelspur", "p_falschparker", "b_hecke",
+  { bau: "dienststelle", stufe: 1, kraefte: 2 }, "p_hilflos", "th_baum_strasse", "b_muellfahrzeug", "p_vu_sachschaden",
+  "th_wasser_keller", "b_brandserie", "p_wild",
+  // 2. Wertstoffhof: Erst mit der Anlage der Stadt kann es dort brennen, und ein Löschangriff braucht vier
+  //    Feuerwehrleute (Wohnhäuser bauen). Danach Türöffnung (nach der hilflosen Person der Polizei), Wasser, Fahrzeuge.
+  { bau: "deponie", stufe: 1 }, { kraefte: "feuerwehr", anzahl: 4 }, "b_wertstoffhof", "p_ladendiebstahl", "th_tuer",
+  "b_flaeche", "p_trunkenheit", "th_graben", "b_pkw", "p_einbruch", "th_unfallflucht",
+  // 3. Kirchweg erschließen: Die Arztpraxis dort hat den Aufzug, in dem jemand stecken bleibt.
+  { viertel: "kirche" }, "th_aufzug", "rwm",
+  // 4. Gewerbe erschließen (dort stehen Bauhof und Werkstatt), dann Bauhof und Werkstatt (früher Level 12) mit je einer
+  //    Kraft: Verkehrssicherung, Winterdienst und Abschleppen im Wechsel mit der Feuerwehr. Für den Verkehrsunfall
+  //    sechs Feuerwehrleute, für die Schlägerei vier Beamte, für den festgefahrenen LKW eine größere Werkstatt.
+  { viertel: "gewerbe" }, { bau: "bauhof", stufe: 1, kraefte: 1 }, "bh_ast", "th_kind_auto", "bh_streuen", "silvester",
+  { bau: "werkstatt", stufe: 1, kraefte: 1 }, "ab_panne", "bma", "ab_graben", { kraefte: "feuerwehr", anzahl: 6 }, "th_vu",
+  { kraefte: "polizei", anzahl: 4 }, "p_schlaegerei", "fr_reanimation", { bau: "werkstatt", stufe: 2, kraefte: 2 }, "ab_lkw", "abc_gas",
+  // 5. Rettungsdienst (früher Level 16): Rettungswache bauen und zwei Kräfte einstellen, vom Krankentransport bis zum
+  //    Brustschmerz, dazwischen Feuerwehr und der letzte Polizeieinsatz. Der Zimmerbrand braucht neun Feuerwehrleute.
+  //    Sport-Einsätze erst mit dem Trimm-dich-Pfad am Sportplatz.
+  { bau: "rettungswache", stufe: 1, kraefte: 2 }, "rd_krankentransport", "th_pferd", "rd_sturz", "rd_wespenstich", "th_motorrad",
+  "rd_hitze", "p_vermisst", "rd_atemnot", "rd_infektion", { kraefte: "feuerwehr", anzahl: 9 }, "b_wohnung", "rd_fieberkrampf",
+  "rd_brustschmerz", "th_trunkenheit", { bau: "sportplatz", stufe: 3 }, "rd_sportverletzung", "fr_reanimation_sport",
+  // 6. DRK (früher Level 20): Unterkunft bauen, zwei Mitglieder, Helfer vor Ort, Sanitätswachdienst; das Sportfest braucht
+  //    Flutlicht. Die Deponie (Stufe 4) kommt vor dem Deponiebrand. Für den Scheunenbrand (Zug, 18 Kräfte) und später
+  //    den Deich (20) reicht das erste Wohnviertel nicht: Wohnviertel 2 erschließen und 20 Feuerwehrleute.
+  { bau: "drk_unterkunft", stufe: 1, kraefte: 2 }, "drk_hvo", "rd_reanimation", "drk_sanwache", "abc_raeumung", "th_vu_mehrere",
+  { bau: "sportplatz", stufe: 6 }, "drk_sanwache_sport", "b_leerstand", "th_rinder", { bau: "deponie", stufe: 4 }, "b_deponie",
+  { viertel: "wohnen2" }, { kraefte: "feuerwehr", anzahl: 20 }, "b_scheune",
+  // 7. DLRG (früher Level 24): Wachstation an der Elbe und vier Mitglieder. Erst jetzt die Wasser-Einsätze der Feuerwehr
+  //    (Eis, Person in der Elbe), weil die Wasserretter dazukommen.
+  { bau: "wachstation", stufe: 1, kraefte: 4 }, "dlrg_badeunfall", "th_eis", "dlrg_boot", "th_person_wasser", "th_stalldach",
+  "dlrg_hochwasser", "abc_lkw",
+  // 8. THW (früher Level 27, nur auf Anforderung): Unterkunft bauen und vier Helfer, dann Deichverteidigung und
+  //    Stromausfall, bei denen das THW pumpt und Strom einspeist. Für den Behandlungsplatz bei vielen Verletzten vier
+  //    DRK-Mitglieder.
+  { bau: "thw_unterkunft", stufe: 1, kraefte: 4 }, "th_deich", "th_stromausfall", { kraefte: "drk", anzahl: 4 },
+  // 9. Großlagen am Ende (früher Level 30), je eine pro 5-Sterne-Tag, von der leichtesten zur schwersten. Alle Dienste
+  //    sind dann da. Sie werden nicht gekauft, das Freischalten aktiviert sie. Der Bombenfund hängt an Baustellen.
+  "gl_dorffest", "gl_sturm", "gl_grossbrand", "gl_busunfall", "gl_hochwasser",
+]
+
+/**
+ * Die Reihe als Schritte: {nr, id, art, org, grosslage?, dienste?} oder {nr, id, bau, stufe, org?, name}, je mit stufe
+ * (Fortschritt 0 bis 30, solange dieser Schritt der nächste ist). Die Stufe steigt zwischen den Ankern gleichmäßig.
+ */
+const FREISCHALTREIHE = (function reihe() {
+  const orgVonBau = {}
+  for (const [org, o] of Object.entries(ORGANISATIONEN)) if (o.ab_level) orgVonBau[o.gebaeude] = org
+  const schritte = FREISCHALTREIHE_ROH.map((x, i) => {
+    if (typeof x === "string") {
+      const a = EINSATZARTEN[x]
+      const s = { nr: i + 1, id: x, art: x, org: a.org, name: a.name }
+      if (a.grosslage) {
+        s.grosslage = true
+        // Dienste, die bei der Großlage mitarbeiten (aus den Folgeeinsätzen)
+        s.dienste = [...new Set([a.org].concat((a.folge || []).map((f) => EINSATZARTEN[f] && EINSATZARTEN[f].org).filter(Boolean)))]
+      }
+      return s
+    }
+    if (x.viertel) return { nr: i + 1, id: "viertel:" + x.viertel, viertel: x.viertel, name: VIERTEL[x.viertel].name }
+    if (!x.bau) return { nr: i + 1, id: "kraefte:" + x.kraefte + ":" + x.anzahl, org: x.kraefte, kraefte: x.anzahl, name: KRAEFTE_NAMEN[x.kraefte] + ": " + x.anzahl + (x.anzahl === 1 ? " Einsatzkraft" : " Einsatzkräfte") }
+    const s = { nr: i + 1, id: "bau:" + x.bau + ":" + x.stufe, bau: x.bau, stufe: x.stufe, name: GEBAEUDE[x.bau][x.stufe].name }
+    const org = orgVonBau[x.bau] || (x.bau === "dienststelle" ? "polizei" : null)
+    if (org) s.org = org
+    if (x.kraefte) s.kraefte = x.kraefte
+    return s
+  })
+  // Anker: Start 0, Meilenstein einer Organisation = deren ab_level, erste Großlage = alle
+  const anker = [[0, 0]]
+  schritte.forEach((s, i) => {
+    if (s.bau && s.org && s.stufe === 1 && ORGANISATIONEN[s.org].ab_level && ORGANISATIONEN[s.org].gebaeude === s.bau) anker.push([i, ORGANISATIONEN[s.org].ab_level])
+    else if (s.grosslage && !schritte.slice(0, i).some((x) => x.grosslage)) anker.push([i, FREISCHALTUNG_LEVEL.alle])
+  })
+  schritte.forEach((s, i) => {
+    let k = 0
+    while (k + 1 < anker.length && anker[k + 1][0] <= i) k++
+    const [i0, v0] = anker[k]
+    const nach = anker[k + 1]
+    s.fortschritt = nach ? v0 + Math.floor(((nach[1] - v0) * (i - i0)) / (nach[0] - i0)) : v0
+  })
+  return schritte
+})()
+
+// Fahrzeuge werden je Organisation nach Preis gestaffelt freigeschaltet: das günstigste ab der Stufe der
+// Organisation (Freischaltreihe), jedes teurere eine Stufe später (gleich teure gemeinsam). Ein passender Einsatz schaltet früher frei
 // (simulation.js, fahrzeugSperre). ab_level steht dann im Regelwerk, damit die App dasselbe anzeigt.
 ;(function staffeln() {
   const jeOrg = {}
@@ -2763,6 +2889,10 @@ module.exports = {
   ORGANISATIONEN,
   EXTERN,
   FREISCHALTUNG_LEVEL,
+  FREISCHALTREIHE,
+  REIHE_GUTHABEN_MAX,
+  VIERTEL,
+  WOHNHAEUSER_START,
   RETTUNG,
   WACHDIENST,
   NACHFORDERUNG,

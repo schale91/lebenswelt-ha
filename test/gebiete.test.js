@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 8)
 const neu = () => S.neuerStand(R, T0, 3)
@@ -23,9 +24,9 @@ test("Startgebiet ist frei, der Rest liegt im Nebel", () => {
 
 test("Kauf nur angrenzend, mit Level und Münzen", () => {
   let s = neu()
-  s.level = 0
-  assert.match(S.gebietSperre(R, s, "5:0"), /Level 4/)
-  s.level = 30
+  vorspulen(R, s, 0)
+  assert.match(S.gebietSperre(R, s, "5:0"), /Kommt in der Freischaltreihe nach/)
+  vorspulen(R, s, 30)
   assert.equal(S.gebietSperre(R, s, "5:0"), null)
   assert.match(S.gebietSperre(R, s, "6:0"), /angrenzendes/)
   assert.match(S.gebietSperre(R, s, "2:2"), /Schon frei/)
@@ -41,7 +42,7 @@ test("Kauf nur angrenzend, mit Level und Münzen", () => {
 
 test("Krankenhaus im Dorf erst mit dem Krankenhausgelände", () => {
   const s = neu()
-  s.level = 30
+  vorspulen(R, s, 30)
   const kh = Object.entries(R.GEBIETE.besonders).find(([, g]) => g.art === "krankenhaus")[0]
   for (const p of s.personal) p.krankenhaus = null
   const R2 = { ...R, KRANKENHAUS: { ...R.KRANKENHAUS, chance: 1 } }
@@ -59,7 +60,7 @@ test("Gebäude im Nebel erst nach dem Freischalten, Einsätze nicht im Nebel", (
   // Sportplatz auf ein Quadrat im Nebel legen (wie auf der echten Karte)
   const R2 = { ...R, ORTE: { ...R.ORTE, sportplatz: { ...R.ORTE.sportplatz, x: 400, z: 0 } } }
   let s = neu()
-  s.level = 60
+  vorspulen(R, s, 60)
   s.muenzen = 1e7
   const key = S.gebietAn(R2, 400, 0)
   assert.ok(!S.gebietFrei(R2, s, key))

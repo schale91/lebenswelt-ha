@@ -3,6 +3,7 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 const R = require("../lebenswelt/pb_hooks/einsatz/regelwerk.js")
 const S = require("../lebenswelt/pb_hooks/einsatz/simulation.js")
+const { vorspulen } = require("./reihe_hilfe.js")
 
 const T0 = Date.UTC(2026, 9, 13, 16) // Dienstag, 18 Uhr Ortszeit
 const NACHT = Date.UTC(2026, 9, 14, 1) // Mittwoch, 3 Uhr Ortszeit
@@ -18,7 +19,7 @@ function kaufe(s, auftrag, t = T0) {
 
 function stand(level = 30) {
   const s = S.neuerStand(R, T0 - 3600000, 7)
-  s.level = level
+  vorspulen(R, s, level)
   return s
 }
 
@@ -63,9 +64,9 @@ test("Eine Sirene an der Schule macht Häuser dort schneller, Meldeempfänger h�
   assert.equal(I.heimweg(R, s, p, T0, "trocken").weg.los - T0, R.ALARMIERUNG.fme.reaktion_s * 1000)
 })
 
-test("Ausbau in Stufen: erst die vorige Stufe, erst ab dem Level; jede Stufe reicht weiter und löst schneller aus", () => {
+test("Ausbau in Stufen: erst die vorige Stufe, erst mit der Freischaltreihe; jede Stufe reicht weiter und löst schneller aus", () => {
   let s = stand(0)
-  assert.match(S.kaufe(s, { art: "ausbau", id: "sirene_schule_1" }, T0, R).fehler, /Level/)
+  assert.match(S.kaufe(s, { art: "ausbau", id: "sirene_schule_1" }, T0, R).fehler, /Kommt in der Freischaltreihe nach/)
   s = stand()
   assert.match(S.kaufe(s, { art: "ausbau", id: "sirene_schule_2" }, T0, R).fehler, /Zuerst/)
   s = kaufe(s, { art: "ausbau", id: "sirene_schule_1" })
