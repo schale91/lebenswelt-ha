@@ -1485,6 +1485,20 @@ const EINSATZARTEN = {
     text: "Aus einer Wohnung piept seit Minuten ein Rauchmelder, auf Klingeln öffnet niemand. Im Treppenhaus riecht es leicht verbrannt.",
     verfallen_text: "Die Nachbarn haben den Vermieter erreicht. Angebranntes Essen, der Topf ist hinüber, die Küche voller Rauch.",
   },
+  // Freigabe KW 47: nur im Advent und bis Heilige Drei Könige (1. Dezember bis 6. Januar). Kleinbrand B 1 nach FwDV 3:
+  // ein Trupp mit Kleinlöschgerät reicht, die Staffel lüftet mit dem Lüfter und kontrolliert mit der Wärmebildkamera.
+  b_adventskranz: {
+    org: "feuerwehr", name: "Adventskranz in Brand", stichwort: "B 1", preis: 700,
+    freischaltung: { nach: "rwm" },
+    orte: ["nachbarhaus"], intervall_min: 720, ablauf_min: 10, arbeit_min: 10, ziel_eintreffen_min: 8,
+    bedingung: { daten: ["12-01", "12-02", "12-03", "12-04", "12-05", "12-06", "12-07", "12-08", "12-09", "12-10", "12-11", "12-12", "12-13", "12-14", "12-15", "12-16", "12-17", "12-18", "12-19", "12-20", "12-21", "12-22", "12-23", "12-24", "12-25", "12-26", "12-27", "12-28", "12-29", "12-30", "12-31", "01-01", "01-02", "01-03", "01-04", "01-05", "01-06"], faktor: 1, sonst_faktor: 0 },
+    mindestens: { personen: 2, geraete: [[{ pulverloescher: 1 }, { schaumloescher: 1 }, { kuebelspritze: 1 }, { fahrzeug_wasser: 1, cm_strahlrohr: 1 }]] },
+    optimal: { personen: 6, einheit: "staffel", geraete: [[{ luefter: 1 }], [{ waermebildkamera: 1 }], [{ rauchvorhang: 1 }]] },
+    psa: { helm: 2, handschuhe: 1 },
+    regeln: ["einheitsfuehrer"],
+    text: "Der Adventskranz auf dem Wohnzimmertisch brennt, die Tischdecke hat Feuer gefangen. Der Rauchmelder hat die Familie geweckt.",
+    verfallen_text: "Die Familie hat mit dem Feuerlöscher gelöscht. Der Tisch ist hinüber, das Wohnzimmer verrußt.",
+  },
   // Person im Aufzug eingeschlossen (Freigabe KW 44/2026): Notbefreiung mit Dreikantschlüssel, Kabine von Hand auf
   // die nächste Haltestelle, Person beruhigen. Meist kommt der Aufzugsdienst zu spät, deshalb die Feuerwehr.
   th_aufzug: {
@@ -2773,7 +2787,7 @@ const FREISCHALTREIHE_ROH = [
   // 5. Rettungsdienst (früher Level 16): Rettungswache bauen und zwei Kräfte einstellen, vom Krankentransport bis zum
   //    Brustschmerz, dazwischen Feuerwehr und der letzte Polizeieinsatz. Der Zimmerbrand braucht neun Feuerwehrleute.
   //    Sport-Einsätze erst mit dem Trimm-dich-Pfad am Sportplatz.
-  { bau: "rettungswache", stufe: 1, kraefte: 2 }, "rd_krankentransport", "th_pferd", "rd_sturz", "rd_wespenstich", "th_motorrad",
+  { bau: "rettungswache", stufe: 1, kraefte: 2 }, "rd_krankentransport", "th_pferd", "rd_sturz", "rd_wespenstich", "b_adventskranz", "th_motorrad",
   "rd_hitze", "p_vermisst", "rd_atemnot", "rd_infektion", { kraefte: "feuerwehr", anzahl: 9 }, "b_wohnung", "rd_fieberkrampf",
   "rd_brustschmerz", "th_trunkenheit", { bau: "sportplatz", stufe: 3 }, "rd_sportverletzung", "fr_reanimation_sport",
   // 6. DRK (früher Level 20): Unterkunft bauen, zwei Mitglieder, Helfer vor Ort, Sanitätswachdienst; das Sportfest braucht

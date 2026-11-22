@@ -1,5 +1,9 @@
 # Änderungen
 
+## 0.46.8
+
+- Neue Einsatzart „Adventskranz in Brand“ (`b_adventskranz`, Freigabe KW 47): Kleinbrand B 1 im Nachbarhaus, nur vom 1. Dezember bis 6. Januar. Mindestens zwei Kräfte mit Kleinlöschgerät, optimal Staffel mit Lüfter, Wärmebildkamera und Rauchverschluss. Ohne Preis: Sie kommt in der Freischaltreihe nach dem Wespenstich an einem 5-Sterne-Tag dran, wie alle Einsatzarten. Gilt genauso in der Fitness-Welt, weil das Handy mit demselben Regelwerk rechnet.
+
 ## 0.46.7
 
 - Einsatzspiel ohne Level, mit fester Reihenfolge und Gebäuden als Hürden (Wunsch von Alex, 17.11.2026). Gilt genauso in der Fitness-Welt.
